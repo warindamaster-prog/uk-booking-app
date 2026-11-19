@@ -21,6 +21,9 @@ export const onboardingSchema = z.object({
     .transform(Number)
     .refine((n) => n >= PRICING.minSeats && n <= PRICING.maxSeats, `Enter a number from ${PRICING.minSeats} to ${PRICING.maxSeats}`),
   interval: z.enum(["month", "year"], { message: "Choose monthly or yearly" }),
+  /** Optional SMS confirmation packs chosen at setup (0 = none). */
+  smsPacks: z.string().trim().default("0").pipe(z.string().regex(/^\d+$/, "Enter a whole number")).transform(Number)
+    .refine((n) => n >= 0 && n <= PRICING.maxSmsPacks, `Enter a number from 0 to ${PRICING.maxSmsPacks}`),
 });
 
 export const LOGO_MAX_BYTES = 2 * 1024 * 1024;

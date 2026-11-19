@@ -5,7 +5,7 @@ import { createBusiness } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
 import type { FormState } from "@/lib/form";
 import { formatPence } from "@/lib/money";
-import { grossPence, isValidSeats, PRICING, pricePence, vatPence, yearlySavingPence, type BillingInterval } from "@/lib/pricing";
+import { grossPence, isValidSeats, isValidSmsPacks, PRICING, pricePence, smsPackPricePence, vatPence, yearlySavingPence, type BillingInterval } from "@/lib/pricing";
 import { slugify } from "@/lib/slug";
 
 export function OnboardingForm({ siteHost }: { siteHost: string }) {
@@ -16,9 +16,13 @@ export function OnboardingForm({ siteHost }: { siteHost: string }) {
   const [seatsText, setSeatsText] = useState(v.seats ?? "1");
   const [interval, setInterval] = useState<BillingInterval>(v.interval === "year" ? "year" : "month");
   const shownSlug = slug ?? v.slug ?? slugify(name);
+  const [smsOn, setSmsOn] = useState(v.smsOn === "on");
+  const [packsText, setPacksText] = useState(v.smsPacks && v.smsPacks !== "0" ? v.smsPacks : "1");
 
   const seats = /^\d+$/.test(seatsText) ? Number(seatsText) : NaN;
   const seatsOk = isValidSeats(seats);
+  const packsN = /^\d+$/.test(packsText) ? Number(packsText) : NaN;
+  const packs = smsOn && isValidSmsPacks(packsN) ? packsN : 0;
   const e = state.fieldErrors ?? {};
 
   return (
@@ -55,7 +59,7 @@ export function OnboardingForm({ siteHost }: { siteHost: string }) {
           <legend className="mb-2 text-sm font-medium">Billing</legend>
           <div className="space-y-2">
             {(["month", "year"] as const).map((i) => {
-              const price = seatsOk ? pricePence(seats, i) : null;
+              const price = seatsOk ? pricePence(seats, i, packs) : null;
               return (
                 <label key={i} className="flex items-start gap-3 rounded-md border border-neutral-300 p-3 dark:border-neutral-700">
                   <input type="radio" name="interval" value={i} checked={interval === i}
@@ -75,10 +79,28 @@ export function OnboardingForm({ siteHost }: { siteHost: string }) {
           {e.interval && <p className="mt-1 text-sm text-red-700 dark:text-red-400">{e.interval[0]}</p>}
         </fieldset>
 
+        <div className="space-y-2">
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" name="smsOn" checked={smsOn} onChange={(ev) => setSmsOn(ev.target.checked)} className="mt-1 h-5 w-5" />
+            <span>
+              <span className="block font-medium">Send SMS booking confirmations (optional)</span>
+              <span className="block text-neutral-600 dark:text-neutral-400">
+                {formatPence(PRICING.smsPackMonthlyPence)} + VAT a month for each pack of {PRICING.smsPackTexts} texts
+                {interval === "year" ? ` (${formatPence(smsPackPricePence("year"))} + VAT a year)` : ""}. You can add or remove packs later.
+              </span>
+            </span>
+          </label>
+          {smsOn && (
+            <Field label="SMS packs" name="smsPacks" inputMode="numeric" value={packsText} onChange={(ev) => setPacksText(ev.target.value)}
+              hint={`${isValidSmsPacks(packsN) ? packsN * PRICING.smsPackTexts : "…"} texts a month. Texts start sending once we switch SMS on; you are not charged before then.`}
+              errors={e.smsPacks} />
+          )}
+        </div>
+
         <div role="status" aria-live="polite" className="rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
           <p className="font-medium">Free for {PRICING.trialDays} days. No card needed.</p>
           {seatsOk && (() => {
-            const net = pricePence(seats, interval);
+            const net = pricePence(seats, interval, packs);
             return <p>After the trial: {formatPence(net)} + {formatPence(vatPence(net))} VAT = {formatPence(grossPence(net))} per {interval}.</p>;
           })()}
         </div>

@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/time";
 import { manageBilling, subscribe } from "./actions";
 import { CancelReductionForm } from "./cancel-form";
 import { SeatsForm } from "./seats-form";
+import { SmsForm } from "./sms-form";
 
 export const metadata: Metadata = { title: "Billing" };
 
@@ -62,12 +63,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <h2 id="plan-h" className="mb-2 text-xl font-semibold">Your plan</h2>
         <dl className="divide-y divide-neutral-300 rounded-md border border-neutral-300 px-3 dark:divide-neutral-700 dark:border-neutral-700">
           <div className={row}><dt>Team members paid for</dt><dd>{b.staff_seats} ({count ?? 0} in use)</dd></div>
+          <div className={row}><dt>SMS packs</dt><dd>{b.sms_packs === 0 ? "None" : `${b.sms_packs} (${b.sms_packs * 50} texts a month, ${b.sms_enabled ? "on" : "off"})`}</dd></div>
           <div className={row}><dt>Billing</dt><dd>{per === "year" ? "Yearly" : "Monthly"}</dd></div>
           <div className={row}><dt>{b.status === "trialing" ? `Price after trial (per ${per})` : `Price this ${per}`}</dt><dd>{line(b.current_price_pence)}</dd></div>
-          {b.next_staff_seats !== null && b.next_price_pence !== null && b.change_effective_at && (
+          {b.next_price_pence !== null && b.change_effective_at && (
             <div className={row}>
               <dt>From {formatDate(b.change_effective_at)}</dt>
-              <dd>{b.next_staff_seats} team members, {line(b.next_price_pence)}</dd>
+              <dd>
+                {b.next_staff_seats ?? b.staff_seats} team members
+                {(b.next_sms_packs ?? b.sms_packs) > 0 && `, ${b.next_sms_packs ?? b.sms_packs} SMS ${(b.next_sms_packs ?? b.sms_packs) === 1 ? "pack" : "packs"}`}
+                {`, ${line(b.next_price_pence)}`}
+              </dd>
             </div>
           )}
         </dl>
@@ -77,6 +83,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       <section aria-labelledby="team-h" className="space-y-3">
         <h2 id="team-h" className="text-xl font-semibold">Change team size</h2>
         <SeatsForm current={b.staff_seats} scheduled={b.next_staff_seats} interval={per} hasSubscription={!!b.stripe_subscription_id}
+          periodEnd={b.current_period_end} periodEndLabel={b.current_period_end ? formatDate(b.current_period_end) : null} />
+      </section>
+
+      <section aria-labelledby="sms-h" className="space-y-3">
+        <h2 id="sms-h" className="text-xl font-semibold">SMS confirmations</h2>
+        <SmsForm current={b.sms_packs} scheduled={b.next_sms_packs} enabled={b.sms_enabled} seats={b.next_staff_seats ?? b.staff_seats}
+          interval={per} hasSubscription={!!b.stripe_subscription_id}
           periodEnd={b.current_period_end} periodEndLabel={b.current_period_end ? formatDate(b.current_period_end) : null} />
       </section>
     </main>

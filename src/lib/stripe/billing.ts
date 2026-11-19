@@ -24,12 +24,21 @@ export type SubscriptionFacts = {
   interval: BillingInterval;
   quantity: number | null;
   itemId: string;
+  /** Quantity of the SMS pack item (0 when there is none). null when SMS prices are not configured. */
+  smsQuantity: number | null;
 };
 
+/** The Stripe price ids of the SMS pack (monthly and yearly), from the environment. */
+export function smsPriceIds(env: Record<string, string | undefined> = process.env): ReadonlySet<string> {
+  return new Set([env.STRIPE_PRICE_SMS_MONTHLY, env.STRIPE_PRICE_SMS_YEARLY].filter((x): x is string => !!x));
+}
+
 /** The facts we store from a Stripe subscription. (The billing period lives on the subscription item.) */
-export function readSubscription(sub: Stripe.Subscription): SubscriptionFacts | null {
-  const item = sub.items?.data?.[0];
+export function readSubscription(sub: Stripe.Subscription, sms: ReadonlySet<string> = new Set()): SubscriptionFacts | null {
+  const all = sub.items?.data ?? [];
+  const item = all.find((i) => !sms.has(i.price?.id)) ?? all[0]; // the team seats item
   if (!item) return null;
+  const smsItem = all.find((i) => sms.has(i.price?.id));
   return {
     id: sub.id,
     customerId: typeof sub.customer === "string" ? sub.customer : sub.customer.id,
@@ -39,6 +48,7 @@ export function readSubscription(sub: Stripe.Subscription): SubscriptionFacts | 
     interval: item.price?.recurring?.interval === "year" ? "year" : "month",
     quantity: item.quantity ?? null,
     itemId: item.id,
+    smsQuantity: sms.size ? (smsItem?.quantity ?? 0) : null,
   };
 }
 
@@ -52,6 +62,9 @@ export type SubscriptionCheckoutInput = {
   priceId: string;
   vatRateId: string;
   seats: number;
+  /** SMS packs and the Stripe price for them (matching the billing interval). */
+  smsPacks?: number;
+  smsPriceId?: string;
   trialEndsAt: Date;
   now: Date;
   successUrl: string;
@@ -59,18 +72,25 @@ export type SubscriptionCheckoutInput = {
 };
 
 /**
- * The shop's plan on OUR Stripe account. One line item: the graduated price (first seat £15, each
- * extra £2; yearly is 10 months' worth) with quantity = seats, plus 20% VAT. The free trial is kept:
+ * The shop's plan on OUR Stripe account. A line item for the graduated seat price (first seat £15, each
+ * extra £2; yearly is 10 months' worth) with quantity = seats, plus one for SMS packs (£5 each a month; yearly 12
+ * months) when chosen, with 20% VAT. The free trial is kept:
  * the card is taken now but nothing is charged until the trial ends.
  */
 export function buildSubscriptionCheckoutParams(i: SubscriptionCheckoutInput): Stripe.Checkout.SessionCreateParams {
   if (!Number.isInteger(i.seats) || i.seats < PRICING.minSeats || i.seats > PRICING.maxSeats) throw new RangeError("invalid seat count");
+  const packs = i.smsPacks ?? 0;
+  if (!Number.isInteger(packs) || packs < 0 || packs > PRICING.maxSmsPacks) throw new RangeError("invalid SMS pack count");
+  if (packs > 0 && !i.smsPriceId) throw new Error("SMS packs were chosen but no SMS price is configured");
   return {
     mode: "subscription",
     customer: i.customerId,
     client_reference_id: i.businessId,
     metadata: { business_id: i.businessId },
-    line_items: [{ price: i.priceId, quantity: i.seats, tax_rates: [i.vatRateId] }],
+    line_items: [
+      { price: i.priceId, quantity: i.seats, tax_rates: [i.vatRateId] },
+      ...(packs > 0 ? [{ price: i.smsPriceId!, quantity: packs, tax_rates: [i.vatRateId] }] : []),
+    ],
     subscription_data: {
       metadata: { business_id: i.businessId },
       ...(canUseTrialEnd(i.trialEndsAt, i.now) ? { trial_end: Math.floor(i.trialEndsAt.getTime() / 1000) } : {}),

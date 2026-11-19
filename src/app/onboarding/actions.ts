@@ -18,9 +18,10 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
     phone: String(formData.get("phone") ?? ""),
     seats: String(formData.get("seats") ?? ""),
     interval: String(formData.get("interval") ?? ""),
+    smsPacks: formData.get("smsOn") === "on" ? String(formData.get("smsPacks") ?? "1") : "0",
   };
   const parsed = onboardingSchema.safeParse(raw);
-  if (!parsed.success) return zodState(parsed.error, raw);
+  if (!parsed.success) return zodState(parsed.error, { ...raw, smsOn: formData.get("smsOn") === "on" ? "on" : "" });
 
   // Optional logo: validate size and real file signature before creating anything.
   let logo: { bytes: Uint8Array; type: keyof typeof LOGO_TYPES } | null = null;
@@ -43,6 +44,7 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
     p_phone: parsed.data.phone,
     p_seats: parsed.data.seats,
     p_interval: parsed.data.interval,
+    p_sms_packs: parsed.data.smsPacks,
   });
   if (error) {
     if (error.code === "23505") {

@@ -11,7 +11,18 @@ export const PRICING = {
   minSeats: 1,
   maxSeats: 50,
   trialDays: 60,
+  /** Optional SMS confirmations: packs of 50 texts a month. Yearly plans pay 12 full months (no yearly discount). */
+  smsPackMonthlyPence: 500,
+  smsPackTexts: 50,
+  maxSmsPacks: 20,
 } as const;
+
+export function isValidSmsPacks(n: number): boolean {
+  return Number.isInteger(n) && n >= 0 && n <= PRICING.maxSmsPacks;
+}
+
+/** One SMS pack for a whole billing period. */
+export const smsPackPricePence = (interval: BillingInterval) => PRICING.smsPackMonthlyPence * (interval === "year" ? 12 : 1);
 
 export function isValidSeats(n: number): boolean {
   return Number.isInteger(n) && n >= PRICING.minSeats && n <= PRICING.maxSeats;
@@ -22,9 +33,12 @@ export function monthlyPricePence(seats: number): number {
   return PRICING.baseMonthlyPence + PRICING.extraSeatMonthlyPence * (seats - 1);
 }
 
-export function pricePence(seats: number, interval: BillingInterval): number {
+/** The whole plan per billing period: team seats (yearly = 10 months) plus any SMS packs (yearly = 12 months). */
+export function pricePence(seats: number, interval: BillingInterval, smsPacks = 0): number {
+  if (!isValidSmsPacks(smsPacks)) throw new RangeError(`SMS packs must be a whole number from 0 to ${PRICING.maxSmsPacks}`);
   const monthly = monthlyPricePence(seats);
-  return interval === "year" ? monthly * PRICING.yearlyMonthsCharged : monthly;
+  const seatPart = interval === "year" ? monthly * PRICING.yearlyMonthsCharged : monthly;
+  return seatPart + smsPackPricePence(interval) * smsPacks;
 }
 
 /** What 12 months on the monthly plan would cost, minus the yearly price. */

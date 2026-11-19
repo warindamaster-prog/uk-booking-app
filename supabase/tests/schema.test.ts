@@ -910,3 +910,130 @@ describe("business email settings", () => {
     expect(other.rows).toHaveLength(0);
   });
 });
+
+describe("SMS packs", () => {
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  let n = 0;
+  const shop = async (seats: number, interval = "month", packs = 0) => {
+    const i = ++n, uid = `00000000-0000-0000-0000-0000000da${String(i).padStart(3, "0")}`, email = `sms${i}@x.com`;
+    await db.exec(`insert into auth.users values ('${uid}','${email}')`);
+    const id = (await as(uid, email, () => db.query<{ id: string }>(
+      `select public.create_business('Sms ${i}','sms-${i}','Owner',$1,'07700 900003',$2,$3,$4) id`, [email, seats, interval, packs]))).rows[0].id;
+    return { id, uid, email };
+  };
+  type Shop = Awaited<ReturnType<typeof shop>>;
+  const billing = async (id: string) => (await db.query<Record<string, unknown>>(`select * from business_billing where business_id=$1`, [id])).rows[0];
+  const packs = (o: Shop, k: number) => as(o.uid, o.email, () => db.query(`select public.change_sms_packs($1,$2)`, [o.id, k]));
+  const seats = (o: Shop, k: number) => as(o.uid, o.email, () => db.query(`select public.change_staff_seats($1,$2)`, [o.id, k]));
+  const enable = (o: Shop, on: boolean) => as(o.uid, o.email, () => db.query(`select public.set_sms_enabled($1,$2)`, [o.id, on]));
+  const subscribe = async (o: Shop, end = new Date(Date.now() + 20 * 86_400_000).toISOString(), qty?: number, smsQty?: number | null) => {
+    const b = await billing(o.id);
+    await asServer(() => db.query(`select public.sync_subscription($1,$6,$7,'active',$2,$3,$4,$5)`,
+      [o.id, end, b.billing_interval, qty ?? b.staff_seats, smsQty ?? null, `sub_${o.id}`, `cus_${o.id}`]));
+    return end;
+  };
+
+  it("SQL and TypeScript prices agree with SMS packs, for both intervals", async () => {
+    for (const seatCount of [1, 2, 5, 17, 50]) {
+      for (let k = 0; k <= 20; k++) {
+        for (const interval of ["month", "year"] as const) {
+          const r = await db.query<{ p: number }>(`select public.billing_price_pence($1,$2,$3) p`, [seatCount, interval, k]);
+          expect(r.rows[0].p, `${seatCount} ${interval} ${k}`).toBe(pricePence(seatCount, interval, k));
+        }
+      }
+    }
+  });
+
+  it("packs chosen at setup are enabled and priced in (monthly 12 months for yearly SMS, no discount)", async () => {
+    const m = await shop(2, "month", 2);
+    expect(await billing(m.id)).toMatchObject({ sms_packs: 2, sms_enabled: true, current_price_pence: 1700 + 1000 });
+    const y = await shop(1, "year", 1);
+    expect(await billing(y.id)).toMatchObject({ sms_packs: 1, sms_enabled: true, current_price_pence: 15000 + 6000 });
+    expect(await billing((await shop(1)).id)).toMatchObject({ sms_packs: 0, sms_enabled: false, current_price_pence: 1500 });
+  });
+
+  it("rejects an out of range pack count", async () => {
+    await expect(shop(1, "month", 21)).rejects.toThrow(/between 0 and 20/);
+    await expect(shop(1, "month", -1)).rejects.toThrow(/between 0 and 20/);
+  });
+
+  it("during the trial packs change at once, nothing is scheduled, and zero switches texting off", async () => {
+    const o = await shop(1, "month", 0);
+    await packs(o, 3);
+    expect(await billing(o.id)).toMatchObject({ sms_packs: 3, current_price_pence: 1500 + 1500, next_price_pence: null });
+    await enable(o, true);
+    expect((await billing(o.id)).sms_enabled).toBe(true);
+    await packs(o, 0);
+    expect(await billing(o.id)).toMatchObject({ sms_packs: 0, sms_enabled: false, current_price_pence: 1500 });
+  });
+
+  it("texting can only be switched on when there is a pack", async () => {
+    const o = await shop(1);
+    await expect(enable(o, true)).rejects.toThrow(/sms_needs_a_pack/);
+    await packs(o, 1);
+    await enable(o, true);
+    await enable(o, false);
+    expect((await billing(o.id)).sms_enabled).toBe(false);
+  });
+
+  it("on a live subscription adding packs needs payment, then is applied and turns texting on", async () => {
+    const o = await shop(2);
+    await subscribe(o);
+    await expect(packs(o, 2)).rejects.toThrow(/sms_increase_requires_payment/);
+    await asServer(() => db.query(`select public.apply_sms_increase($1,$2)`, [o.id, 2]));
+    expect(await billing(o.id)).toMatchObject({ sms_packs: 2, sms_enabled: true, current_price_pence: 1700 + 1000 });
+    await expect(asServer(() => db.query(`select public.apply_sms_increase($1,$2)`, [o.id, 2]))).rejects.toThrow(/not an increase/);
+  });
+
+  it("a reduction is planned for the period end, can be cancelled, and is applied when due", async () => {
+    const o = await shop(1, "month", 3);
+    const end = await subscribe(o);
+    await packs(o, 1);
+    let b = await billing(o.id);
+    expect(b).toMatchObject({ sms_packs: 3, next_sms_packs: 1, next_staff_seats: null, current_price_pence: 1500 + 1500, next_price_pence: 1500 + 500 });
+    expect((b.change_effective_at as Date).toISOString()).toBe(end);
+    await packs(o, 3); // same as now: cancels
+    expect(await billing(o.id)).toMatchObject({ next_sms_packs: null, next_price_pence: null, change_effective_at: null });
+    await packs(o, 0);
+    await db.exec(`update business_billing set change_effective_at = now() - interval '1 minute' where business_id='${o.id}'`);
+    await asServer(() => db.query(`select public.apply_due_seat_changes()`));
+    b = await billing(o.id);
+    expect(b).toMatchObject({ sms_packs: 0, sms_enabled: false, next_sms_packs: null, next_price_pence: null, current_price_pence: 1500 });
+  });
+
+  it("a seat reduction and a pack reduction share one date and one next price", async () => {
+    const o = await shop(3, "month", 2);
+    await subscribe(o);
+    await seats(o, 2);
+    await packs(o, 1);
+    let b = await billing(o.id);
+    expect(b).toMatchObject({ next_staff_seats: 2, next_sms_packs: 1, next_price_pence: 1700 + 500 });
+    await seats(o, 3); // cancel only the seat reduction: the pack reduction stays
+    b = await billing(o.id);
+    expect(b).toMatchObject({ next_staff_seats: null, next_sms_packs: 1, next_price_pence: 1900 + 500 });
+    await packs(o, 2); // cancel the rest
+    expect(await billing(o.id)).toMatchObject({ next_price_pence: null, change_effective_at: null });
+  });
+
+  it("Stripe can raise the pack count but never lowers it, and keeps pending reductions consistent", async () => {
+    const o = await shop(1, "month", 2);
+    await subscribe(o, undefined, 1, 4);
+    expect(await billing(o.id)).toMatchObject({ sms_packs: 4, current_price_pence: 1500 + 2000 });
+    await subscribe(o, undefined, 1, 1); // Stripe lowered early for a scheduled reduction
+    expect(await billing(o.id)).toMatchObject({ sms_packs: 4 });
+    await packs(o, 2);
+    await subscribe(o, undefined, 1, 5); // the owner added more: the pending reduction (2) is still below 5
+    expect(await billing(o.id)).toMatchObject({ sms_packs: 5, next_sms_packs: 2, next_price_pence: 1500 + 1000 });
+  });
+
+  it("only the owner can change or switch packs", async () => {
+    const o = await shop(1, "month", 1);
+    const other = await shop(1);
+    await expect(as(other.uid, other.email, () => db.query(`select public.change_sms_packs($1,2)`, [o.id]))).rejects.toThrow(/not allowed/);
+    await expect(as(other.uid, other.email, () => db.query(`select public.set_sms_enabled($1,false)`, [o.id]))).rejects.toThrow(/not allowed/);
+    await expect(as(o.uid, o.email, () => db.query(`select public.apply_sms_increase($1,3)`, [o.id]))).rejects.toThrow(/permission denied/);
+  });
+});

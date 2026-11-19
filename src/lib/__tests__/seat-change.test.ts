@@ -59,3 +59,36 @@ describe("popup wording", () => {
     expect(describeSeatChange(sum("cancel_reduction", 3, 3), { ...ctx, current: 3, requested: 3 }).title).toBe("Keep 3 people?");
   });
 });
+
+import { chargeNowSmsPence, describeSmsChange, summariseSmsChange } from "../seat-change";
+
+describe("SMS pack changes", () => {
+  const now = new Date("2026-06-01T12:00:00Z");
+  const end = (days: number) => new Date(now.getTime() + days * 86_400_000);
+  it("monthly: a full £5 for each added pack", () => {
+    expect(chargeNowSmsPence({ added: 1, interval: "month", periodEnd: end(10), now })).toBe(500);
+    expect(chargeNowSmsPence({ added: 3, interval: "month", periodEnd: end(10), now })).toBe(1500);
+  });
+  it("yearly: £60 a pack for the part of the year left (no yearly discount), nothing under 30p", () => {
+    expect(chargeNowSmsPence({ added: 1, interval: "year", periodEnd: end(365), now })).toBe(6000);
+    expect(chargeNowSmsPence({ added: 2, interval: "year", periodEnd: end(182.5), now })).toBe(6000);
+    expect(chargeNowSmsPence({ added: 1, interval: "year", periodEnd: end(1), now })).toBe(0);
+  });
+  it("summary: only a paid increase charges now, and the new price is the whole plan", () => {
+    const s = summariseSmsChange({ plan: "paid_increase", current: 1, requested: 3, seats: 2, interval: "month", periodEnd: end(10), now });
+    expect(s).toEqual({ plan: "paid_increase", added: 2, chargeNowNet: 1000, newPriceNet: 1700 + 1500 });
+    expect(summariseSmsChange({ plan: "schedule_reduction", current: 3, requested: 1, seats: 2, interval: "month", periodEnd: end(10), now }).chargeNowNet).toBe(0);
+  });
+  it("popup wording says what is charged now and what the next period costs", () => {
+    const sum = summariseSmsChange({ plan: "paid_increase", current: 0, requested: 2, seats: 1, interval: "month", periodEnd: end(10), now });
+    const d = describeSmsChange(sum, { current: 0, requested: 2, interval: "month", periodEndLabel: null });
+    expect(d.title).toBe("Add 2 SMS packs?");
+    expect(d.lines.join(" ")).toContain("£10.00 + VAT (£12.00 in total) now for 2 SMS packs");
+    expect(d.lines.join(" ")).toContain("100 texts a month");
+    const red = describeSmsChange(summariseSmsChange({ plan: "schedule_reduction", current: 2, requested: 0, seats: 1, interval: "month", periodEnd: end(10), now }),
+      { current: 2, requested: 0, interval: "month", periodEndLabel: "1 Jul 2026" });
+    expect(red.title).toBe("Stop SMS confirmations?");
+    expect(red.lines[0]).toContain("from 1 Jul 2026");
+    expect(red.lines[0]).toContain("£15.00 + VAT per month");
+  });
+});

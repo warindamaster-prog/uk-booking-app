@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { describe, expect, it } from "vitest";
-import { buildSubscriptionCheckoutParams, canUseTrialEnd, mapSubscriptionStatus, planSeatChange, readSubscription, type SubscriptionFacts } from "../billing";
+import { buildSubscriptionCheckoutParams, canUseTrialEnd, mapSubscriptionStatus, planSeatChange, readSubscription, smsPriceIds, type SubscriptionFacts } from "../billing";
 import { handlePlatformEvent, type BillingDeps } from "../billing-events";
 
 const now = new Date("2026-06-01T12:00:00Z");
@@ -34,6 +34,38 @@ describe("subscription checkout parameters", () => {
   });
 });
 
+describe("SMS packs on the subscription", () => {
+  it("adds a second line for the packs, with VAT, only when packs are chosen", () => {
+    const p = buildSubscriptionCheckoutParams({ ...base, smsPacks: 2, smsPriceId: "price_sms_m" });
+    expect(p.line_items).toEqual([
+      { price: "price_m", quantity: 3, tax_rates: ["txr_vat"] },
+      { price: "price_sms_m", quantity: 2, tax_rates: ["txr_vat"] },
+    ]);
+    expect(buildSubscriptionCheckoutParams({ ...base, smsPacks: 0, smsPriceId: "price_sms_m" }).line_items).toHaveLength(1);
+  });
+  it("refuses packs without a price, and bad pack counts", () => {
+    expect(() => buildSubscriptionCheckoutParams({ ...base, smsPacks: 1 })).toThrow(/no SMS price/);
+    for (const smsPacks of [-1, 21, 1.5]) expect(() => buildSubscriptionCheckoutParams({ ...base, smsPacks, smsPriceId: "p" })).toThrow(RangeError);
+  });
+  const two = (over: Record<string, unknown> = {}) => sub({
+    items: { data: [
+      { id: "si_sms", quantity: 4, current_period_end: 1_790_000_000, price: { id: "price_sms_m", recurring: { interval: "month" } } },
+      { id: "si_seats", quantity: 3, current_period_end: 1_790_000_000, price: { id: "price_m", recurring: { interval: "month" } } },
+    ] }, ...over });
+  it("tells the seat item from the SMS item by price, in any order", () => {
+    const f = readSubscription(two(), new Set(["price_sms_m"]));
+    expect(f).toMatchObject({ itemId: "si_seats", quantity: 3, smsQuantity: 4, interval: "month" });
+  });
+  it("reports zero packs when SMS is configured but the subscription has none, and null when it is not configured", () => {
+    expect(readSubscription(sub({ items: { data: [{ id: "si_1", quantity: 3, current_period_end: 1_790_000_000, price: { id: "price_m", recurring: { interval: "month" } } }] } }), new Set(["price_sms_m"]))).toMatchObject({ quantity: 3, smsQuantity: 0 });
+    expect(readSubscription(two())?.smsQuantity).toBeNull();
+  });
+  it("reads the SMS price ids from the environment", () => {
+    expect([...smsPriceIds({ STRIPE_PRICE_SMS_MONTHLY: "a", STRIPE_PRICE_SMS_YEARLY: "b" })]).toEqual(["a", "b"]);
+    expect(smsPriceIds({}).size).toBe(0);
+  });
+});
+
 describe("mapSubscriptionStatus", () => {
   it("maps Stripe statuses to ours, treating anything unexpected as unpaid", () => {
     expect(["trialing", "active", "past_due", "canceled", "incomplete_expired", "unpaid", "incomplete", "paused", "something_new"].map(mapSubscriptionStatus))
@@ -49,7 +81,7 @@ const sub = (over: Record<string, unknown> = {}) => ({
 describe("readSubscription", () => {
   it("reads the period from the item, plus interval, quantity and business", () => {
     expect(readSubscription(sub())).toEqual({ id: "sub_1", customerId: "cus_1", businessId: "biz_1", status: "active",
-      periodEnd: new Date(1_790_000_000 * 1000), interval: "year", quantity: 3, itemId: "si_1" });
+      periodEnd: new Date(1_790_000_000 * 1000), interval: "year", quantity: 3, itemId: "si_1", smsQuantity: null });
   });
   it("handles an expanded customer, no metadata, and a subscription without items", () => {
     expect(readSubscription(sub({ customer: { id: "cus_9" }, metadata: {} }))).toMatchObject({ customerId: "cus_9", businessId: null });
@@ -111,6 +143,11 @@ describe("stripe setup script matches the pricing formula", () => {
     expect(script).toContain(`first: ${pricePence(1, "month")}, extra: ${PRICING.extraSeatMonthlyPence}`);
     expect(script).toContain(`first: ${pricePence(1, "year")}, extra: ${PRICING.extraSeatMonthlyPence * PRICING.yearlyMonthsCharged}`);
     expect(script).toContain(`percentage: ${PRICING.vatRate * 100}`);
+  });
+  it("creates flat SMS pack prices that match the formula: monthly once, yearly 12 months", () => {
+    expect(script).toContain(`interval: "month", amount: ${pricePence(1, "month", 1) - pricePence(1, "month")}`);
+    expect(script).toContain(`interval: "year", amount: ${pricePence(1, "year", 1) - pricePence(1, "year")}`);
+    expect(pricePence(1, "year", 1) - pricePence(1, "year")).toBe(PRICING.smsPackMonthlyPence * 12); // no yearly discount on SMS
   });
   it("graduated tiers add up to the same price as the formula for any seat count", () => {
     const tiered = (first: number, extra: number, seats: number) => first + extra * (seats - 1);

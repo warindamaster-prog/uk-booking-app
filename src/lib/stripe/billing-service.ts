@@ -2,7 +2,7 @@ import "server-only";
 import { publicEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { BillingInterval } from "@/lib/pricing";
-import { buildSubscriptionCheckoutParams } from "./billing";
+import { buildSubscriptionCheckoutParams, smsPriceIds } from "./billing";
 import type { BillingStore } from "./billing-events";
 import { getStripe, stripeConfigured } from "./client";
 
@@ -12,12 +12,15 @@ type Db = ReturnType<typeof createAdminClient>;
 export const billingStripeReady = () =>
   stripeConfigured() && !!process.env.STRIPE_PRICE_MONTHLY && !!process.env.STRIPE_PRICE_YEARLY && !!process.env.STRIPE_VAT_TAX_RATE_ID;
 
+/** True when the SMS pack prices exist on our Stripe account (created by `npm run stripe:setup`). */
+export const smsStripeReady = () => !!process.env.STRIPE_PRICE_SMS_MONTHLY && !!process.env.STRIPE_PRICE_SMS_YEARLY;
+
 export function createBillingStore(db: Db = createAdminClient()): BillingStore {
   return {
     async syncSubscription(businessId, f) {
       const { error } = await db.rpc("sync_subscription", {
         p_business_id: businessId, p_subscription_id: f.id, p_customer_id: f.customerId, p_status: f.status,
-        p_period_end: f.periodEnd.toISOString(), p_interval: f.interval, p_quantity: f.quantity,
+        p_period_end: f.periodEnd.toISOString(), p_interval: f.interval, p_quantity: f.quantity, p_sms_quantity: f.smsQuantity,
       });
       if (error) throw new Error(`sync_subscription: ${error.message}`);
     },
@@ -42,7 +45,7 @@ async function ensureCustomer(db: Db, business: { id: string; name: string; emai
 
 /** Starts the Checkout where the owner adds a card. Returns the Stripe URL. */
 export async function startSubscriptionCheckout(db: Db, business: { id: string; name: string; email: string | null }, plan: {
-  seats: number; interval: BillingInterval; trialEndsAt: Date;
+  seats: number; interval: BillingInterval; trialEndsAt: Date; smsPacks?: number;
 }): Promise<string> {
   const customerId = await ensureCustomer(db, business);
   const site = publicEnv().NEXT_PUBLIC_SITE_URL;
@@ -50,6 +53,8 @@ export async function startSubscriptionCheckout(db: Db, business: { id: string; 
     businessId: business.id, customerId, seats: plan.seats, trialEndsAt: plan.trialEndsAt, now: new Date(),
     priceId: (plan.interval === "year" ? process.env.STRIPE_PRICE_YEARLY : process.env.STRIPE_PRICE_MONTHLY)!,
     vatRateId: process.env.STRIPE_VAT_TAX_RATE_ID!,
+    smsPacks: plan.smsPacks ?? 0,
+    smsPriceId: plan.interval === "year" ? process.env.STRIPE_PRICE_SMS_YEARLY : process.env.STRIPE_PRICE_SMS_MONTHLY,
     successUrl: `${site}/dashboard/billing?subscribed=1`, cancelUrl: `${site}/dashboard/billing`,
   }));
   if (!session.url) throw new Error("Stripe returned no checkout URL");
@@ -73,14 +78,40 @@ export async function openBillingPortal(db: Db, businessId: string): Promise<str
 export async function setSubscriptionSeats(subscriptionId: string, seats: number): Promise<void> {
   const stripe = getStripe();
   const sub = await stripe.subscriptions.retrieve(subscriptionId);
-  const item = sub.items.data[0];
+  const sms = smsPriceIds();
+  const item = sub.items.data.find((i) => !sms.has(i.price?.id)) ?? sub.items.data[0];
   if (!item) throw new Error("subscription has no items");
   if (item.quantity === seats) return;
   await stripe.subscriptions.update(subscriptionId, { items: [{ id: item.id, quantity: seats }], proration_behavior: "none" });
 }
 
 /**
- * Charges the card straight away for extra seats (a one-off invoice with VAT). Throws if the card
+ * Sets the number of SMS packs on the live subscription, again without charging or crediting
+ * anything now. Adds the SMS item when there was none, and removes it at zero.
+ */
+export async function setSubscriptionSmsPacks(subscriptionId: string, packs: number, interval: BillingInterval): Promise<void> {
+  const stripe = getStripe();
+  const sub = await stripe.subscriptions.retrieve(subscriptionId);
+  const sms = smsPriceIds();
+  const item = sub.items.data.find((i) => sms.has(i.price?.id));
+  if (!item) {
+    if (packs === 0) return;
+    const price = interval === "year" ? process.env.STRIPE_PRICE_SMS_YEARLY : process.env.STRIPE_PRICE_SMS_MONTHLY;
+    if (!price) throw new Error("SMS prices are not configured");
+    await stripe.subscriptions.update(subscriptionId, {
+      items: [{ price, quantity: packs, tax_rates: [process.env.STRIPE_VAT_TAX_RATE_ID!] }], proration_behavior: "none",
+    });
+    return;
+  }
+  if (packs === 0) {
+    await stripe.subscriptions.update(subscriptionId, { items: [{ id: item.id, deleted: true }], proration_behavior: "none" });
+  } else if (item.quantity !== packs) {
+    await stripe.subscriptions.update(subscriptionId, { items: [{ id: item.id, quantity: packs }], proration_behavior: "none" });
+  }
+}
+
+/**
+ * Charges the card straight away for extra seats or SMS packs (a one-off invoice with VAT). Throws if the card
  * is declined, and then leaves nothing behind (the draft invoice is voided).
  */
 export async function chargeForExtraSeats(db: Db, businessId: string, amountPence: number, description: string, idempotencyKey: string): Promise<string> {

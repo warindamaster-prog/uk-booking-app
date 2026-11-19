@@ -69,3 +69,15 @@ describe("onboardingSchema (setup form)", () => {
     expect(onboardingSchema.safeParse({ ...ok, ...over }).success).toBe(false);
   });
 });
+
+describe("onboarding SMS packs", () => {
+  const ok = { name: "Lily Nails", slug: "lily-nails", ownerName: "Lily", email: "lily@x.com", phone: "07700 900123", seats: "2", interval: "month" };
+  it("defaults to no packs and accepts 0 to 20", () => {
+    expect(onboardingSchema.parse(ok).smsPacks).toBe(0);
+    expect(onboardingSchema.parse({ ...ok, smsPacks: "3" }).smsPacks).toBe(3);
+    expect(onboardingSchema.parse({ ...ok, smsPacks: "20" }).smsPacks).toBe(20);
+  });
+  it("rejects too many packs and non-numbers", () => {
+    for (const smsPacks of ["21", "-1", "1.5", "abc"]) expect(onboardingSchema.safeParse({ ...ok, smsPacks }).success, smsPacks).toBe(false);
+  });
+});
