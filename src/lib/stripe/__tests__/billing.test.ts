@@ -16,6 +16,11 @@ describe("subscription checkout parameters", () => {
     expect(p.subscription_data?.metadata).toEqual({ business_id: "biz_1" });
     expect(p.customer).toBe("cus_1");
   });
+  it("asks for the billing address and a phone number", () => {
+    const p = buildSubscriptionCheckoutParams(base);
+    expect(p.billing_address_collection).toBe("required");
+    expect(p.phone_number_collection).toEqual({ enabled: true });
+  });
   it("keeps the free trial: nothing is charged until the trial ends", () => {
     expect(buildSubscriptionCheckoutParams(base).subscription_data?.trial_end).toBe(Math.floor(base.trialEndsAt.getTime() / 1000));
   });

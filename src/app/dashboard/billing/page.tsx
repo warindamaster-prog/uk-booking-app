@@ -76,7 +76,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
       <section aria-labelledby="team-h" className="space-y-3">
         <h2 id="team-h" className="text-xl font-semibold">Change team size</h2>
-        <SeatsForm current={b.next_staff_seats ?? b.staff_seats} interval={per} hasSubscription={!!b.stripe_subscription_id} />
+        <SeatsForm current={b.staff_seats} scheduled={b.next_staff_seats} interval={per} hasSubscription={!!b.stripe_subscription_id}
+          periodEnd={b.current_period_end} periodEndLabel={b.current_period_end ? formatDate(b.current_period_end) : null} />
       </section>
     </main>
   );

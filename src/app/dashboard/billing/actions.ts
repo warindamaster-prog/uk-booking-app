@@ -8,7 +8,8 @@ import type { FormState } from "@/lib/form";
 import { formatPence } from "@/lib/money";
 import { isValidSeats, PRICING, pricePence, type BillingInterval } from "@/lib/pricing";
 import { planSeatChange } from "@/lib/stripe/billing";
-import { billingStripeReady, openBillingPortal, setSubscriptionSeats, startSubscriptionCheckout } from "@/lib/stripe/billing-service";
+import { billingStripeReady, chargeForExtraSeats, openBillingPortal, setSubscriptionSeats, startSubscriptionCheckout } from "@/lib/stripe/billing-service";
+import { summariseSeatChange } from "@/lib/seat-change";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/time";
 
@@ -48,20 +49,31 @@ export async function updateSeats(_: FormState, formData: FormData): Promise<For
       }
 
       case "paid_increase": {
-        // A pending reduction already lowered Stripe's quantity; put it back first so only the real increase is charged.
-        if (b.next_staff_seats !== null) await setSubscriptionSeats(subId!, b.staff_seats, false);
-        await setSubscriptionSeats(subId!, seats, true); // charges the prorated amount now; throws if the card fails
-        const { error } = await createAdminClient().rpc("apply_seat_increase", { p_business_id: business.id, p_new_seats: seats });
-        if (error) console.error("apply_seat_increase failed; the webhook will catch up", error.message);
+        const sum = summariseSeatChange({ plan, current: b.staff_seats, requested: seats, interval: b.billing_interval as BillingInterval,
+          periodEnd: b.current_period_end ? new Date(b.current_period_end) : null, now: new Date() });
+        const admin = createAdminClient();
+        // A pending reduction already lowered Stripe's quantity; put it back first so only the real increase is billed.
+        if (b.next_staff_seats !== null) await setSubscriptionSeats(subId!, b.staff_seats);
+        // 1. Take the money first. If the card fails nothing else has changed.
+        if (sum.chargeNowNet > 0) {
+          await chargeForExtraSeats(admin, business.id, sum.chargeNowNet,
+            `${sum.added} extra team ${sum.added === 1 ? "member" : "members"}`, `seats:${business.id}:${b.staff_seats}:${seats}`);
+        }
+        // 2. From the next invoice on, the larger quantity applies.
+        await setSubscriptionSeats(subId!, seats);
+        // 3. Our own record (it is the paid-for number the staff limit is enforced against).
+        const { error } = await admin.rpc("apply_seat_increase", { p_business_id: business.id, p_new_seats: seats });
+        if (error) console.error("apply_seat_increase failed after payment; the webhook will catch up", error.message);
         refresh();
-        return { message: `Your plan now covers ${seats} people. The extra cost for the rest of this period was charged to your card.`, values };
+        const charged = sum.chargeNowNet > 0 ? ` ${formatPence(sum.chargeNowNet)} + VAT was charged to your card.` : "";
+        return { message: `Your plan now covers ${seats} people.${charged}`, values };
       }
 
       case "schedule_reduction": {
         const { error } = await setSeatsInDb(seats); // checks nobody active would be left without a seat
         if (error) return { error: error.message?.includes("staff_seats_below_active") ? belowActive(error.message) : GENERIC, values };
         try {
-          await setSubscriptionSeats(subId!, seats, false); // changes the next invoice only
+          await setSubscriptionSeats(subId!, seats); // changes the next invoice only
         } catch (e) {
           await setSeatsInDb(b.staff_seats); // put the database back so it matches Stripe
           throw e;
@@ -72,7 +84,7 @@ export async function updateSeats(_: FormState, formData: FormData): Promise<For
       }
 
       case "cancel_reduction":
-        await setSubscriptionSeats(subId!, b.staff_seats, false); // Stripe first, so it can never bill fewer seats than we allow
+        await setSubscriptionSeats(subId!, b.staff_seats); // Stripe first, so it can never bill fewer seats than we allow
         await setSeatsInDb(b.staff_seats);
         break;
     }

@@ -66,17 +66,43 @@ export async function openBillingPortal(db: Db, businessId: string): Promise<str
   return session.url;
 }
 
-/** Sets the quantity on the live subscription. `invoiceNow` charges the prorated difference at once. */
-export async function setSubscriptionSeats(subscriptionId: string, seats: number, invoiceNow: boolean): Promise<void> {
+/**
+ * Sets the quantity on the live subscription WITHOUT charging or crediting anything now:
+ * only the next invoice changes. (Extra seats are charged separately, see chargeForExtraSeats.)
+ */
+export async function setSubscriptionSeats(subscriptionId: string, seats: number): Promise<void> {
   const stripe = getStripe();
   const sub = await stripe.subscriptions.retrieve(subscriptionId);
   const item = sub.items.data[0];
   if (!item) throw new Error("subscription has no items");
   if (item.quantity === seats) return;
-  await stripe.subscriptions.update(subscriptionId, {
-    items: [{ id: item.id, quantity: seats }],
-    // Increases are charged now (prorated). Reductions change only the NEXT invoice: nothing is credited or charged now.
-    proration_behavior: invoiceNow ? "always_invoice" : "none",
-    ...(invoiceNow ? { payment_behavior: "error_if_incomplete" as const } : {}),
-  });
+  await stripe.subscriptions.update(subscriptionId, { items: [{ id: item.id, quantity: seats }], proration_behavior: "none" });
+}
+
+/**
+ * Charges the card straight away for extra seats (a one-off invoice with VAT). Throws if the card
+ * is declined, and then leaves nothing behind (the draft invoice is voided).
+ */
+export async function chargeForExtraSeats(db: Db, businessId: string, amountPence: number, description: string, idempotencyKey: string): Promise<string> {
+  const { data } = await db.from("business_billing").select("stripe_customer_id").eq("business_id", businessId).single();
+  if (!data?.stripe_customer_id) throw new Error("no Stripe customer");
+  const stripe = getStripe();
+  const customer = data.stripe_customer_id;
+
+  await stripe.invoiceItems.create(
+    { customer, currency: "gbp", amount: amountPence, description, tax_rates: [process.env.STRIPE_VAT_TAX_RATE_ID!] },
+    { idempotencyKey: `${idempotencyKey}:item` },
+  );
+  const invoice = await stripe.invoices.create(
+    { customer, collection_method: "charge_automatically", auto_advance: false, pending_invoice_items_behavior: "include", description },
+    { idempotencyKey: `${idempotencyKey}:invoice` },
+  );
+  try {
+    const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
+    const paid = await stripe.invoices.pay(finalized.id);
+    return paid.id;
+  } catch (e) {
+    await stripe.invoices.voidInvoice(invoice.id).catch(() => undefined);
+    throw e;
+  }
 }

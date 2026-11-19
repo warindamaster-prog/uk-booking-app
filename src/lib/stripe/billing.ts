@@ -75,7 +75,8 @@ export function buildSubscriptionCheckoutParams(i: SubscriptionCheckoutInput): S
       metadata: { business_id: i.businessId },
       ...(canUseTrialEnd(i.trialEndsAt, i.now) ? { trial_end: Math.floor(i.trialEndsAt.getTime() / 1000) } : {}),
     },
-    billing_address_collection: "auto",
+    billing_address_collection: "required", // invoices for UK businesses need an address
+    phone_number_collection: { enabled: true },
     success_url: i.successUrl,
     cancel_url: i.cancelUrl,
   };
