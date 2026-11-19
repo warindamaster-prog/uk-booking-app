@@ -24,6 +24,10 @@ describe("subscription checkout parameters", () => {
   it("keeps the free trial: nothing is charged until the trial ends", () => {
     expect(buildSubscriptionCheckoutParams(base).subscription_data?.trial_end).toBe(Math.floor(base.trialEndsAt.getTime() / 1000));
   });
+  it("can skip the trial for testing: the first payment is taken at once", () => {
+    expect(buildSubscriptionCheckoutParams({ ...base, skipTrial: true }).subscription_data).not.toHaveProperty("trial_end");
+    expect(buildSubscriptionCheckoutParams({ ...base, skipTrial: false }).subscription_data?.trial_end).toBe(Math.floor(base.trialEndsAt.getTime() / 1000));
+  });
   it("with less than 48 hours of trial left (Stripe's minimum) or none, the card is charged at once", () => {
     expect(canUseTrialEnd(new Date("2026-06-03T12:00:00Z"), now)).toBe(false); // exactly 48 hours
     expect(canUseTrialEnd(new Date("2026-06-03T14:00:00Z"), now)).toBe(true);

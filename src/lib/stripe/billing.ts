@@ -66,6 +66,8 @@ export type SubscriptionCheckoutInput = {
   smsPacks?: number;
   smsPriceId?: string;
   trialEndsAt: Date;
+  /** Testing: take the first payment at once instead of waiting for the free trial to end. */
+  skipTrial?: boolean;
   now: Date;
   successUrl: string;
   cancelUrl: string;
@@ -93,7 +95,7 @@ export function buildSubscriptionCheckoutParams(i: SubscriptionCheckoutInput): S
     ],
     subscription_data: {
       metadata: { business_id: i.businessId },
-      ...(canUseTrialEnd(i.trialEndsAt, i.now) ? { trial_end: Math.floor(i.trialEndsAt.getTime() / 1000) } : {}),
+      ...(!i.skipTrial && canUseTrialEnd(i.trialEndsAt, i.now) ? { trial_end: Math.floor(i.trialEndsAt.getTime() / 1000) } : {}),
     },
     billing_address_collection: "required", // invoices for UK businesses need an address
     phone_number_collection: { enabled: true },

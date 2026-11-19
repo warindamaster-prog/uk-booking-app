@@ -49,7 +49,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           ) : (
             <>
               <p>{new Date(b.trial_ends_at) > new Date()
-                ? `Add a card to keep your booking page open after your free trial ends on ${formatDate(b.trial_ends_at)}. Nothing is charged until then.`
+                ? (process.env.BILLING_SKIP_TRIAL === "true"
+                  ? "Test mode: subscribing takes the first payment straight away instead of waiting for the free trial to end."
+                  : `Add a card to keep your booking page open after your free trial ends on ${formatDate(b.trial_ends_at)}. Nothing is charged until then.`)
                 : "Your free trial has ended. Add a card to open your booking page again."}</p>
               {billingStripeReady()
                 ? <form action={subscribe}><button type="submit" className="inline-flex min-h-11 items-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900">Add a card and subscribe</button></form>

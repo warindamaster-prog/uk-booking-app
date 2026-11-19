@@ -50,7 +50,7 @@ export async function startSubscriptionCheckout(db: Db, business: { id: string; 
   const customerId = await ensureCustomer(db, business);
   const site = publicEnv().NEXT_PUBLIC_SITE_URL;
   const session = await getStripe().checkout.sessions.create(buildSubscriptionCheckoutParams({
-    businessId: business.id, customerId, seats: plan.seats, trialEndsAt: plan.trialEndsAt, now: new Date(),
+    businessId: business.id, customerId, seats: plan.seats, trialEndsAt: plan.trialEndsAt, now: new Date(), skipTrial: process.env.BILLING_SKIP_TRIAL === "true",
     priceId: (plan.interval === "year" ? process.env.STRIPE_PRICE_YEARLY : process.env.STRIPE_PRICE_MONTHLY)!,
     vatRateId: process.env.STRIPE_VAT_TAX_RATE_ID!,
     smsPacks: plan.smsPacks ?? 0,
