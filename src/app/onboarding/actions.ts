@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { noTrialMode } from "@/lib/billing";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { zodState, type FormState } from "@/lib/form";
 import {
   LOGO_MAX_BYTES, LOGO_TYPES, onboardingSchema, sniffLogoType,
@@ -66,6 +68,12 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
       const upd = await supabase.from("businesses").update({ logo_path: path }).eq("id", businessId);
       if (upd.error) logoFailed = true;
     }
+  }
+  if (noTrialMode()) {
+    // Testing without a free trial: the trial ends now, so the booking page stays closed until they subscribe.
+    const { error: trialError } = await createAdminClient().from("business_billing").update({ trial_ends_at: new Date().toISOString() }).eq("business_id", businessId);
+    if (trialError) console.error("could not end the trial for a new business", trialError.message);
+    redirect(logoFailed ? "/dashboard/billing?welcome=1&logo=failed" : "/dashboard/billing?welcome=1");
   }
   redirect(logoFailed ? "/dashboard?logo=failed" : "/dashboard");
 }

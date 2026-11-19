@@ -81,3 +81,23 @@ describe("onboarding SMS packs", () => {
     for (const smsPacks of ["21", "-1", "1.5", "abc"]) expect(onboardingSchema.safeParse({ ...ok, smsPacks }).success, smsPacks).toBe(false);
   });
 });
+
+import { noTrialMode } from "../../billing";
+import { afterEach, vi } from "vitest";
+
+describe("no-trial test mode", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it("is on only when billing is enabled AND the trial is skipped", () => {
+    vi.stubEnv("BILLING_ENABLED", "true"); vi.stubEnv("BILLING_SKIP_TRIAL", "true");
+    expect(noTrialMode()).toBe(true);
+    vi.stubEnv("BILLING_SKIP_TRIAL", "false");
+    expect(noTrialMode()).toBe(false);
+    vi.stubEnv("BILLING_ENABLED", "false"); vi.stubEnv("BILLING_SKIP_TRIAL", "true");
+    expect(noTrialMode()).toBe(false);
+  });
+  it("a trial that ended just now keeps the page closed until subscribed", () => {
+    const now = new Date();
+    expect(bookingsOpen({ status: "trialing", trial_ends_at: now }, { now: new Date(now.getTime() + 1000), billingEnabled: true })).toBe(false);
+    expect(bookingsOpen({ status: "active", trial_ends_at: now }, { now: new Date(now.getTime() + 1000), billingEnabled: true })).toBe(true);
+  });
+});

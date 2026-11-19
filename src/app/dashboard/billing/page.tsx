@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireOwner } from "@/lib/auth";
-import { billingEnabled, trialDaysLeft } from "@/lib/billing";
+import { billingEnabled, bookingsOpen, noTrialMode, trialDaysLeft } from "@/lib/billing";
 import { billingStripeReady } from "@/lib/stripe/billing-service";
 import { formatPence } from "@/lib/money";
 import { grossPence, vatPence } from "@/lib/pricing";
@@ -12,7 +12,7 @@ import { SmsForm } from "./sms-form";
 
 export const metadata: Metadata = { title: "Billing" };
 
-export default async function BillingPage({ searchParams }: { searchParams: Promise<{ subscribed?: string; error?: string }> }) {
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ subscribed?: string; error?: string; welcome?: string }> }) {
   const sp = await searchParams;
   const { supabase, business } = await requireOwner();
   const { data: b } = await supabase.from("business_billing").select("*").eq("business_id", business.id).maybeSingle();
@@ -27,7 +27,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <main className="space-y-8">
       <h1 className="text-2xl font-semibold">Billing</h1>
 
-      {b.status === "trialing" && (
+      {sp.welcome && (
+        <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">
+          Welcome! Your business is set up. {noTrialMode() ? "There is no free trial: subscribe below to open your booking page to customers. Until then you can set everything up here." : ""}
+        </p>
+      )}
+      {billingEnabled() && !bookingsOpen(b, { now: new Date(), billingEnabled: true }) && (
+        <p role="alert" className="rounded-md border border-amber-700 p-3 text-sm">
+          Your booking page is closed. Customers see &quot;Online booking isn&apos;t available right now&quot; until your subscription is active.
+        </p>
+      )}
+      {b.status === "trialing" && bookingsOpen(b, { now: new Date(), billingEnabled: billingEnabled() }) && (
         <p role="status" className="rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
           You&apos;re on a free trial: {trialDaysLeft(b.trial_ends_at)} days left (until {formatDate(b.trial_ends_at)}). No card is needed until we launch.
         </p>
@@ -48,7 +58,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             </>
           ) : (
             <>
-              <p>{new Date(b.trial_ends_at) > new Date()
+              <p>{noTrialMode()
+                ? "Subscribe to open your booking page to customers. The first payment is taken straight away (test mode)."
+                : new Date(b.trial_ends_at) > new Date()
                 ? (process.env.BILLING_SKIP_TRIAL === "true"
                   ? "Test mode: subscribing takes the first payment straight away instead of waiting for the free trial to end."
                   : `Add a card to keep your booking page open after your free trial ends on ${formatDate(b.trial_ends_at)}. Nothing is charged until then.`)

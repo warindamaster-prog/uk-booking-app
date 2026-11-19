@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireBusiness } from "@/lib/auth";
-import { billingEnabled, trialDaysLeft } from "@/lib/billing";
+import { billingEnabled, bookingsOpen, trialDaysLeft } from "@/lib/billing";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { supabase, business, role, user } = await requireBusiness();
@@ -47,7 +47,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <Link href={`/dashboard/staff/${myStaffId}`} className="underline-offset-4 hover:underline">My hours</Link>
         ) : null}
       </nav>
-      {billing?.status === "trialing" && (
+      {billing && billingEnabled() && !bookingsOpen(billing, { now: new Date(), billingEnabled: true }) && (
+        <p role="alert" className="mb-6 rounded-md border border-amber-700 p-3 text-sm">
+          Your booking page is closed: customers can&apos;t book until you subscribe. <Link href="/dashboard/billing" className="underline">Open Billing</Link>. You can still use everything here.
+        </p>
+      )}
+      {billing?.status === "trialing" && bookingsOpen(billing, { now: new Date(), billingEnabled: billingEnabled() }) && (
         <p role="status" className="mb-6 rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
           {billingEnabled()
             ? <>Free trial: {trialDaysLeft(billing.trial_ends_at)} days left. <Link href="/dashboard/billing" className="underline">Add a card</Link> to keep your booking page open afterwards.</>

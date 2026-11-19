@@ -1,5 +1,8 @@
 export const billingEnabled = () => process.env.BILLING_ENABLED === "true";
 
+/** Testing: no free trial. A new business must subscribe (and pay) before its booking page opens. */
+export const noTrialMode = () => billingEnabled() && process.env.BILLING_SKIP_TRIAL === "true";
+
 /**
  * Whether a business's public booking page is open.
  * While billing is switched off (testing phase) every trialing business stays open.
