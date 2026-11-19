@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { fillMessage, PLACEHOLDERS } from "@/lib/notifications/message";
 import { saveSettings } from "./actions";
@@ -74,6 +75,7 @@ export function SettingsForm({ defaults, shopName }: {
         defaultValue={v.privacyUrl ?? defaults.privacyUrl} errors={e.privacyUrl} />
 
       <SubmitButton pending={pending}>Save settings</SubmitButton>
+      <p className="text-sm"><Link href="/dashboard/settings/email" className="underline">Send customers&apos; emails from your own email address</Link></p>
     </form>
   );
 }

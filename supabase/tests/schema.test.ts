@@ -887,3 +887,26 @@ describe("shop message and removing team members", () => {
     expect((await db.query(`select deleted_at from staff where id=$1`, [id])).rows[0]).toEqual({ deleted_at: null });
   });
 });
+
+describe("business email settings", () => {
+  const ins = (biz: string, pass = "v1.a.b.c") => db.query(
+    `insert into business_email_settings(business_id,smtp_host,smtp_port,smtp_user,smtp_pass_enc) values($1,'smtp.gmail.com',587,'shop@gmail.com',$2)`, [biz, pass]);
+
+  it("accepts only normal mail ports and one row per business", async () => {
+    await ins(bizA);
+    await expect(ins(bizA)).rejects.toThrow(/duplicate key|unique/);
+    await expect(db.query(`insert into business_email_settings(business_id,smtp_host,smtp_port,smtp_user,smtp_pass_enc) values($1,'smtp.x.com',25,'a@x.com','v1.a.b.c')`, [bizB])).rejects.toThrow(/check/);
+  });
+  it("lets the owner read the status but never the password, and write nothing", async () => {
+    const own = await as(A, "a@x.com", () => db.query(`select smtp_host, smtp_user from business_email_settings where business_id=$1`, [bizA]));
+    expect(own.rows).toEqual([{ smtp_host: "smtp.gmail.com", smtp_user: "shop@gmail.com" }]);
+    await expect(as(A, "a@x.com", () => db.query(`select smtp_pass_enc from business_email_settings`))).rejects.toThrow(/permission denied/);
+    await expect(as(A, "a@x.com", () => db.query(`select * from business_email_settings`))).rejects.toThrow(/permission denied/);
+    await expect(as(A, "a@x.com", () => db.query(`update business_email_settings set smtp_host='evil.com' where business_id=$1`, [bizA]))).rejects.toThrow(/permission denied/);
+    await expect(as(A, "a@x.com", () => db.query(`delete from business_email_settings where business_id=$1`, [bizA]))).rejects.toThrow(/permission denied/);
+  });
+  it("hides it from other businesses", async () => {
+    const other = await as(B, "b@x.com", () => db.query(`select 1 from business_email_settings where business_id=$1`, [bizA]));
+    expect(other.rows).toHaveLength(0);
+  });
+});

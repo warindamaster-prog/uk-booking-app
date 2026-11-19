@@ -4,6 +4,7 @@ import { deriveCancelToken } from "@/lib/booking/token";
 import type { Mailers } from "./provider";
 import { buildIcs } from "./ics";
 import { MAX_ATTEMPTS, safeDisplayName } from "./rules";
+import { loadShopMailbox, recordShopMailboxError } from "./shop-mailbox";
 import { renderEmail, type EmailKind, type Recipient } from "./templates";
 
 type Db = ReturnType<typeof createAdminClient>;
@@ -69,20 +70,33 @@ export async function sendNotification(
     description: `Booked online. View or cancel: ${manageUrl}`, now: new Date(),
   }) : null;
 
+  const shop = req.recipient === "customer" ? await loadShopMailbox(db, b.business_id) : null;
+  const message = (from: string) => ({
+    from, to,
+    replyTo: req.recipient === "customer" ? biz.email ?? undefined : cust.email ?? undefined,
+    subject: rendered.subject, text: rendered.text, html: rendered.html,
+    attachments: ics ? [{ filename: "booking.ics", content: ics, contentType: req.kind === "cancellation" ? "text/calendar; method=CANCEL" : "text/calendar; method=PUBLISH" }] : undefined,
+    idempotencyKey: `${b.id}:${req.kind}:${req.recipient}:${b.ics_sequence}`,
+  });
+  const platformFrom = `"${safeDisplayName(mail.fromName(req.recipient, biz.name))}" <${mail.fromAddress(req.recipient)}>`;
+
   try {
-    const sent = await mail.provider(req.recipient).send({
-      from: `"${safeDisplayName(mail.fromName(req.recipient, biz.name))}" <${mail.fromAddress(req.recipient)}>`,
-      to,
-      replyTo: req.recipient === "customer" ? biz.email ?? undefined : cust.email ?? undefined,
-      subject: rendered.subject, text: rendered.text, html: rendered.html,
-      attachments: ics ? [{ filename: "booking.ics", content: ics, contentType: req.kind === "cancellation" ? "text/calendar; method=CANCEL" : "text/calendar; method=PUBLISH" }] : undefined,
-      idempotencyKey: `${b.id}:${req.kind}:${req.recipient}:${b.ics_sequence}`,
-    });
+    let sent;
+    if (shop) {
+      // The shop's own mailbox first; if it refuses (wrong password, daily limit...) fall back to the
+      // platform address so the customer still gets their email, and tell the shop in the dashboard.
+      try {
+        sent = await shop.provider.send(message(`"${safeDisplayName(shop.name ?? biz.name)}" <${shop.address}>`));
+      } catch (e) {
+        await recordShopMailboxError(db, b.business_id, e);
+      }
+    }
+    sent ??= await mail.provider(req.recipient).send(message(platformFrom));
     await db.from("booking_notifications").update({ status: "sent", provider_id: sent.id, sent_at: new Date().toISOString(), attempts: row.attempts + 1, error: null }).eq("id", row.id);
     return "sent";
   } catch (e) {
-    const message = (e instanceof Error ? e.message : String(e)).slice(0, 300);
-    await db.from("booking_notifications").update({ status: "failed", error: message, attempts: row.attempts + 1 }).eq("id", row.id);
+    const reason = (e instanceof Error ? e.message : String(e)).slice(0, 300);
+    await db.from("booking_notifications").update({ status: "failed", error: reason, attempts: row.attempts + 1 }).eq("id", row.id);
     return "failed";
   }
 }
