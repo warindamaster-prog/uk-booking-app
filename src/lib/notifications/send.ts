@@ -32,7 +32,7 @@ export async function sendNotification(
   if (!b || !STATUS_OK[req.kind].includes(b.status)) return "skipped"; // e.g. an unpaid hold, or already cancelled
 
   const [{ data: biz }, { data: cust }, { data: staff }] = await Promise.all([
-    db.from("businesses").select("id, name, slug, timezone, email, cancellation_window_hours").eq("id", b.business_id).single(),
+    db.from("businesses").select("id, name, slug, timezone, email, phone, show_contact_to_customers, cancellation_window_hours").eq("id", b.business_id).single(),
     db.from("customers").select("name, email, phone").eq("id", b.customer_id).eq("business_id", b.business_id).single(),
     db.from("staff").select("name").eq("id", b.staff_id).eq("business_id", b.business_id).single(),
   ]);
@@ -58,6 +58,7 @@ export async function sendNotification(
     manageUrl, dashboardUrl: `${cfg.siteUrl}/dashboard/bookings/${b.id}`,
     cancelDeadline: b.status === "confirmed" && deadline > new Date() ? deadline : null,
     cancelledBy: b.cancelled_by,
+    contact: biz.show_contact_to_customers ? { email: biz.email, phone: biz.phone } : null,
   });
 
   const wantsIcs = req.kind !== "reminder" && (req.recipient === "customer" || req.kind === "confirmation");

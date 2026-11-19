@@ -24,6 +24,8 @@ export type EmailData = {
   /** Last moment the customer can cancel online, or null if not applicable. */
   cancelDeadline: Date | null;
   cancelledBy: "customer" | "business" | null;
+  /** The business's contact details to show the customer, or null when the owner has turned this off. */
+  contact: { email: string | null; phone: string | null } | null;
 };
 
 export type Rendered = { subject: string; text: string; html: string };
@@ -51,6 +53,8 @@ function details(d: EmailData, recipient: Recipient): Row[] {
     rows.unshift(["Customer", d.customerName]);
     if (d.customerEmail) rows.push(["Email", d.customerEmail]);
     if (d.customerPhone) rows.push(["Phone", d.customerPhone]);
+  } else if (d.contact && (d.contact.email || d.contact.phone)) {
+    rows.push([`Contact ${d.businessName}`, [d.contact.email, d.contact.phone].filter(Boolean).join(" · ")]);
   }
   return rows;
 }

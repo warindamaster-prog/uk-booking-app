@@ -11,6 +11,7 @@ export function cancellationLabel(hours: number): string {
 }
 
 export const settingsSchema = z.object({
+  showContact: z.boolean(),
   ownerName: z.string().trim().min(1, "Enter the owner's name").max(100),
   email: z.email("Enter a valid email address").max(254).transform((s) => s.trim().toLowerCase()),
   phone: z.string().trim().regex(PHONE_RE, "Enter a valid phone number, for example 07700 900123"),

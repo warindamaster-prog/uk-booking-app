@@ -9,6 +9,7 @@ const data: EmailData = {
   pricePence: 3000, depositPence: 1000, depositStatus: "paid",
   manageUrl: "https://app.example/b/lily-nails/booking/TOKEN", dashboardUrl: "https://app.example/dashboard/bookings/ID",
   cancelDeadline: new Date("2026-06-01T08:00:00Z"), cancelledBy: null,
+  contact: { email: "lily@shop.example", phone: "01234 567890" },
 };
 
 describe("ics", () => {
@@ -65,6 +66,16 @@ describe("email templates", () => {
     expect(renderEmail("cancellation", "customer", { ...data, cancelledBy: "business" }).text).toContain("Lily Nails has cancelled your booking");
     expect(renderEmail("cancellation", "customer", { ...data, cancelledBy: "customer" }).text).toContain("You have cancelled your booking");
     expect(renderEmail("cancellation", "business", { ...data, cancelledBy: "customer" }).subject).toContain("cancelled by customer");
+  });
+  it("customer emails include the shop's contact details when allowed, and omit them when turned off", () => {
+    const on = renderEmail("confirmation", "customer", data);
+    expect(on.text).toContain("Contact Lily Nails: lily@shop.example · 01234 567890");
+    expect(on.html).toContain("lily@shop.example");
+    const off = renderEmail("confirmation", "customer", { ...data, contact: null });
+    expect(off.text).not.toContain("lily@shop.example");
+    expect(off.text).not.toContain("01234 567890");
+    expect(renderEmail("confirmation", "customer", { ...data, contact: { email: null, phone: "01234 567890" } }).text).toContain("Contact Lily Nails: 01234 567890");
+    expect(renderEmail("confirmation", "business", data).text).not.toContain("Contact Lily Nails"); // the business doesn't need its own details
   });
   it("without a deadline the email says to contact the business", () => {
     expect(renderEmail("confirmation", "customer", { ...data, cancelDeadline: null }).text).toContain("please contact Lily Nails directly");

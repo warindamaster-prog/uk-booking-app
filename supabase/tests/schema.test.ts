@@ -626,3 +626,16 @@ describe("emails: booking ids, ICS sequence, outbox and customer cancellation", 
     await expect(as(A, "a@x.com", () => db.query(`update businesses set stripe_account_id='acct_1' where id=$1`, [bizA]))).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("show_contact_to_customers", () => {
+  const S = "00000000-0000-0000-0000-00000000000c";
+  it("is on by default and only the owner can change it", async () => {
+    expect((await db.query(`select show_contact_to_customers from businesses where id=$1`, [bizA])).rows[0]).toEqual({ show_contact_to_customers: true });
+    await as(A, "a@x.com", () => db.query(`update businesses set show_contact_to_customers=false where id=$1`, [bizA]));
+    expect((await db.query(`select show_contact_to_customers from businesses where id=$1`, [bizA])).rows[0]).toEqual({ show_contact_to_customers: false });
+    const other = await as(B, "b@x.com", () => db.query(`update businesses set show_contact_to_customers=true where id=$1 returning id`, [bizA]));
+    expect(other.rows).toHaveLength(0);
+    const staffTry = await as(S, "s@x.com", () => db.query(`update businesses set show_contact_to_customers=true where id=$1 returning id`, [bizA]));
+    expect(staffTry.rows).toHaveLength(0);
+  });
+});

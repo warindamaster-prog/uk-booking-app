@@ -34,7 +34,7 @@ export function OnboardingForm({ siteHost }: { siteHost: string }) {
       <Field label="Owner's name" name="ownerName" required maxLength={100} autoComplete="name"
         hint="Shown to customers if you take bookings yourself." defaultValue={v.ownerName} errors={e.ownerName} />
       <Field label="Contact email" name="email" type="email" required autoComplete="email" inputMode="email"
-        hint="Booking notifications are sent here." defaultValue={v.email} errors={e.email} />
+        hint="Booking notifications are sent here. Customers also see it, and your phone number, in their booking emails; you can turn that off later in Settings." defaultValue={v.email} errors={e.email} />
       <Field label="Phone number" name="phone" type="tel" required autoComplete="tel" inputMode="tel"
         defaultValue={v.phone} errors={e.phone} />
       <div className="space-y-1">

@@ -7,7 +7,7 @@ import type { FormState } from "@/lib/form";
 import { CANCELLATION_PRESETS, cancellationLabel } from "@/lib/validation/settings";
 
 export function SettingsForm({ defaults }: {
-  defaults: { ownerName: string; email: string; phone: string; cancellationHours: number; privacyUrl: string };
+  defaults: { ownerName: string; email: string; phone: string; cancellationHours: number; privacyUrl: string; showContact: boolean };
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveSettings, {});
   const v = state.values ?? {};
@@ -25,6 +25,14 @@ export function SettingsForm({ defaults }: {
         hint="New booking and cancellation emails are sent here, and customers' replies come here."
         defaultValue={v.email ?? defaults.email} errors={e.email} />
       <Field label="Phone number" name="phone" type="tel" required autoComplete="tel" defaultValue={v.phone ?? defaults.phone} errors={e.phone} />
+
+      <label className="flex items-start gap-3 text-sm">
+        <input type="checkbox" name="showContact" defaultChecked={v.showContact !== undefined ? v.showContact === "on" : defaults.showContact} className="mt-1 h-5 w-5" />
+        <span>
+          Show my contact email and phone to customers (in their emails and on their booking page).
+          <span className="block text-neutral-600 dark:text-neutral-400">Customers who reply to an email always reach your contact email, whether this is on or off.</span>
+        </span>
+      </label>
 
       <div className="space-y-1">
         <label htmlFor="cancellationHours" className="block text-sm font-medium">Customers can cancel online</label>

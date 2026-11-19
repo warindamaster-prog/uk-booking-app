@@ -112,7 +112,7 @@ describe("staffSchema and timeOffSchema", () => {
 import { cancellationLabel, settingsSchema } from "../validation/settings";
 
 describe("settingsSchema", () => {
-  const ok = { ownerName: "Lily", email: "Lily@Example.com", phone: "07700 900123", cancellationHours: "24", privacyUrl: "" };
+  const ok = { ownerName: "Lily", email: "Lily@Example.com", phone: "07700 900123", cancellationHours: "24", privacyUrl: "", showContact: true };
   it("accepts valid settings and normalises", () => {
     expect(settingsSchema.parse(ok)).toMatchObject({ email: "lily@example.com", cancellationHours: 24, privacyUrl: null });
     expect(settingsSchema.parse({ ...ok, privacyUrl: "https://example.com/privacy" }).privacyUrl).toBe("https://example.com/privacy");

@@ -58,6 +58,14 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
         </dl>
         {cancelNote}
         {canCancel && <CancelForm slug={business.slug} token={token} />}
+        {business.contact && (business.contact.email || business.contact.phone) && (
+          <p className="text-sm">
+            Questions? Contact {business.name}:{" "}
+            {business.contact.email && <a className="underline" href={`mailto:${business.contact.email}`}>{business.contact.email}</a>}
+            {business.contact.email && business.contact.phone && " · "}
+            {business.contact.phone && <a className="underline" href={`tel:${business.contact.phone.replace(/[^+\d]/g, "")}`}>{business.contact.phone}</a>}
+          </p>
+        )}
         <p className="text-sm">Keep this page&apos;s link to see your booking again.</p>
         <p><Link href={`/b/${business.slug}`} className="text-sm underline">Book another appointment</Link></p>
       </main>
