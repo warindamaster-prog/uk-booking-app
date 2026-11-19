@@ -39,7 +39,20 @@ export function BookingForm({ slug, serviceId, staff, startsAt, privacyUrl, depo
           : <Link href="/privacy" className="underline">Read the privacy notice</Link>}
         .
       </p>
-      <SubmitButton pending={pending}>{depositLabel ?? "Confirm booking"}</SubmitButton>
+      {state.duplicate ? (
+        <div role="alertdialog" aria-labelledby="dup-h" className="space-y-3 rounded-md border border-amber-700 p-4">
+          <p id="dup-h" className="font-medium">{state.duplicate.message}</p>
+          <div className="flex flex-wrap gap-3">
+            <button type="submit" name="confirmDuplicate" value="1" disabled={pending}
+              className="inline-flex min-h-11 items-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900">
+              {pending ? "Please wait…" : "Book another"}
+            </button>
+            <Link href={`/b/${slug}`} className="inline-flex min-h-11 items-center rounded-md border border-neutral-400 px-4 py-2 text-sm">No</Link>
+          </div>
+        </div>
+      ) : (
+        <SubmitButton pending={pending}>{depositLabel ?? "Confirm booking"}</SubmitButton>
+      )}
     </form>
   );
 }

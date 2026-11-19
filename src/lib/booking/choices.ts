@@ -19,6 +19,8 @@ export type Choice = {
   label: string;
   price_pence: number;
   staffIds: string[];
+  /** A person's own description (people only). */
+  description?: string | null;
 };
 
 export type ParsedChoice =
@@ -62,6 +64,7 @@ export function buildChoices(staff: StaffInfo[]): Choices {
     label: s.level_name ? `${s.name} (${s.level_name})` : s.name,
     price_pence: s.price_pence,
     staffIds: [s.id],
+    description: s.description,
   }));
 
   if (!pricesVary(staff)) {

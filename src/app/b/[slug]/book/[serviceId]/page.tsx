@@ -57,7 +57,6 @@ export default async function BookPage({ params, searchParams }: Props) {
   // Prices differ by level: a person or level must be chosen so the price is known. Default to the cheapest.
   if (ctx.price_pence === null) redirect(href({ staff: choices.defaultValue }));
   const price = ctx.price_pence;
-  const chosenPerson = ctx.chosen.length === 1 ? ctx.chosen[0] : undefined;
   const label = (c: Choice) => (choices.grouped ? `${c.label} · ${formatPence(c.price_pence)}` : c.label);
   const showChoices = choices.grouped || choices.people.length > 1;
   const depositBlocked = service.deposit_pence > 0 && !business.stripe_charges_enabled;
@@ -78,6 +77,10 @@ export default async function BookPage({ params, searchParams }: Props) {
             {service.deposit_pence > 0 && ` · ${formatPence(service.deposit_pence)} deposit to book`}
           </p>
         </div>
+
+        {choices.people.length === 1 && (
+          <p className="text-sm">With <span className="font-medium">{choices.people[0].label}</span>{choices.people[0].description && <span className="block opacity-90">{choices.people[0].description}</span>}</p>
+        )}
 
         {depositBlocked ? (
           <p role="status">This service needs a deposit, which can&apos;t be taken online yet. Please contact {business.name} to book.</p>
@@ -101,17 +104,19 @@ export default async function BookPage({ params, searchParams }: Props) {
                 {choices.people.length > 1 && (
                   <>
                     {choices.groups.length > 0 && <p className="text-sm text-neutral-600 dark:text-neutral-400">Or choose a person:</p>}
-                    <ul className="flex flex-wrap gap-2">
+                    <ul className="space-y-2">
                       {choices.people.map((c) => (
                         <li key={c.value}>
                           <Link href={href({ staff: c.value, date })} aria-current={sp.staff === c.value ? "true" : undefined}
-                            className={`${pill} ${sp.staff === c.value ? active : idle}`}>{label(c)}</Link>
+                            className={`block rounded-md border px-3 py-2 text-sm ${sp.staff === c.value ? active : idle}`}>
+                            <span className="block font-medium">{label(c)}</span>
+                            {c.description && <span className="mt-0.5 block text-sm opacity-90">{c.description}</span>}
+                          </Link>
                         </li>
                       ))}
                     </ul>
                   </>
                 )}
-                {chosenPerson?.description && <p className="text-sm">{chosenPerson.description}</p>}
               </section>
             )}
 

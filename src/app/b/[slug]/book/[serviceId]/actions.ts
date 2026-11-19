@@ -4,7 +4,8 @@ import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { acceptsBookings, getBusinessBySlug, loadBookingContext } from "@/lib/booking/data";
+import { acceptsBookings, findUpcomingDuplicate, getBusinessBySlug, loadBookingContext } from "@/lib/booking/data";
+import { duplicateMessage } from "@/lib/booking/duplicates";
 import { bookFirstAvailable } from "@/lib/booking/book";
 import { clientIp, deriveCancelToken, limiterKey } from "@/lib/booking/token";
 import { zodState, type FormState } from "@/lib/form";
@@ -59,6 +60,12 @@ export async function createPublicBooking(_: FormState, formData: FormData): Pro
 
   // Different people charge different prices: the customer must pick a person or level, so the price is known.
   if (ctx.price_pence === null) return { error: "Please choose who you'd like to book with.", values };
+
+  // Someone with this name and number already has an upcoming booking: ask before booking another.
+  if (formData.get("confirmDuplicate") !== "1") {
+    const dup = await findUpcomingDuplicate(business.id, { name: input.name, phone: input.phone, email: input.email });
+    if (dup) return { duplicate: { message: duplicateMessage(dup, business.name) }, values };
+  }
 
   const outcome = await bookFirstAvailable(
     {

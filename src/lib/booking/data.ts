@@ -4,6 +4,7 @@ import { dayBounds, type AvailabilityQuery, type StaffDay } from "@/lib/availabi
 import { billingEnabled, bookingsOpen } from "@/lib/billing";
 import { addDaysYmd } from "@/lib/time";
 import { parseChoice, priceFor, selectStaff, type StaffInfo } from "./choices";
+import { escapeLike, findDuplicate, type DuplicateFound } from "./duplicates";
 import { blockedInterval, isLive, type LiveBookingRow } from "./slots";
 
 // Everything here uses the service-role client, which bypasses RLS. Every query is
@@ -174,4 +175,25 @@ export async function loadBookingContext(
       staff,
     },
   };
+}
+
+/**
+ * Looks for an upcoming booking by someone with the same name and phone number at this business.
+ * Uses the service-role client, so it only ever returns the minimal facts in DuplicateFound.
+ */
+export async function findUpcomingDuplicate(
+  businessId: string, input: { name: string; phone: string; email: string }, now: Date = new Date(),
+): Promise<DuplicateFound | null> {
+  const db = createAdminClient();
+  const name = input.name.replace(/\s+/g, " ").trim();
+  const { data: customers } = await db.from("customers").select("id, name, email, phone")
+    .eq("business_id", businessId).is("anonymised_at", null).ilike("name", escapeLike(name)).limit(20);
+  if (!customers?.length) return null;
+
+  const { data: bookings } = await db.from("bookings")
+    .select("customer_id, service_name, starts_at, status, hold_expires_at")
+    .eq("business_id", businessId).in("customer_id", customers.map((c) => c.id))
+    .in("status", ["confirmed", "pending_payment"]).gt("starts_at", now.toISOString()).limit(50);
+  const live = (bookings ?? []).filter((b) => isLive({ status: b.status, hold_expires_at: b.hold_expires_at }, now));
+  return findDuplicate(input, customers, live);
 }
