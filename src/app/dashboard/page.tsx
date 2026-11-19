@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingCard } from "@/components/booking-card";
+import { MonthSchedule } from "@/components/month-schedule";
 import { requireBusiness } from "@/lib/auth";
 import { rangeFor } from "@/lib/calendar";
 import { fetchBookings, LIVE_STATUSES } from "@/lib/dashboard/bookings";
@@ -11,11 +12,12 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage({
   searchParams,
-}: { searchParams: Promise<{ logo?: string }> }) {
-  const { supabase, business, role } = await requireBusiness();
+}: { searchParams: Promise<{ logo?: string; month?: string; staff?: string }> }) {
+  const ctx = await requireBusiness();
+  const { supabase, business, role } = ctx;
   const { from, to } = rangeFor("day", todayYmd(business.timezone), business.timezone);
   const { rows: today } = await fetchBookings(supabase, business.id, { startsFrom: from, startsBefore: to, statuses: LIVE_STATUSES });
-  const { logo } = await searchParams;
+  const { logo, month, staff } = await searchParams;
   const publicUrl = `${publicEnv().NEXT_PUBLIC_SITE_URL}/b/${business.slug}`;
 
   return (
@@ -32,6 +34,7 @@ export default async function DashboardPage({
         ) : <p>No bookings today.</p>}
         <p><Link href="/dashboard/calendar" className="text-sm underline">Open the calendar</Link></p>
       </section>
+      <MonthSchedule ctx={ctx} params={{ month, staff }} />
       <p>Your booking page: <a className="underline" href={publicUrl}>{publicUrl}</a></p>
       {role === "owner" && (
         <p>
