@@ -22,10 +22,13 @@ describe("secret box", () => {
     expect(() => decryptSecret(parts.join("."), key)).toThrow();
     expect(() => decryptSecret("garbage", key)).toThrow();
   });
-  it("requires a 32-byte key", () => {
+  it("derives a 32-byte key from a random string of 32+ characters", () => {
     expect(() => parseKey(undefined)).toThrow();
     expect(() => parseKey("short")).toThrow();
-    expect(parseKey(key.toString("base64url"))).toHaveLength(32);
+    const raw = "aB3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dE";
+    expect(parseKey(raw)).toHaveLength(32);
+    expect(parseKey(` ${raw}\n`).equals(parseKey(raw))).toBe(true);
+    expect(parseKey(raw + "x").equals(parseKey(raw))).toBe(false);
   });
 });
 

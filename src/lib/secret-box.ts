@@ -1,13 +1,14 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 /**
  * Encrypts small secrets (a shop's mailbox password) with AES-256-GCM before they are stored.
- * The key is EMAIL_CREDENTIALS_KEY: 32 random bytes, base64url. Format: v1.<iv>.<tag>.<ciphertext>.
+ * EMAIL_CREDENTIALS_KEY is any random string of 32+ characters; the real key is its SHA-256.
+ * Format: v1.<iv>.<tag>.<ciphertext>.
  */
 export function parseKey(raw: string | undefined): Buffer {
-  const key = raw ? Buffer.from(raw, "base64url") : Buffer.alloc(0);
-  if (key.length !== 32) throw new Error("EMAIL_CREDENTIALS_KEY must be 32 random bytes, base64url encoded");
-  return key;
+  const secret = raw?.trim() ?? "";
+  if (secret.length < 32) throw new Error("EMAIL_CREDENTIALS_KEY must be a random string of at least 32 characters");
+  return createHash("sha256").update(secret).digest();
 }
 
 export function encryptSecret(plain: string, key: Buffer): string {
