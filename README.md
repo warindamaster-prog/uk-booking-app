@@ -6,7 +6,7 @@ Stack: Next.js (App Router) + Tailwind, Supabase (Postgres, Auth, RLS, Storage),
 
 ## Setup
 
-1. `cd booking-app && npm install`
+1. `npm install` (Node.js 22 or newer)
 2. Create a Supabase project. Apply `supabase/migrations/*.sql` in order (SQL editor, or `supabase db push`).
 3. In Supabase Auth settings, add `http://localhost:3000/auth/callback` (and your production URL) to the redirect URLs.
 4. `cp .env.example .env.local` and fill in the values (see `.env.example`).
@@ -19,6 +19,6 @@ Stack: Next.js (App Router) + Tailwind, Supabase (Postgres, Auth, RLS, Storage),
 
 ## Deploying to Vercel
 
-This app lives in the `booking-app/` subfolder of the repo. Create a separate Vercel project and set **Root Directory** to `booking-app`. The existing static site keeps its own project.
+Import this repo as a new Vercel project (framework: Next.js, root directory: the repo root). Add the variables from `.env.example` under Project Settings > Environment Variables, and set `NEXT_PUBLIC_SITE_URL` to the production URL.
 
 More sections (Stripe, Resend, cron) are added as those steps land. See `TODO.md` for what is intentionally left for later.
