@@ -1,6 +1,6 @@
 # Booking app (MVP)
 
-Online booking for UK hair, nails and massage businesses. Flat monthly fee, no per-booking commission.
+Online appointment booking for UK businesses (salons, clinics, studios, trades and more). Flat monthly fee, no per-booking commission.
 
 Stack: Next.js (App Router) + Tailwind, Supabase (Postgres, Auth, RLS, Storage), Stripe, Resend, Vercel.
 

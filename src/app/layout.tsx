@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Booking for UK salons", template: "%s | Booking" },
-  description: "Online booking for UK hair, nails and massage businesses. Flat monthly fee, no commission.",
+  title: { default: "Online booking for UK businesses", template: "%s | Booking" },
+  description: "Online appointment booking for UK businesses. Flat monthly fee, no commission.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
