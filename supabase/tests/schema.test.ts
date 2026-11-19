@@ -32,13 +32,13 @@ function book(start: string, end: string, token: string, status = "confirmed") {
 beforeAll(async () => {
   db = new PGlite({ extensions: { btree_gist } });
   await db.exec(`
-    create role anon nologin; create role authenticated nologin;
+    create role anon nologin; create role authenticated nologin; create role service_role nologin;
     create schema auth; create table auth.users(id uuid primary key, email text);
     create function auth.uid() returns uuid language sql stable as
       $$ select nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$;
     create function auth.jwt() returns jsonb language sql stable as
       $$ select coalesce(nullif(current_setting('request.jwt.claims', true),''),'{}')::jsonb $$;
-    grant usage on schema auth, public to authenticated, anon;
+    grant usage on schema auth, public to authenticated, anon, service_role;
     create schema storage;
     create table storage.buckets(id text primary key, name text, public bool,
       file_size_limit int, allowed_mime_types text[]);
@@ -214,5 +214,79 @@ describe("availability engine agrees with the no_double_booking constraint", () 
     }
     expect(accepted).toBeGreaterThan(5);
     expect(rejected).toBeGreaterThan(5);
+  });
+});
+
+describe("create_booking and rate_limit_hit (server-only functions)", () => {
+  const DAY = "2027-03-02"; // far future so the start is never in the past
+  const when = (hhmm: string) => zonedToUtc(DAY, Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3)), "Europe/London").toISOString();
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  let n = 0;
+  const create = (over: Partial<{ biz: string; svc: string; staff: string; at: string; email: string; consent: boolean; deposit: boolean; name: string }> = {}) =>
+    asServer(() => db.query<{ id: string }>(
+      `select public.create_booking($1,$2,$3,$4,$5,$6,'07700 900123',$7,decode(md5($8),'hex'),$9) id`,
+      [over.biz ?? bizA, over.svc ?? svc, over.staff ?? staffA, over.at ?? when("10:00"), over.name ?? "Cat", over.email ?? "cat@x.com",
+       over.consent ?? false, `pub${n++}`, over.deposit ?? false]));
+
+  it("is not callable by signed-in users or anon", async () => {
+    await expect(as(A, "a@x.com", () => db.query(`select public.create_booking($1,$2,$3,now() + interval '1 day','x','x@x.com','1',false,'\\x00',false)`, [bizA, svc, staffA]))).rejects.toThrow(/permission denied/);
+    await db.exec("set role anon");
+    try { await expect(db.query(`select public.rate_limit_hit('k', 60, 5)`)).rejects.toThrow(/permission denied/); }
+    finally { await db.exec("reset role"); }
+  });
+
+  it("creates a confirmed booking with snapshots and a customer", async () => {
+    await db.query(`delete from staff_services where staff_id=$1`, [staffA]);
+    await db.query(`insert into staff_services(business_id,staff_id,service_id) values($1,$2,$3)`, [bizA, staffA, svc]);
+    const id = (await create()).rows[0].id;
+    const b = (await db.query<{ status: string; service_name: string; duration_minutes: number; deposit_status: string; hold_expires_at: Date | null }>(
+      `select status, service_name, duration_minutes, deposit_status, hold_expires_at from bookings where id=$1`, [id])).rows[0];
+    expect(b).toMatchObject({ status: "confirmed", service_name: "Gel", duration_minutes: 60, deposit_status: "none", hold_expires_at: null });
+  });
+
+  it("rejects a double booking atomically (customer upsert rolls back too)", async () => {
+    const before = (await db.query<{ n: number }>(`select count(*)::int n from customers`)).rows[0].n;
+    await expect(create({ at: when("10:30"), email: "new-person@x.com" })).rejects.toThrow(/no_double_booking/);
+    expect((await db.query<{ n: number }>(`select count(*)::int n from customers`)).rows[0].n).toBe(before);
+  });
+
+  it("reuses one customer per email (case-insensitive) and only ever grants consent", async () => {
+    await create({ at: when("12:00"), email: "CAT@x.com", name: "Cat Two", consent: true });
+    await create({ at: when("14:00"), email: "cat@X.com", consent: false });
+    const rows = (await db.query<{ name: string; marketing_consent: boolean; n: number }>(
+      `select name, marketing_consent, count(*) over ()::int n from customers where business_id=$1 and lower(email)='cat@x.com'`, [bizA])).rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].marketing_consent).toBe(true); // a later booking without the tick doesn't withdraw it
+  });
+
+  it("rejects wrong tenant, inactive or non-offering staff, and the past", async () => {
+    await expect(create({ biz: bizB, at: when("16:00") })).rejects.toThrow(/not available/);
+    await db.query(`update staff set active=false where id=$1`, [staffA]);
+    await expect(create({ at: when("16:00") })).rejects.toThrow(/not available/);
+    await db.query(`update staff set active=true where id=$1`, [staffA]);
+    await expect(create({ at: "2020-01-01T10:00:00Z" })).rejects.toThrow(/in the past/);
+  });
+
+  it("holds the slot for deposit services and frees it when the hold expires", async () => {
+    await db.query(`update services set price_pence=3000, deposit_pence=1000 where id=$1`, [svc]);
+    await expect(create({ at: when("16:00"), deposit: false })).rejects.toThrow(/deposit payment is not available/);
+    const id = (await create({ at: when("16:00"), deposit: true })).rows[0].id;
+    const held = (await db.query<{ status: string; deposit_status: string; hold_expires_at: Date }>(`select status, deposit_status, hold_expires_at from bookings where id=$1`, [id])).rows[0];
+    expect(held).toMatchObject({ status: "pending_payment", deposit_status: "pending" });
+    expect(held.hold_expires_at.getTime()).toBeGreaterThan(Date.now());
+    await expect(create({ at: when("16:00"), deposit: true, email: "dog@x.com" })).rejects.toThrow(/no_double_booking/);
+    await db.query(`update bookings set hold_expires_at = now() - interval '1 minute' where id=$1`, [id]);
+    await create({ at: when("16:00"), deposit: true, email: "dog@x.com" }); // sweeps the stale hold, then succeeds
+    expect((await db.query<{ status: string }>(`select status from bookings where id=$1`, [id])).rows[0].status).toBe("expired");
+    await db.query(`update services set price_pence=0, deposit_pence=0 where id=$1`, [svc]);
+  });
+
+  it("rate limiter allows up to the limit per window, per key", async () => {
+    const hit = (k: string) => asServer(() => db.query<{ ok: boolean }>(`select public.rate_limit_hit($1, 600, 3) ok`, [k])).then((r) => r.rows[0].ok);
+    expect([await hit("ip:1"), await hit("ip:1"), await hit("ip:1"), await hit("ip:1")]).toEqual([true, true, true, false]);
+    expect(await hit("ip:2")).toBe(true);
   });
 });

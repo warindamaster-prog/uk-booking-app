@@ -22,4 +22,8 @@ Stack: Next.js (App Router) + Tailwind, Supabase (Postgres, Auth, RLS, Storage),
 
 Import this repo as a new Vercel project (framework: Next.js, root directory: the repo root). Add the variables from `.env.example` under Project Settings > Environment Variables, and set `NEXT_PUBLIC_SITE_URL` to the production URL.
 
+## Public booking page
+
+Customers book at `/b/<slug>` with no account. Pages that read or write bookings use the Supabase service-role key on the server only (`SUPABASE_SERVICE_ROLE_KEY`). Booking submissions are rate limited (per client address and per email) using the `rate_limits` table. Services with a deposit can't be booked online until Stripe is connected (a later step), so they show a "contact the business" message.
+
 More sections (Stripe, Resend, cron) are added as those steps land. See `TODO.md` for what is intentionally left for later.
