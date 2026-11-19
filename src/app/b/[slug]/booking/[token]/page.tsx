@@ -7,6 +7,7 @@ import { formatPence } from "@/lib/money";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDateTime } from "@/lib/time";
 import { PublicFooter, PublicHeader } from "../../chrome";
+import { CancelForm } from "./cancel-form";
 
 // The token is a credential: keep the page out of search engines and out of Referer headers.
 export const metadata: Metadata = { title: "Your booking", robots: { index: false, follow: false }, referrer: "no-referrer" };
@@ -33,6 +34,16 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
   if (!b) notFound();
   const { data: staff } = await db.from("staff").select("name").eq("id", b.staff_id).eq("business_id", business.id).maybeSingle();
 
+  // Customers can cancel online until the business's cancellation window starts (unpaid holds: any time).
+  const start = new Date(b.starts_at);
+  const deadline = new Date(start.getTime() - business.cancellation_window_hours * 3_600_000);
+  const upcoming = start > new Date();
+  const canCancel = upcoming && (b.status === "pending_payment" || (b.status === "confirmed" && new Date() <= deadline));
+  const cancelNote = !upcoming || !["confirmed", "pending_payment"].includes(b.status) ? null
+    : canCancel && b.status === "confirmed"
+      ? <p className="text-sm">You can cancel online until {formatDateTime(deadline, business.timezone)}.</p>
+      : !canCancel ? <p className="text-sm">Online cancellation has closed. To change or cancel, please reply to your confirmation email or contact {business.name} directly.</p> : null;
+
   return (
     <div className="mx-auto w-full max-w-lg px-4 py-6">
       <PublicHeader name={business.name} logo={logoUrl(business.logo_path)} />
@@ -45,6 +56,8 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
           <div><dt className="text-sm text-neutral-600 dark:text-neutral-400">Price</dt>
             <dd>{formatPence(b.price_pence)}{b.deposit_pence > 0 && ` (deposit ${formatPence(b.deposit_pence)}${b.deposit_status === "paid" ? ", paid" : ""})`}</dd></div>
         </dl>
+        {cancelNote}
+        {canCancel && <CancelForm slug={business.slug} token={token} />}
         <p className="text-sm">Keep this page&apos;s link to see your booking again.</p>
         <p><Link href={`/b/${business.slug}`} className="text-sm underline">Book another appointment</Link></p>
       </main>

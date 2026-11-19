@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { blockedInterval, candidateStaff, isLive } from "../slots";
-import { byteaParam, clientIp, hashToken, limiterKey, newCancelToken, TOKEN_RE } from "../token";
+import { byteaParam, clientIp, deriveCancelToken, hashToken, limiterKey, TOKEN_RE } from "../token";
 import { bookingInputSchema, bookPageParams } from "../../validation/booking";
 import { formatDateTime, formatTime, formatYmd } from "../../time";
 
@@ -11,14 +11,20 @@ const valid = {
 };
 
 describe("cancel tokens", () => {
-  it("are 43 url-safe chars, unique, and stored only as a hash", () => {
-    const a = newCancelToken(), b = newCancelToken();
+  const SECRET = "s".repeat(40);
+  it("are derived from the booking id: stable, url-safe, 43 chars, and only the hash is stored", () => {
+    const a = deriveCancelToken(SECRET, ID), again = deriveCancelToken(SECRET, ID);
+    expect(a).toEqual(again); // the same link can be rebuilt for a reminder email
     expect(a.raw).toMatch(TOKEN_RE);
-    expect(a.raw).not.toBe(b.raw);
     expect(a.hashHex).toBe(hashToken(a.raw));
     expect(a.hashHex).toMatch(/^[0-9a-f]{64}$/);
     expect(a.hashHex).not.toContain(a.raw);
     expect(byteaParam("ab")).toBe("\\xab");
+  });
+  it("differ per booking and per secret", () => {
+    const other = "00000000-0000-4000-8000-000000000002";
+    expect(deriveCancelToken(SECRET, ID).raw).not.toBe(deriveCancelToken(SECRET, other).raw);
+    expect(deriveCancelToken(SECRET, ID).raw).not.toBe(deriveCancelToken("t".repeat(40), ID).raw);
   });
   it("limiter keys don't contain the raw value and depend on the secret", () => {
     const k = limiterKey("ip", "203.0.113.9", "s1");
@@ -105,15 +111,16 @@ describe("bookFirstAvailable", () => {
   }); // 2027-03-02 is a Tuesday (GMT), so 10:00Z is 10:00 local
   const business = { id: "biz", timezone: "Europe/London", stripe_charges_enabled: false };
   let counter = 0;
-  const newToken = () => ({ raw: `raw${counter}`, hashHex: `hash${counter++}` });
+  const newBooking = () => ({ id: `id${counter}`, raw: `raw${counter}`, hashHex: `hash${counter++}` });
   const run = (rpc: CreateBookingRpc, over: Partial<Parameters<typeof bookFirstAvailable>[1]> = {}) =>
-    bookFirstAvailable({ rpc, newToken }, { business, base: base(["a", "b"]), depositPence: 0, input, ...over });
+    bookFirstAvailable({ rpc, newBooking }, { business, base: base(["a", "b"]), depositPence: 0, input, ...over });
 
   it("books the first candidate and passes the hashed token, never the raw one", async () => {
     const calls: Record<string, unknown>[] = [];
     const r = await run(async (a) => { calls.push(a); return { error: null }; });
-    expect(r).toMatchObject({ ok: true, staffId: "a" });
+    expect(r).toMatchObject({ ok: true, staffId: "a", bookingId: expect.stringMatching(/^id/) });
     expect(calls).toHaveLength(1);
+    expect(calls[0].p_booking_id).toBe((r as { bookingId: string }).bookingId);
     expect(calls[0].p_cancel_token_hash).toMatch(/^\\x/);
     expect(JSON.stringify(calls[0])).not.toContain("raw");
     expect(calls[0].p_require_deposit).toBe(false);

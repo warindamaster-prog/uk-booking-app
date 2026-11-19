@@ -25,3 +25,7 @@
 - Creating bookings from the dashboard (phone and walk-in bookings)
 - Notes on a booking or customer
 - Emails when the business cancels or moves a booking (hooks are marked in code; they arrive with the emails step), and refunding a deposit when the business cancels (with Stripe)
+- Customers rescheduling themselves from their link (today they can view and cancel; the business moves bookings)
+- Cancellation emails don't mention deposit refunds yet (comes with Stripe)
+- Per-business sender name and domain; sending volume limits of a personal mailbox mean Resend (or similar) is advised at launch
+- SMS reminders: implement SmsProvider (for example Twilio) and add an sms channel to the reminder job

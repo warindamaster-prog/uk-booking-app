@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { notifyBookingEvent } from "@/lib/notifications/service";
 import { computeSlots } from "@/lib/availability";
 import { requireBusiness } from "@/lib/auth";
 import { loadBookingContext } from "@/lib/booking/data";
@@ -20,7 +22,7 @@ function refresh(id: string) {
   revalidatePath("/dashboard");
 }
 
-async function setStatus(formData: FormData, patch: { status: string; cancelled_by?: string }, done: string): Promise<FormState> {
+async function setStatus(formData: FormData, patch: { status: string; cancelled_by?: string }, done: string, then?: (bookingId: string) => void): Promise<FormState> {
   const { supabase, business } = await requireBusiness();
   const id = uuid.safeParse(String(formData.get("id") ?? ""));
   if (!id.success) return { error: GENERIC };
@@ -32,13 +34,14 @@ async function setStatus(formData: FormData, patch: { status: string; cancelled_
   if (error) return { error: error.message?.includes("invalid_booking") ? NOT_ALLOWED : GENERIC };
   if (!data) return { error: "We couldn't find that booking." };
   refresh(id.data);
+  then?.(id.data);
   return { message: done };
 }
 
 export async function cancelBooking(_: FormState, formData: FormData): Promise<FormState> {
-  // Step 6 (emails): send the customer a cancellation notice here.
   // Step 7 (Stripe): refund a paid deposit when the business cancels.
-  return setStatus(formData, { status: "cancelled", cancelled_by: "business" }, "Booking cancelled. The time is free again.");
+  return setStatus(formData, { status: "cancelled", cancelled_by: "business" }, "Booking cancelled. The time is free again.",
+    (bookingId) => after(() => notifyBookingEvent(bookingId, "cancellation")));
 }
 export const markNoShow = async (_: FormState, formData: FormData) => setStatus(formData, { status: "no_show" }, "Marked as a no-show.");
 export const undoNoShow = async (_: FormState, formData: FormData) => setStatus(formData, { status: "confirmed" }, "No-show removed.");
@@ -80,7 +83,7 @@ export async function rescheduleBooking(_: FormState, formData: FormData): Promi
   }
   if (!data) return { error: NOT_ALLOWED };
 
-  // Step 6 (emails): tell the customer their booking has moved.
+  after(() => notifyBookingEvent(booking.id, "reschedule"));
   refresh(booking.id);
   redirect(`/dashboard/bookings/${booking.id}?moved=1`);
 }

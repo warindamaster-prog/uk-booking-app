@@ -108,3 +108,28 @@ describe("staffSchema and timeOffSchema", () => {
     expect(timeOffSchema.safeParse({ startDate: "2020-01-01", endDate: "2020-01-02", reason: "" }).success).toBe(false);
   });
 });
+
+import { cancellationLabel, settingsSchema } from "../validation/settings";
+
+describe("settingsSchema", () => {
+  const ok = { ownerName: "Lily", email: "Lily@Example.com", phone: "07700 900123", cancellationHours: "24", privacyUrl: "" };
+  it("accepts valid settings and normalises", () => {
+    expect(settingsSchema.parse(ok)).toMatchObject({ email: "lily@example.com", cancellationHours: 24, privacyUrl: null });
+    expect(settingsSchema.parse({ ...ok, privacyUrl: "https://example.com/privacy" }).privacyUrl).toBe("https://example.com/privacy");
+  });
+  it.each([
+    ["negative window", { cancellationHours: "-1" }], ["too long a window", { cancellationHours: "721" }], ["text window", { cancellationHours: "soon" }],
+    ["http privacy link", { privacyUrl: "http://example.com" }], ["javascript link", { privacyUrl: "javascript:alert(1)" }],
+    ["bad email", { email: "nope" }], ["bad phone", { phone: "x" }], ["no owner", { ownerName: "" }],
+  ])("rejects %s", (_n, over) => {
+    expect(settingsSchema.safeParse({ ...ok, ...over }).success).toBe(false);
+  });
+  it("labels windows in plain English", () => {
+    expect(cancellationLabel(0)).toBe("Any time before the appointment starts");
+    expect(cancellationLabel(1)).toBe("Up to 1 hour before");
+    expect(cancellationLabel(24)).toBe("Up to 1 day before");
+    expect(cancellationLabel(48)).toBe("Up to 2 days before");
+    expect(cancellationLabel(168)).toBe("Up to 7 days before");
+    expect(cancellationLabel(12)).toBe("Up to 12 hours before");
+  });
+});

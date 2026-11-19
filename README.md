@@ -45,4 +45,31 @@ Businesses whose prices depend on who does the work can add levels (for example 
 - Owners see every booking. A staff member sees only their own; this is enforced by row level security, not by the screens.
 - Which status changes are allowed is decided by a database trigger (`enforce_booking_rules`), so they cannot be bypassed.
 
+## Emails
+
+Booking confirmation (customer and business), 24-hour reminder, cancellation and reschedule notices, each with a calendar (.ics) attachment. Customers get a private link to view and cancel their booking. They can cancel online until the business's cancellation window starts (Settings, default 24 hours); the database enforces this.
+
+- Sending: your own mailbox over SMTP, or Resend. See `.env.example`. With neither configured, emails are printed to the console in development and fail visibly (and are retried) in production.
+- `EMAIL_OVERRIDE_TO` sends every email to one test address, so no real customer is emailed while testing.
+- SMS is designed as an interface (`src/lib/notifications/provider.ts`) but not implemented.
+- Every email is recorded in `booking_notifications`, which is unique per booking version, kind and recipient, so nothing is sent twice. Failures are retried up to 5 times.
+- Only transactional emails are sent. There are no marketing emails.
+
+### Reminder job
+
+Reminders, retries and the clean-up of expired unpaid holds run from `GET or POST /api/cron/reminders` with the header `Authorization: Bearer <CRON_SECRET>`. Call it every 15 minutes. Free option: a GitHub Actions workflow in your own repo:
+
+```yaml
+name: reminders
+on:
+  schedule: [{ cron: "*/15 * * * *" }]
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/cron/reminders"
+```
+
+Vercel Cron also works on plans that allow frequent schedules (Hobby is limited to once a day).
+
 More sections (Stripe, Resend, cron) are added as those steps land. See `TODO.md` for what is intentionally left for later.

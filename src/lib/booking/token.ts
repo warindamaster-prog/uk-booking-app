@@ -1,8 +1,12 @@
-import { createHash, createHmac, randomBytes } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
-/** Random cancellation token. Only the SHA-256 hash is stored; the raw value goes in the customer's link. */
-export function newCancelToken(): { raw: string; hashHex: string } {
-  const raw = randomBytes(32).toString("base64url"); // 43 chars
+/**
+ * The customer's cancellation token is derived from the booking id with a server secret, so the
+ * link can be rebuilt for later emails (reminders) without storing the token. The database keeps
+ * only its SHA-256 hash. Without the secret a leaked hash or booking id reveals nothing.
+ */
+export function deriveCancelToken(secret: string, bookingId: string): { raw: string; hashHex: string } {
+  const raw = createHmac("sha256", secret).update(`booking-cancel:${bookingId}`).digest("base64url"); // 43 chars
   return { raw, hashHex: hashToken(raw) };
 }
 

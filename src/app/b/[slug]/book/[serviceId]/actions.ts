@@ -1,11 +1,15 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { acceptsBookings, getBusinessBySlug, loadBookingContext } from "@/lib/booking/data";
 import { bookFirstAvailable } from "@/lib/booking/book";
-import { clientIp, limiterKey, newCancelToken } from "@/lib/booking/token";
+import { clientIp, deriveCancelToken, limiterKey } from "@/lib/booking/token";
 import { zodState, type FormState } from "@/lib/form";
+import { notifyBookingEvent } from "@/lib/notifications/service";
+import { bookingTokenSecret } from "@/lib/server-env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayYmd } from "@/lib/time";
 import { bookingInputSchema } from "@/lib/validation/booking";
@@ -57,12 +61,14 @@ export async function createPublicBooking(_: FormState, formData: FormData): Pro
   const outcome = await bookFirstAvailable(
     {
       rpc: async (args) => { const { error } = await db.rpc("create_booking", args); return { error }; },
-      newToken: newCancelToken,
+      newBooking: () => { const id = randomUUID(); return { id, ...deriveCancelToken(bookingTokenSecret(), id) }; },
     },
     { business, base: ctx.base, depositPence: ctx.service.deposit_pence, input },
   );
   if (outcome.ok) {
-    // Step 7 (Stripe): for bookings with a deposit, redirect to Checkout here instead.
+    // Confirmation emails go out after the response, so the customer never waits for the email provider.
+    // (Bookings with a deposit are confirmed after payment, in the Stripe step; skipped until then.)
+    after(() => notifyBookingEvent(outcome.bookingId, "confirmation"));
     redirect(`/b/${business.slug}/booking/${outcome.token}`);
   }
   if (outcome.reason === "deposit_unavailable") {

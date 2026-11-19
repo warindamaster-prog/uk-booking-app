@@ -7,7 +7,7 @@ import { byteaParam } from "./token";
 export type CreateBookingRpc = (args: Record<string, unknown>) => Promise<{ error: { code?: string } | null }>;
 
 export type BookOutcome =
-  | { ok: true; token: string; staffId: string }
+  | { ok: true; bookingId: string; token: string; staffId: string }
   | { ok: false; reason: "slot_taken" | "deposit_unavailable" | "error" };
 
 /**
@@ -16,7 +16,7 @@ export type BookOutcome =
  * got that person first, so we move on to the next candidate.
  */
 export async function bookFirstAvailable(
-  deps: { rpc: CreateBookingRpc; newToken: () => { raw: string; hashHex: string } },
+  deps: { rpc: CreateBookingRpc; newBooking: () => { id: string; raw: string; hashHex: string } },
   p: {
     business: { id: string; timezone: string; stripe_charges_enabled: boolean };
     base: Omit<AvailabilityQuery, "date">;
@@ -34,14 +34,14 @@ export async function bookFirstAvailable(
   if (!candidates.length) return { ok: false, reason: "slot_taken" };
 
   for (const staffId of candidates) {
-    const token = deps.newToken();
+    const booking = deps.newBooking();
     const { error } = await deps.rpc({
       p_business_id: p.business.id, p_service_id: p.input.serviceId, p_staff_id: staffId,
       p_starts_at: startsAt.toISOString(), p_name: p.input.name, p_email: p.input.email, p_phone: p.input.phone,
-      p_marketing_consent: p.input.marketingConsent, p_cancel_token_hash: byteaParam(token.hashHex),
-      p_require_deposit: requireDeposit,
+      p_marketing_consent: p.input.marketingConsent, p_cancel_token_hash: byteaParam(booking.hashHex),
+      p_require_deposit: requireDeposit, p_booking_id: booking.id,
     });
-    if (!error) return { ok: true, token: token.raw, staffId };
+    if (!error) return { ok: true, bookingId: booking.id, token: booking.raw, staffId };
     if (error.code !== "23P01") return { ok: false, reason: "error" };
   }
   return { ok: false, reason: "slot_taken" };

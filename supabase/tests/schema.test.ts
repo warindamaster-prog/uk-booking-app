@@ -540,3 +540,89 @@ describe("booking status and reschedule rules", () => {
     expect(await status(other)).toBe("confirmed");
   });
 });
+
+describe("emails: booking ids, ICS sequence, outbox and customer cancellation", () => {
+  const FUT = "2027-06-08"; // Tuesday
+  const at = (hhmm: string) => zonedToUtc(FUT, Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3)), "Europe/London").toISOString();
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  const hash = (t: string) => `decode(md5('${t}'),'hex')`;
+  let n = 0;
+  const bookingOf = (id: string) => db.query<Record<string, unknown>>(`select * from bookings where id=$1`, [id]).then((r) => r.rows[0]);
+  const create = (over: { id?: string; hhmm?: string; token?: string } = {}) => asServer(() => db.query<{ id: string }>(
+    `select public.create_booking($1,$2,$3,$4,'Eve',$5,'07700 900123',false,${hash(over.token ?? `em${n}`)},false,15,$6) id`,
+    [bizA, svc, staffA, at(over.hhmm ?? "10:00"), `eve${n++}@x.com`, over.id ?? null]));
+  const cancelBy = (token: string) => asServer(() => db.query(`select public.customer_cancel_booking(${hash(token)})`));
+
+  beforeAll(async () => {
+    await db.query(`update services set price_pence=0, deposit_pence=0 where id=$1`, [svc]);
+    await db.query(`delete from staff_services where staff_id=$1`, [staffA]);
+    await db.query(`insert into staff_services(business_id,staff_id,service_id) values($1,$2,$3)`, [bizA, staffA, svc]);
+  });
+
+  it("uses the booking id supplied by the server", async () => {
+    const wanted = "11111111-2222-4333-8444-555555555555";
+    expect((await create({ id: wanted, hhmm: "09:00" })).rows[0].id).toBe(wanted);
+    expect((await create({ hhmm: "11:00" })).rows[0].id).not.toBe(wanted); // generated when not supplied
+  });
+
+  it("bumps ics_sequence on every reschedule and on cancellation", async () => {
+    const id = (await create({ hhmm: "13:00" })).rows[0].id;
+    expect((await bookingOf(id)).ics_sequence).toBe(0);
+    await db.query(`update bookings set starts_at=$2, ends_at=$2::timestamptz + interval '1 hour' where id=$1`, [id, at("14:30")]);
+    await db.query(`update bookings set starts_at=$2, ends_at=$2::timestamptz + interval '1 hour' where id=$1`, [id, at("16:00")]);
+    expect((await bookingOf(id)).ics_sequence).toBe(2);
+    await db.query(`update bookings set status='cancelled', cancelled_by='business' where id=$1`, [id]);
+    expect((await bookingOf(id)).ics_sequence).toBe(3);
+  });
+
+  it("the outbox allows each email once per booking version, kind and recipient", async () => {
+    const id = (await create({ hhmm: "17:00" })).rows[0].id;
+    const add = (recipient: string, seq: number, kind = "confirmation") => db.query(
+      `insert into booking_notifications(business_id,booking_id,kind,channel,recipient,seq) values($1,$2,$3,'email',$4,$5)`, [bizA, id, kind, recipient, seq]);
+    await add("customer", 0);
+    await expect(add("customer", 0)).rejects.toThrow(/booking_notifications_once|duplicate key/);
+    await add("business", 0);          // another recipient: fine
+    await add("customer", 1);          // after a reschedule: fine
+    await add("customer", 0, "reminder");
+    expect((await db.query(`select 1 from booking_notifications where booking_id=$1`, [id])).rows).toHaveLength(4);
+  });
+
+  it("a customer can cancel by token until the window closes (24 hours by default)", async () => {
+    const id = (await create({ hhmm: "20:00", token: "tok-ok" })).rows[0].id;
+    await cancelBy("tok-ok");
+    expect(await bookingOf(id)).toMatchObject({ status: "cancelled", cancelled_by: "customer", ics_sequence: 1 });
+    await expect(cancelBy("tok-ok")).rejects.toThrow(/can no longer be cancelled/); // already cancelled
+    await expect(cancelBy("no-such-token")).rejects.toThrow(/not found/);
+  });
+
+  it("refuses online cancellation inside the window, and the window is configurable", async () => {
+    const soon = (await db.query<{ id: string }>(
+      `insert into bookings(business_id,staff_id,service_id,customer_id,starts_at,ends_at,status,service_name,duration_minutes,price_pence,cancel_token_hash)
+       values($1,$2,$3,$4, now() + interval '5 hours', now() + interval '6 hours','confirmed','Gel',60,0,${hash("tok-soon")}) returning id`,
+      [bizA, staffA, svc, cus])).rows[0].id;
+    await expect(cancelBy("tok-soon")).rejects.toThrow(/cancellation_window_closed/);
+    await db.query(`update businesses set cancellation_window_hours=2 where id=$1`, [bizA]);
+    await cancelBy("tok-soon"); // 5 hours ahead is now outside a 2 hour window
+    expect((await bookingOf(soon)).status).toBe("cancelled");
+    await db.query(`update businesses set cancellation_window_hours=24 where id=$1`, [bizA]);
+  });
+
+  it("unpaid holds can always be cancelled, and the function is server-only", async () => {
+    const hold = (await db.query<{ id: string }>(
+      `insert into bookings(business_id,staff_id,service_id,customer_id,starts_at,ends_at,status,service_name,duration_minutes,price_pence,hold_expires_at,cancel_token_hash)
+       values($1,$2,$3,$4, now() + interval '3 hours', now() + interval '4 hours','pending_payment','Gel',60,0, now() + interval '10 minutes',${hash("tok-hold")}) returning id`,
+      [bizA, staffA, svc, cus])).rows[0].id;
+    await cancelBy("tok-hold");
+    expect((await bookingOf(hold)).status).toBe("cancelled");
+    await expect(as(A, "a@x.com", () => db.query(`select public.customer_cancel_booking(${hash("x")})`))).rejects.toThrow(/permission denied/);
+  });
+
+  it("lets owners update their contact details but not Stripe columns", async () => {
+    await as(A, "a@x.com", () => db.query(`update businesses set owner_name='Lily B', phone='07700 900009' where id=$1`, [bizA]));
+    expect((await db.query(`select owner_name, phone from businesses where id=$1`, [bizA])).rows[0]).toEqual({ owner_name: "Lily B", phone: "07700 900009" });
+    await expect(as(A, "a@x.com", () => db.query(`update businesses set stripe_account_id='acct_1' where id=$1`, [bizA]))).rejects.toThrow(/permission denied/);
+  });
+});
