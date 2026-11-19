@@ -14,19 +14,20 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
   if (!id.success) notFound();
   const { supabase, business, role, user } = await requireBusiness();
 
-  const { data: member } = await supabase.from("staff").select("id, name, email, active, user_id")
+  const { data: member } = await supabase.from("staff").select("id, name, email, active, user_id, description, level_id")
     .eq("id", id.data).eq("business_id", business.id).maybeSingle();
   if (!member) notFound();
   const isOwner = role === "owner";
   if (!isOwner && member.user_id !== user.id) notFound();
 
-  const [hoursRes, offRes, servicesRes, assignedRes] = await Promise.all([
+  const [hoursRes, offRes, servicesRes, assignedRes, levelsRes] = await Promise.all([
     supabase.from("working_hours").select("weekday, start_minute, end_minute").eq("staff_id", member.id)
       .order("weekday").order("start_minute"),
     supabase.from("time_off").select("id, starts_at, ends_at, reason").eq("staff_id", member.id)
       .gte("ends_at", new Date().toISOString()).order("starts_at"),
     isOwner ? supabase.from("services").select("id, name").eq("business_id", business.id).eq("active", true).order("name") : Promise.resolve({ data: [] }),
     isOwner ? supabase.from("staff_services").select("service_id").eq("staff_id", member.id) : Promise.resolve({ data: [] }),
+    isOwner ? supabase.from("staff_levels").select("id, name").eq("business_id", business.id).order("sort_order").order("name") : Promise.resolve({ data: [] }),
   ]);
 
   const initial: Record<string, string> = {};
@@ -46,7 +47,8 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
         <>
           <section aria-labelledby="details-h" className="space-y-4">
             <h2 id="details-h" className="text-xl font-semibold">Details</h2>
-            <StaffForm defaults={{ id: member.id, name: member.name, email: member.email ?? "", active: member.active }} />
+            <StaffForm defaults={{ id: member.id, name: member.name, email: member.email ?? "", active: member.active, description: member.description ?? "", levelId: member.level_id ?? "" }}
+              levels={levelsRes.data ?? []} />
           </section>
           <section aria-labelledby="services-h" className="space-y-4">
             <h2 id="services-h" className="text-xl font-semibold">Services offered</h2>

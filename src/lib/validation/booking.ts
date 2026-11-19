@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { SLUG_RE } from "../slug";
+import { CHOICE_RE } from "../booking/choices";
 
 export const bookingInputSchema = z.object({
   slug: z.string().regex(SLUG_RE),
   serviceId: z.uuid(),
-  staff: z.union([z.literal("any"), z.uuid()]),
+  staff: z.string().regex(CHOICE_RE),
   startsAt: z.iso.datetime({ message: "Choose a time" }),
   name: z.string().trim().min(1, "Enter your name").max(100, "Use 100 characters or fewer"),
   email: z.email("Enter a valid email address").max(254).transform((s) => s.trim().toLowerCase()),
@@ -17,7 +18,7 @@ export type BookingInput = z.infer<typeof bookingInputSchema>;
 
 /** Query params for the booking page. Anything invalid falls back to a default. */
 export const bookPageParams = z.object({
-  staff: z.union([z.literal("any"), z.uuid()]).catch("any"),
+  staff: z.string().regex(CHOICE_RE).catch("any"),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
   time: z.iso.datetime().optional().catch(undefined),
 });

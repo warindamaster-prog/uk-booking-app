@@ -1,15 +1,16 @@
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 export function Field({
-  label, name, errors, hint, ...props
+  label, name, errors, hint, id: idProp, ...props
 }: { label: string; name: string; errors?: string[]; hint?: string } & InputHTMLAttributes<HTMLInputElement>) {
-  const hintId = hint ? `${name}-hint` : undefined;
-  const errId = errors?.length ? `${name}-error` : undefined;
+  const id = idProp ?? name; // pass `id` when the same field name appears more than once on a page
+  const hintId = hint ? `${id}-hint` : undefined;
+  const errId = errors?.length ? `${id}-error` : undefined;
   return (
     <div className="space-y-1">
-      <label htmlFor={name} className="block text-sm font-medium">{label}</label>
+      <label htmlFor={id} className="block text-sm font-medium">{label}</label>
       <input
-        id={name}
+        id={id}
         name={name}
         aria-invalid={errId ? true : undefined}
         aria-describedby={[hintId, errId].filter(Boolean).join(" ") || undefined}

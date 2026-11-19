@@ -17,3 +17,7 @@
 - Stripe Billing: subscribe at launch (card via Checkout), VAT invoices, seat increases on a paid plan, the scheduled reduction mirrored in Stripe, Customer Portal link. The data model and rules are built and tested; no Stripe calls exist yet
 - Switching between monthly and yearly billing after sign-up
 - Editing business contact details (owner name, phone, email) after setup
+- Reordering team levels (they sort by creation order, then name)
+- Different duration or buffers by team level (levels change price only)
+- Staff photos on the booking page
+- Group classes (several customers per time slot), room or equipment bookings, and multi-service bookings

@@ -34,4 +34,8 @@ Customers book at `/b/<slug>` with no account. Pages that read or write bookings
 - Seat changes: during the trial they apply immediately. On a paid subscription a reduction is scheduled for the end of the current period (`next_staff_seats`, `next_price_pence`, `change_effective_at`), so this period's price is unchanged and the next one drops.
 - Real card billing (Stripe Billing) is a later step.
 
+## Team levels (optional)
+
+Businesses whose prices depend on who does the work can add levels (for example Junior and Senior) under Staff, give each person a level and a short description, and set a price per level on each service. Without levels nothing changes: every service has one price. If a service costs the same for everyone who offers it, customers see a simple "Anyone" option. If prices differ, "Anyone" is replaced by one option per level ("Any Junior · £25"), so the price is always known before booking. The booking price is stored with the booking, so later price changes never alter existing bookings.
+
 More sections (Stripe, Resend, cron) are added as those steps land. See `TODO.md` for what is intentionally left for later.

@@ -28,6 +28,8 @@ export const serviceSchema = z.object({
 
 export const staffSchema = z.object({
   name: z.string().trim().min(1, "Enter a name").max(100),
+  description: z.string().trim().max(300, "Keep it under 300 characters").transform((s) => s || null),
+  levelId: z.union([z.literal(""), z.uuid()]).transform((s) => s || null),
   email: z.union([z.literal(""), z.email("Enter a valid email address").max(254)])
     .transform((s) => (s ? s.toLowerCase() : null)),
   active: z.boolean(),
@@ -45,3 +47,5 @@ export const timeOffSchema = z.object({
   else if (v.endDate < todayYmd()) ctx.addIssue({ code: "custom", path: ["endDate"], message: "Choose dates that aren't in the past" });
   else if (addDaysYmd(v.startDate, 365) < v.endDate) ctx.addIssue({ code: "custom", path: ["endDate"], message: "Keep days off to a year or less" });
 });
+
+export const levelNameSchema = z.string().trim().min(1, "Enter a name").max(50, "Use 50 characters or fewer");

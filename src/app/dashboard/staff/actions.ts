@@ -14,7 +14,10 @@ const isSeatLimit = (e: { message?: string } | null) => !!e?.message?.includes("
 
 export async function saveStaff(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, business } = await requireOwner();
-  const raw = { name: String(formData.get("name") ?? ""), email: String(formData.get("email") ?? "") };
+  const raw = {
+    name: String(formData.get("name") ?? ""), email: String(formData.get("email") ?? ""),
+    description: String(formData.get("description") ?? ""), levelId: String(formData.get("levelId") ?? ""),
+  };
   const active = formData.get("active") === "on";
   const idRaw = String(formData.get("id") ?? "");
   const id = idRaw ? uuid.safeParse(idRaw) : null;
@@ -22,7 +25,10 @@ export async function saveStaff(_: FormState, formData: FormData): Promise<FormS
 
   const parsed = staffSchema.safeParse({ ...raw, active });
   if (!parsed.success) return zodState(parsed.error, { ...raw, active: active ? "on" : "" });
-  const row = { name: parsed.data.name, email: parsed.data.email, active: parsed.data.active };
+  const row = {
+    name: parsed.data.name, email: parsed.data.email, active: parsed.data.active,
+    description: parsed.data.description, level_id: parsed.data.levelId,
+  };
 
   if (id?.success) {
     const { error } = await supabase.from("staff").update(row).eq("id", id.data).eq("business_id", business.id);

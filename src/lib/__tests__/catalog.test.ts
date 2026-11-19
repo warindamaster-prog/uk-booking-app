@@ -88,9 +88,18 @@ describe("serviceSchema", () => {
 
 describe("staffSchema and timeOffSchema", () => {
   it("lowercases email and allows blank", () => {
-    expect(staffSchema.parse({ name: "A", email: "A@B.com", active: true }).email).toBe("a@b.com");
-    expect(staffSchema.parse({ name: "A", email: "", active: true }).email).toBeNull();
-    expect(staffSchema.safeParse({ name: "A", email: "nope", active: true }).success).toBe(false);
+    const base = { name: "A", description: "", levelId: "", active: true };
+    expect(staffSchema.parse({ ...base, email: "A@B.com" }).email).toBe("a@b.com");
+    expect(staffSchema.parse({ ...base, email: "" }).email).toBeNull();
+    expect(staffSchema.safeParse({ ...base, email: "nope" }).success).toBe(false);
+  });
+  it("handles staff level and description", () => {
+    const base = { name: "A", email: "", active: true };
+    const id = "00000000-0000-4000-8000-0000000000a1";
+    expect(staffSchema.parse({ ...base, description: "  Colour specialist ", levelId: id })).toMatchObject({ description: "Colour specialist", levelId: id });
+    expect(staffSchema.parse({ ...base, description: "", levelId: "" })).toMatchObject({ description: null, levelId: null });
+    expect(staffSchema.safeParse({ ...base, description: "x".repeat(301), levelId: "" }).success).toBe(false);
+    expect(staffSchema.safeParse({ ...base, description: "", levelId: "not-a-uuid" }).success).toBe(false);
   });
   it("validates date ranges", () => {
     const t = todayYmd();

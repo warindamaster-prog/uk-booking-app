@@ -394,3 +394,77 @@ describe("billing: pricing, trial and staff seats", () => {
     await expect(as(A, "a@x.com", () => db.query(`select public.apply_due_seat_changes()`))).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("staff levels and per-level prices", () => {
+  const S = "00000000-0000-0000-0000-00000000000c"; // staff user of bizA
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  const FUTURE = "2027-04-06"; // Tuesday
+  const at = (hhmm: string) => zonedToUtc(FUTURE, Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3)), "Europe/London").toISOString();
+  let n = 0;
+  const one = async <T,>(sql: string, params: unknown[] = []) => (await db.query<T & object>(sql, params)).rows[0] as T;
+
+  let junior: string, senior: string, jStaff: string, sStaff: string, plain: string, cutSvc: string;
+
+  it("lets an owner create levels; names are unique per business ignoring case", async () => {
+    junior = (await as(A, "a@x.com", () => db.query<{ id: string }>(`insert into staff_levels(business_id,name) values($1,'Junior') returning id`, [bizA]))).rows[0].id;
+    senior = (await as(A, "a@x.com", () => db.query<{ id: string }>(`insert into staff_levels(business_id,name) values($1,'Senior') returning id`, [bizA]))).rows[0].id;
+    await expect(as(A, "a@x.com", () => db.query(`insert into staff_levels(business_id,name) values($1,'JUNIOR')`, [bizA]))).rejects.toThrow(/duplicate key/);
+    await as(B, "b@x.com", () => db.query(`insert into staff_levels(business_id,name) values($1,'Junior')`, [bizB])); // another business may reuse the name
+  });
+
+  it("is invisible to other businesses and read-only for staff members", async () => {
+    expect((await as(B, "b@x.com", () => db.query(`select 1 from staff_levels where business_id=$1`, [bizA]))).rows).toHaveLength(0);
+    expect((await as(S, "s@x.com", () => db.query(`select 1 from staff_levels where business_id=$1`, [bizA]))).rows.length).toBe(2);
+    await expect(as(S, "s@x.com", () => db.query(`insert into staff_levels(business_id,name) values($1,'Boss')`, [bizA]))).rejects.toThrow(/row-level security/);
+  });
+
+  it("assigns a level and description to staff, but only a level of the same business", async () => {
+    jStaff = (await db.query<{ id: string }>(`insert into staff(business_id,name,level_id,description) values($1,'Jo',$2,'Newly qualified') returning id`, [bizA, junior])).rows[0].id;
+    sStaff = (await db.query<{ id: string }>(`insert into staff(business_id,name,level_id) values($1,'Sid',$2) returning id`, [bizA, senior])).rows[0].id;
+    await expect(db.query(`insert into staff(business_id,name,level_id) values($1,'X',$2)`, [bizB, junior])).rejects.toThrow(/foreign key/);
+    await expect(db.query(`update staff set description=$1 where id=$2`, ["x".repeat(301), jStaff])).rejects.toThrow(/check/);
+  });
+
+  it("level prices apply per service; deposits are protected", async () => {
+    await db.query(`insert into services(business_id,name,duration_minutes,price_pence,deposit_pence) values($1,'Cut',30,2500,1000)`, [bizA]);
+    cutSvc = (await db.query<{ id: string }>(`select id from services where business_id=$1 and name='Cut'`, [bizA])).rows[0].id;
+    await db.query(`insert into staff_services(business_id,staff_id,service_id) select $1, id, $2 from staff where id in ($3,$4)`, [bizA, cutSvc, jStaff, sStaff]);
+    await as(A, "a@x.com", () => db.query(`select public.set_service_level_prices($1, $2::jsonb)`, [cutSvc, JSON.stringify([{ level_id: senior, price_pence: 4000 }])]));
+    expect((await db.query(`select price_pence from service_level_prices where service_id=$1`, [cutSvc])).rows).toEqual([{ price_pence: 4000 }]);
+    await expect(as(A, "a@x.com", () => db.query(`select public.set_service_level_prices($1, $2::jsonb)`, [cutSvc, JSON.stringify([{ level_id: senior, price_pence: 500 }])]))).rejects.toThrow(/level_price_below_deposit/);
+    expect((await db.query(`select price_pence from service_level_prices where service_id=$1`, [cutSvc])).rows).toEqual([{ price_pence: 4000 }]); // atomic: unchanged
+    await expect(db.query(`update services set price_pence=5000, deposit_pence=4500 where id=$1`, [cutSvc])).rejects.toThrow(/deposit_above_level_price/);
+    await expect(as(B, "b@x.com", () => db.query(`select public.set_service_level_prices($1, '[]'::jsonb)`, [cutSvc]))).rejects.toThrow(/not found/);
+    // a staff member can neither add nor wipe level prices (their delete matches no rows under RLS)
+    await expect(as(S, "s@x.com", () => db.query(`select public.set_service_level_prices($1, $2::jsonb)`, [cutSvc, JSON.stringify([{ level_id: senior, price_pence: 3000 }])]))).rejects.toThrow(/row-level security/);
+    await as(S, "s@x.com", () => db.query(`select public.set_service_level_prices($1, '[]'::jsonb)`, [cutSvc]));
+    expect((await db.query(`select price_pence from service_level_prices where service_id=$1`, [cutSvc])).rows).toEqual([{ price_pence: 4000 }]);
+  });
+
+  it("create_booking snapshots the price of the assigned person's level", async () => {
+    await db.query(`update staff set active=true where id in ($1,$2)`, [jStaff, sStaff]);
+    const book = (staff: string, hhmm: string) => asServer(() => db.query<{ id: string }>(
+      `select public.create_booking($1,$2,$3,$4,'Pat',$5,'07700 900123',false,decode(md5($6),'hex'),true) id`,
+      [bizA, cutSvc, staff, at(hhmm), `pat${n}@x.com`, `lvl${n++}`]));
+    const price = async (id: string) => (await one<{ price_pence: number; deposit_pence: number }>(`select price_pence, deposit_pence from bookings where id=$1`, [id]));
+    expect(await price((await book(sStaff, "10:00")).rows[0].id)).toEqual({ price_pence: 4000, deposit_pence: 1000 }); // senior override
+    expect(await price((await book(jStaff, "10:00")).rows[0].id)).toEqual({ price_pence: 2500, deposit_pence: 1000 }); // junior: no override, standard price
+    plain = (await db.query<{ id: string }>(`insert into staff(business_id,name) values($1,'Plain') returning id`, [bizA])).rows[0].id;
+    await db.query(`insert into staff_services(business_id,staff_id,service_id) values($1,$2,$3)`, [bizA, plain, cutSvc]);
+    expect(await price((await book(plain, "10:00")).rows[0].id)).toEqual({ price_pence: 2500, deposit_pence: 1000 }); // no level: standard
+  });
+
+  it("changing a price later does not alter existing bookings", async () => {
+    await as(A, "a@x.com", () => db.query(`select public.set_service_level_prices($1, $2::jsonb)`, [cutSvc, JSON.stringify([{ level_id: senior, price_pence: 6000 }])]));
+    expect((await db.query(`select price_pence from bookings where staff_id=$1 and service_id=$2`, [sStaff, cutSvc])).rows).toEqual([{ price_pence: 4000 }]);
+  });
+
+  it("deleting a level keeps the person but returns them to the standard price", async () => {
+    await as(A, "a@x.com", () => db.query(`delete from staff_levels where id=$1`, [senior]));
+    expect(await one(`select level_id from staff where id=$1`, [sStaff])).toEqual({ level_id: null });
+    expect((await db.query(`select 1 from service_level_prices where level_id=$1`, [senior])).rows).toHaveLength(0);
+  });
+});

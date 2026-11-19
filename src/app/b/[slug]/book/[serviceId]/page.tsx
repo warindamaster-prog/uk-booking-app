@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { computeSlots, findAvailableDates } from "@/lib/availability";
+import { buildChoices, type Choice } from "@/lib/booking/choices";
 import { acceptsBookings, getBusinessBySlug, loadBookingContext, logoUrl } from "@/lib/booking/data";
 import { formatPence } from "@/lib/money";
 import { formatTime, formatYmd, todayYmd } from "@/lib/time";
@@ -52,6 +53,13 @@ export default async function BookPage({ params, searchParams }: Props) {
   };
 
   const { service } = ctx;
+  const choices = buildChoices(ctx.staffOptions);
+  // Prices differ by level: a person or level must be chosen so the price is known. Default to the cheapest.
+  if (ctx.price_pence === null) redirect(href({ staff: choices.defaultValue }));
+  const price = ctx.price_pence;
+  const chosenPerson = ctx.chosen.length === 1 ? ctx.chosen[0] : undefined;
+  const label = (c: Choice) => (choices.grouped ? `${c.label} · ${formatPence(c.price_pence)}` : c.label);
+  const showChoices = choices.grouped || choices.people.length > 1;
   const depositBlocked = service.deposit_pence > 0 && !business.stripe_charges_enabled;
   const dates = depositBlocked ? [] : findAvailableDates(ctx.base, today, windowDays);
   const date = sp.date && dates.includes(sp.date) ? sp.date : dates[0];
@@ -66,7 +74,7 @@ export default async function BookPage({ params, searchParams }: Props) {
           <p><Link href={`/b/${business.slug}`} className="text-sm underline">← All services</Link></p>
           <h1 className="mt-3 text-xl font-semibold">{service.name}</h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            {service.duration_minutes} min · {formatPence(service.price_pence)}
+            {service.duration_minutes} min · {formatPence(price)}
             {service.deposit_pence > 0 && ` · ${formatPence(service.deposit_pence)} deposit to book`}
           </p>
         </div>
@@ -77,17 +85,33 @@ export default async function BookPage({ params, searchParams }: Props) {
           <p role="status">There are no free times in the next {windowDays - 1} days. Please check back soon or contact {business.name}.</p>
         ) : (
           <>
-            {ctx.staffOptions.length > 1 && (
-              <section aria-labelledby="who-h">
-                <h2 id="who-h" className="mb-2 font-medium">Who with?</h2>
-                <ul className="flex flex-wrap gap-2">
-                  {[{ id: "any", name: "Anyone" }, ...ctx.staffOptions].map((s) => (
-                    <li key={s.id}>
-                      <Link href={href({ staff: s.id, date })} aria-current={sp.staff === s.id ? "true" : undefined}
-                        className={`${pill} ${sp.staff === s.id ? active : idle}`}>{s.name}</Link>
-                    </li>
-                  ))}
-                </ul>
+            {showChoices && (
+              <section aria-labelledby="who-h" className="space-y-3">
+                <h2 id="who-h" className="font-medium">Who with?</h2>
+                {choices.groups.length > 0 && (
+                  <ul className="flex flex-wrap gap-2">
+                    {choices.groups.map((c) => (
+                      <li key={c.value}>
+                        <Link href={href({ staff: c.value, date })} aria-current={sp.staff === c.value ? "true" : undefined}
+                          className={`${pill} ${sp.staff === c.value ? active : idle}`}>{label(c)}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {choices.people.length > 1 && (
+                  <>
+                    {choices.groups.length > 0 && <p className="text-sm text-neutral-600 dark:text-neutral-400">Or choose a person:</p>}
+                    <ul className="flex flex-wrap gap-2">
+                      {choices.people.map((c) => (
+                        <li key={c.value}>
+                          <Link href={href({ staff: c.value, date })} aria-current={sp.staff === c.value ? "true" : undefined}
+                            className={`${pill} ${sp.staff === c.value ? active : idle}`}>{label(c)}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {chosenPerson?.description && <p className="text-sm">{chosenPerson.description}</p>}
               </section>
             )}
 
@@ -123,7 +147,7 @@ export default async function BookPage({ params, searchParams }: Props) {
             {chosen && (
               <section aria-labelledby="details-h" className="space-y-4 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700">
                 <h2 id="details-h" className="font-medium">Your details</h2>
-                <p className="text-sm">{service.name}, {formatYmd(date!, tz)} at {formatTime(chosen.start, tz)}</p>
+                <p className="text-sm">{service.name}, {formatYmd(date!, tz)} at {formatTime(chosen.start, tz)} · {formatPence(price)}</p>
                 <BookingForm slug={business.slug} serviceId={service.id} staff={sp.staff} startsAt={chosen.start.toISOString()}
                   privacyUrl={business.privacy_notice_url}
                   depositLabel={service.deposit_pence > 0 ? `Continue to pay ${formatPence(service.deposit_pence)} deposit` : null} />

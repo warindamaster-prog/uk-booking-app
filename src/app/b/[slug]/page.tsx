@@ -30,7 +30,7 @@ export default async function BusinessPage({ params }: Props) {
                   className="block rounded-lg border border-neutral-300 p-4 active:bg-neutral-100 dark:border-neutral-700 dark:active:bg-neutral-800">
                   <span className="flex items-baseline justify-between gap-3">
                     <span className="font-medium">{s.name}</span>
-                    <span>{formatPence(s.price_pence)}</span>
+                    <span>{s.price_varies ? `from ${formatPence(s.from_pence)}` : formatPence(s.from_pence)}</span>
                   </span>
                   <span className="block text-sm text-neutral-600 dark:text-neutral-400">
                     {s.duration_minutes} min{s.deposit_pence > 0 && ` · ${formatPence(s.deposit_pence)} deposit`}

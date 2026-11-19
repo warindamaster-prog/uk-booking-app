@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { dayBounds, type AvailabilityQuery, type StaffDay } from "@/lib/availability";
 import { billingEnabled, bookingsOpen } from "@/lib/billing";
 import { addDaysYmd } from "@/lib/time";
+import { parseChoice, priceFor, selectStaff, type StaffInfo } from "./choices";
 import { blockedInterval, isLive, type LiveBookingRow } from "./slots";
 
 // Everything here uses the service-role client, which bypasses RLS. Every query is
@@ -19,6 +20,9 @@ export type PublicService = {
   id: string; name: string; description: string | null; duration_minutes: number;
   buffer_before_minutes: number; buffer_after_minutes: number; price_pence: number; deposit_pence: number;
 };
+
+/** A service as listed to customers: `from_pence` is the lowest price any available person charges. */
+export type ListedService = PublicService & { from_pence: number; price_varies: boolean };
 
 export const acceptsBookings = (b: Pick<PublicBusiness, "billing_status" | "trial_ends_at">, now: Date = new Date()) =>
   bookingsOpen({ status: b.billing_status, trial_ends_at: b.trial_ends_at }, { now, billingEnabled: billingEnabled() });
@@ -39,33 +43,49 @@ export function logoUrl(path: string | null): string | null {
   return createAdminClient().storage.from("logos").getPublicUrl(path).data.publicUrl;
 }
 
-/** Active services that at least one active staff member offers. */
-export async function listBookableServices(businessId: string): Promise<PublicService[]> {
+/** Active services that at least one active staff member offers, with the lowest price on offer. */
+export async function listBookableServices(businessId: string): Promise<ListedService[]> {
   const db = createAdminClient();
-  const [services, links, staff] = await Promise.all([
+  const [services, links, staff, prices] = await Promise.all([
     db.from("services").select("id, name, description, duration_minutes, buffer_before_minutes, buffer_after_minutes, price_pence, deposit_pence")
       .eq("business_id", businessId).eq("active", true).order("sort_order").order("name"),
     db.from("staff_services").select("service_id, staff_id").eq("business_id", businessId),
-    db.from("staff").select("id").eq("business_id", businessId).eq("active", true),
+    db.from("staff").select("id, level_id").eq("business_id", businessId).eq("active", true),
+    db.from("service_level_prices").select("service_id, level_id, price_pence").eq("business_id", businessId),
   ]);
-  const activeStaff = new Set((staff.data ?? []).map((s) => s.id));
-  const offered = new Set((links.data ?? []).filter((l) => activeStaff.has(l.staff_id)).map((l) => l.service_id));
-  return ((services.data ?? []) as PublicService[]).filter((s) => offered.has(s.id));
+  const levelOf = new Map((staff.data ?? []).map((s) => [s.id, s.level_id as string | null]));
+  const override = new Map((prices.data ?? []).map((p) => [`${p.service_id}:${p.level_id}`, p.price_pence as number]));
+
+  return ((services.data ?? []) as PublicService[]).flatMap((svc) => {
+    const offered = (links.data ?? []).filter((l) => l.service_id === svc.id && levelOf.has(l.staff_id));
+    if (!offered.length) return [];
+    const each = offered.map((l) => {
+      const level = levelOf.get(l.staff_id);
+      return (level ? override.get(`${svc.id}:${level}`) : undefined) ?? svc.price_pence;
+    });
+    return [{ ...svc, from_pence: Math.min(...each), price_varies: new Set(each).size > 1 }];
+  });
 }
 
 export type BookingContext = {
   service: PublicService;
-  staffOptions: { id: string; name: string }[];
+  /** Everyone who offers this service (active), with their level and price for it. */
+  staffOptions: StaffInfo[];
+  /** The people matching the customer's choice. */
+  chosen: StaffInfo[];
+  /** The single price for the choice, or null if it mixes prices (customer must choose more precisely). */
+  price_pence: number | null;
   /** Ready for computeSlots / findAvailableDates (add `date` for the former). */
   base: Omit<AvailabilityQuery, "date">;
 };
 
 /**
  * Loads everything the availability engine needs for `days` days from `fromYmd`.
- * `staffChoice` is "any" or one staff id. Returns null if the service or staff isn't bookable.
+ * `staffChoice` is "any", a staff id, "level:<id>" or "level:none".
+ * Returns null if the service isn't bookable or nobody matches the choice.
  */
 export async function loadBookingContext(
-  business: PublicBusiness, serviceId: string, staffChoice: "any" | string,
+  business: PublicBusiness, serviceId: string, staffChoice: string,
   fromYmd: string, days: number, now: Date = new Date(),
 ): Promise<BookingContext | null> {
   const db = createAdminClient();
@@ -73,15 +93,27 @@ export async function loadBookingContext(
     .select("id, name, description, duration_minutes, buffer_before_minutes, buffer_after_minutes, price_pence, deposit_pence")
     .eq("id", serviceId).eq("business_id", business.id).eq("active", true).maybeSingle();
   if (!service) return null;
+  const svc = service as PublicService;
 
   const { data: links } = await db.from("staff_services").select("staff_id").eq("business_id", business.id).eq("service_id", serviceId);
   const offeredBy = (links ?? []).map((l) => l.staff_id);
   if (!offeredBy.length) return null;
 
-  const { data: staffRows } = await db.from("staff").select("id, name").eq("business_id", business.id).eq("active", true)
-    .in("id", offeredBy).order("sort_order").order("name");
-  const staffOptions = (staffRows ?? []) as { id: string; name: string }[];
-  const chosen = staffChoice === "any" ? staffOptions : staffOptions.filter((s) => s.id === staffChoice);
+  const [staffRes, levelsRes, pricesRes] = await Promise.all([
+    db.from("staff").select("id, name, level_id, description").eq("business_id", business.id).eq("active", true)
+      .in("id", offeredBy).order("sort_order").order("name"),
+    db.from("staff_levels").select("id, name").eq("business_id", business.id),
+    db.from("service_level_prices").select("level_id, price_pence").eq("business_id", business.id).eq("service_id", serviceId),
+  ]);
+  const levelName = new Map((levelsRes.data ?? []).map((l) => [l.id, l.name as string]));
+  const levelPrice = new Map((pricesRes.data ?? []).map((p) => [p.level_id, p.price_pence as number]));
+
+  const staffOptions: StaffInfo[] = (staffRes.data ?? []).map((s) => ({
+    id: s.id, name: s.name, level_id: s.level_id, description: s.description,
+    level_name: s.level_id ? levelName.get(s.level_id) ?? null : null,
+    price_pence: (s.level_id ? levelPrice.get(s.level_id) : undefined) ?? svc.price_pence,
+  }));
+  const chosen = selectStaff(staffOptions, parseChoice(staffChoice));
   if (!chosen.length) return null;
   const ids = chosen.map((s) => s.id);
 
@@ -105,10 +137,8 @@ export async function loadBookingContext(
     blocked: ((bookings.data ?? []) as LiveBookingRow[]).filter((b) => b.staff_id === s.id && isLive(b, now)).map(blockedInterval),
   }));
 
-  const svc = service as PublicService;
   return {
-    service: svc,
-    staffOptions,
+    service: svc, staffOptions, chosen, price_pence: priceFor(chosen),
     base: {
       tz: business.timezone, now,
       slotIntervalMinutes: business.slot_interval_minutes,

@@ -51,6 +51,9 @@ export async function createPublicBooking(_: FormState, formData: FormData): Pro
   const ctx = await loadBookingContext(business, input.serviceId, input.staff, date, 1);
   if (!ctx) return { error: GENERIC, values };
 
+  // Different people charge different prices: the customer must pick a person or level, so the price is known.
+  if (ctx.price_pence === null) return { error: "Please choose who you'd like to book with.", values };
+
   const outcome = await bookFirstAvailable(
     {
       rpc: async (args) => { const { error } = await db.rpc("create_booking", args); return { error }; },

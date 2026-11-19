@@ -11,7 +11,10 @@ function Message({ text }: { text?: string }) {
   return <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{text}</p>;
 }
 
-export function StaffForm({ defaults }: { defaults: { id?: string; name: string; email: string; active: boolean } }) {
+export function StaffForm({ defaults, levels }: {
+  defaults: { id?: string; name: string; email: string; active: boolean; description: string; levelId: string };
+  levels: { id: string; name: string }[];
+}) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveStaff, {});
   const v = state.values ?? {};
   return (
@@ -22,6 +25,24 @@ export function StaffForm({ defaults }: { defaults: { id?: string; name: string;
       <Field label="Name" name="name" required maxLength={100} defaultValue={v.name ?? defaults.name} errors={state.fieldErrors?.name} />
       <Field label="Email (optional)" name="email" type="email" autoComplete="off" defaultValue={v.email ?? defaults.email}
         hint="Used for their own login later. Never shown to customers." errors={state.fieldErrors?.email} />
+      {levels.length > 0 && (
+        <div className="space-y-1">
+          <label htmlFor="levelId" className="block text-sm font-medium">Level</label>
+          <select id="levelId" name="levelId" defaultValue={v.levelId ?? defaults.levelId}
+            className="block w-full rounded-md border border-neutral-400 bg-transparent px-3 py-2 text-base">
+            <option value="">No level (standard prices)</option>
+            {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </div>
+      )}
+      <div className="space-y-1">
+        <label htmlFor="description" className="block text-sm font-medium">About (optional)</label>
+        <textarea id="description" name="description" rows={3} maxLength={300} defaultValue={v.description ?? defaults.description}
+          aria-describedby="description-hint"
+          className="block w-full rounded-md border border-neutral-400 bg-transparent px-3 py-2 text-base" />
+        <p id="description-hint" className="text-sm text-neutral-600 dark:text-neutral-400">Shown to customers when they choose this person.</p>
+        {state.fieldErrors?.description && <p className="text-sm text-red-700 dark:text-red-400">{state.fieldErrors.description[0]}</p>}
+      </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="active" defaultChecked={v.active !== undefined ? v.active === "on" : defaults.active} />
         Takes bookings
