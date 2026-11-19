@@ -51,3 +51,10 @@ export function minutesToHhmm(min: number): string {
 export function formatDate(d: Date | string, tz: string = BUSINESS_TZ): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(d));
 }
+
+/** False for wall-clock times that don't exist (the hour skipped when clocks go forward). */
+export function isValidLocalTime(ymd: string, minutes: number, tz: string = BUSINESS_TZ): boolean {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const utc = zonedToUtc(ymd, minutes, tz).getTime();
+  return utc + tzOffsetMinutes(utc, tz) * 60000 === Date.UTC(y, m - 1, d, 0, minutes);
+}

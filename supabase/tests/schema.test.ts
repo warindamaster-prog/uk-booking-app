@@ -5,6 +5,8 @@ import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 import fs from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
+import { computeSlots } from "@/lib/availability";
+import { zonedToUtc } from "@/lib/time";
 
 const dir = path.join(__dirname, "../migrations");
 const A = "00000000-0000-0000-0000-00000000000a";
@@ -164,5 +166,53 @@ describe("set_working_hours / set_staff_services", () => {
   });
   it("only the owner can assign services", async () => {
     await expect(as(S, "s@x.com", () => db.query(`select public.set_staff_services($1, array[$2]::uuid[])`, [staffS, svc]))).rejects.toThrow(/row-level security/);
+  });
+});
+
+describe("availability engine agrees with the no_double_booking constraint", () => {
+  const DATE = "2026-06-02"; // Tuesday, BST
+  const ranges: [number, number][] = [[540, 780], [840, 1080]]; // 09:00-13:00, 14:00-18:00
+  const DURATION = 60;
+  const at = (hhmm: string) => zonedToUtc(DATE, Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3)), "Europe/London").toISOString();
+
+  it("offers exactly the starts the database would accept", async () => {
+    await as(A, "a@x.com", () => db.query(`select public.set_working_hours($1, $2::jsonb)`, [
+      staffA, JSON.stringify(ranges.map(([start, end]) => ({ weekday: 2, start, end }))),
+    ]));
+    await book(at("10:00"), at("11:00"), "av1");
+    await book(at("12:00"), at("13:00"), "av2", "cancelled"); // must not block anything
+    await book(at("15:30"), at("16:30"), "av3");
+    await book(at("17:00"), at("18:00"), "av4", "pending_payment"); // an unpaid hold blocks too
+
+    const live = (await db.query<{ starts_at: Date; ends_at: Date; buffer_before_minutes: number; buffer_after_minutes: number }>(
+      `select starts_at, ends_at, buffer_before_minutes, buffer_after_minutes from bookings
+       where staff_id=$1 and status in ('pending_payment','confirmed','completed','no_show')`, [staffA])).rows;
+    const blocked = live.map((b) => ({
+      start: new Date(b.starts_at.getTime() - b.buffer_before_minutes * 60000),
+      end: new Date(b.ends_at.getTime() + b.buffer_after_minutes * 60000),
+    }));
+
+    const slots = computeSlots({
+      tz: "Europe/London", date: DATE, now: new Date("2026-05-01T08:00:00Z"), slotIntervalMinutes: 15,
+      minNoticeMinutes: 0, maxAdvanceDays: 90,
+      service: { durationMinutes: DURATION, bufferBeforeMinutes: 0, bufferAfterMinutes: 10 },
+      staff: [{ id: staffA, workingHours: ranges.map(([start, end]) => ({ weekday: 2, start, end })), timeOff: [], blocked }],
+    });
+    const offered = new Set(slots.map((x) => x.start.toISOString()));
+
+    let accepted = 0, rejected = 0, n = 0;
+    for (let t = 480; t <= 1140; t += 15) {
+      if (!ranges.some(([s, e]) => t >= s && t + DURATION <= e)) continue; // outside working hours: engine's job only
+      const start = zonedToUtc(DATE, t, "Europe/London");
+      const end = new Date(start.getTime() + DURATION * 60000);
+      await db.exec("begin");
+      let ok = true;
+      try { await book(start.toISOString(), end.toISOString(), `cand${n++}`); } catch { ok = false; }
+      await db.exec("rollback");
+      expect(offered.has(start.toISOString()), `start ${start.toISOString()}`).toBe(ok);
+      if (ok) accepted++; else rejected++;
+    }
+    expect(accepted).toBeGreaterThan(5);
+    expect(rejected).toBeGreaterThan(5);
   });
 });

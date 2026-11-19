@@ -15,6 +15,7 @@ Stack: Next.js (App Router) + Tailwind, Supabase (Postgres, Auth, RLS, Storage),
 ## Tests
 
 - `npm test` runs unit tests and the database tests. The database tests apply the real migrations in an in-process Postgres (PGlite) and check the double-booking constraint and RLS isolation. No Supabase project is needed.
+- The availability engine lives in `src/lib/availability/` (pure functions). Its tests include a check that every slot it offers is accepted by the database's `no_double_booking` constraint, and every slot it hides is rejected.
 - `npm run typecheck`, `npm run lint`
 
 ## Deploying to Vercel
