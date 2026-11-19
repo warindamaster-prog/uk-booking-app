@@ -11,6 +11,7 @@ export function cancellationLabel(hours: number): string {
 }
 
 export const settingsSchema = z.object({
+  confirmationMessage: z.string().max(1000, "Keep your message under 1,000 characters").default("").transform((s) => s.replace(/\r\n?/g, "\n").trim() || null),
   showContact: z.boolean(),
   ownerName: z.string().trim().min(1, "Enter the owner's name").max(100),
   email: z.email("Enter a valid email address").max(254).transform((s) => s.trim().toLowerCase()),

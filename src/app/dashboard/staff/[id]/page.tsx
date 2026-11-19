@@ -5,6 +5,7 @@ import { requireBusiness } from "@/lib/auth";
 import { formatDate, minutesToHhmm } from "@/lib/time";
 import { uuid } from "@/lib/validation/catalog";
 import { deleteTimeOff } from "../actions";
+import { DeleteStaff } from "./delete-staff";
 import { HoursForm, ServicesForm, StaffForm, TimeOffForm } from "../staff-forms";
 
 export const metadata: Metadata = { title: "Team member" };
@@ -15,7 +16,7 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
   const { supabase, business, role, user } = await requireBusiness();
 
   const { data: member } = await supabase.from("staff").select("id, name, email, active, user_id, description, level_id")
-    .eq("id", id.data).eq("business_id", business.id).maybeSingle();
+    .eq("id", id.data).eq("business_id", business.id).is("deleted_at", null).maybeSingle();
   if (!member) notFound();
   const isOwner = role === "owner";
   if (!isOwner && member.user_id !== user.id) notFound();
@@ -49,6 +50,10 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
             <h2 id="details-h" className="text-xl font-semibold">Details</h2>
             <StaffForm defaults={{ id: member.id, name: member.name, email: member.email ?? "", active: member.active, description: member.description ?? "", levelId: member.level_id ?? "" }}
               levels={levelsRes.data ?? []} />
+          </section>
+          <section aria-labelledby="remove-h" className="space-y-3">
+            <h2 id="remove-h" className="text-xl font-semibold">Remove from team</h2>
+            <DeleteStaff staffId={member.id} name={member.name} />
           </section>
           <section aria-labelledby="services-h" className="space-y-4">
             <h2 id="services-h" className="text-xl font-semibold">Services offered</h2>

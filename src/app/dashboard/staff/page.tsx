@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Staff" };
 export default async function StaffPage() {
   const { supabase, business } = await requireOwner();
   const { data: staff } = await supabase
-    .from("staff").select("id, name, email, active, level_id").eq("business_id", business.id)
+    .from("staff").select("id, name, email, active, level_id").eq("business_id", business.id).is("deleted_at", null)
     .order("active", { ascending: false }).order("sort_order").order("name");
 
   const { data: levels } = await supabase.from("staff_levels").select("id, name").eq("business_id", business.id).order("sort_order").order("name");

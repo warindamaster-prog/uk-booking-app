@@ -9,7 +9,7 @@ export default async function LevelsPage() {
   const { supabase, business } = await requireOwner();
   const [{ data: levels }, { data: staff }] = await Promise.all([
     supabase.from("staff_levels").select("id, name").eq("business_id", business.id).order("sort_order").order("name"),
-    supabase.from("staff").select("level_id").eq("business_id", business.id),
+    supabase.from("staff").select("level_id").eq("business_id", business.id).is("deleted_at", null),
   ]);
   const count = (id: string) => (staff ?? []).filter((s) => s.level_id === id).length;
 

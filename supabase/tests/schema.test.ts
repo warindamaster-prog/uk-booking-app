@@ -843,3 +843,47 @@ describe("subscriptions: syncing with Stripe", () => {
     await expect(as(o.uid, o.email, () => db.query(`select public.apply_seat_increase($1,2)`, [o.id]))).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("shop message and removing team members", () => {
+  const S = "00000000-0000-0000-0000-00000000000c";
+  const FUT = "2027-11-02"; // Tuesday
+  const at = (hhmm: string) => zonedToUtc(FUT, Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3)), "Europe/London").toISOString();
+  const newStaff = async (name: string) => (await db.query<{ id: string }>(`insert into staff(business_id,name,active) values($1,$2,false) returning id`, [bizA, name])).rows[0].id;
+  const remove = (uid: string, email: string, id: string) => as(uid, email, () => db.query(`select public.delete_staff($1)`, [id]));
+
+  it("owners can set the confirmation message; it is limited to 1000 characters", async () => {
+    await as(A, "a@x.com", () => db.query(`update businesses set confirmation_message='See you soon!' where id=$1`, [bizA]));
+    expect((await db.query(`select confirmation_message m from businesses where id=$1`, [bizA])).rows[0]).toEqual({ m: "See you soon!" });
+    await expect(as(A, "a@x.com", () => db.query(`update businesses set confirmation_message=$2 where id=$1`, [bizA, "x".repeat(1001)]))).rejects.toThrow(/check/);
+    const other = await as(B, "b@x.com", () => db.query(`update businesses set confirmation_message='hax' where id=$1 returning id`, [bizA]));
+    expect(other.rows).toHaveLength(0);
+  });
+
+  it("removing a team member hides them for good and frees their seat", async () => {
+    const id = await newStaff("Leaver");
+    await remove(A, "a@x.com", id);
+    expect((await db.query(`select active, deleted_at is not null as gone from staff where id=$1`, [id])).rows[0]).toEqual({ active: false, gone: true });
+    await expect(db.query(`update staff set active=true where id=$1`, [id])).rejects.toThrow(/staff_deleted_is_inactive|staff_seats_exceeded/); // cannot come back
+    await remove(A, "a@x.com", id); // repeat is harmless
+  });
+
+  it("is refused while the person has upcoming bookings, and works after they are cancelled", async () => {
+    const id = await newStaff("Busy");
+    const b = (await db.query<{ id: string }>(
+      `insert into bookings(business_id,staff_id,service_id,customer_id,starts_at,ends_at,status,service_name,duration_minutes,price_pence,cancel_token_hash)
+       values($1,$2,$3,$4,$5,$5::timestamptz + interval '1 hour','confirmed','Gel',60,0,decode(md5('rm-busy'),'hex')) returning id`, [bizA, id, svc, cus, at("10:00")])).rows[0].id;
+    await expect(remove(A, "a@x.com", id)).rejects.toThrow(/staff_has_upcoming_bookings/);
+    await db.query(`update bookings set status='cancelled', cancelled_by='business' where id=$1`, [b]);
+    await remove(A, "a@x.com", id);
+    expect((await db.query(`select deleted_at is not null as gone from staff where id=$1`, [id])).rows[0]).toEqual({ gone: true });
+    expect((await db.query(`select 1 from bookings where id=$1`, [b])).rows).toHaveLength(1); // history stays
+  });
+
+  it("is owner-only and answers the same for other businesses' people", async () => {
+    const id = await newStaff("Safe");
+    await expect(remove(S, "s@x.com", id)).rejects.toThrow(/team member not found/);
+    await expect(remove(B, "b@x.com", id)).rejects.toThrow(/team member not found/);
+    await expect(remove(A, "a@x.com", "00000000-0000-4000-8000-00000000dead")).rejects.toThrow(/team member not found/);
+    expect((await db.query(`select deleted_at from staff where id=$1`, [id])).rows[0]).toEqual({ deleted_at: null });
+  });
+});

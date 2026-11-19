@@ -116,3 +116,18 @@ export async function deleteTimeOff(formData: FormData): Promise<void> {
   await supabase.from("time_off").delete().eq("id", id.data).eq("staff_id", staffId.data);
   revalidatePath(`/dashboard/staff/${staffId.data}`);
 }
+
+export async function deleteStaff(_: FormState, formData: FormData): Promise<FormState> {
+  const { supabase } = await requireOwner();
+  const id = uuid.safeParse(String(formData.get("staffId") ?? ""));
+  if (!id.success) return { error: "That team member could not be found." };
+  const { error } = await supabase.rpc("delete_staff", { p_staff_id: id.data });
+  if (error) {
+    if (error.message.includes("staff_has_upcoming_bookings")) {
+      return { error: "This person still has upcoming bookings. Move or cancel them first, then try again." };
+    }
+    return { error: GENERIC };
+  }
+  revalidatePath("/dashboard/staff");
+  redirect("/dashboard/staff");
+}

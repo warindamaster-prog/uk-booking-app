@@ -1,5 +1,6 @@
 import { formatPence } from "../money";
 import { formatDateTime, formatTime } from "../time";
+import { fillMessage } from "./message";
 
 export type EmailKind = "confirmation" | "reminder" | "cancellation" | "reschedule";
 export type Recipient = "customer" | "business";
@@ -26,6 +27,8 @@ export type EmailData = {
   cancelledBy: "customer" | "business" | null;
   /** The business's contact details to show the customer, or null when the owner has turned this off. */
   contact: { email: string | null; phone: string | null } | null;
+  /** The shop's own message (with {{placeholders}}), shown in confirmation and reminder emails. */
+  shopMessage?: string | null;
 };
 
 export type Rendered = { subject: string; text: string; html: string };
@@ -59,9 +62,10 @@ function details(d: EmailData, recipient: Recipient): Row[] {
   return rows;
 }
 
-function layout(heading: string, intro: string, rows: Row[], links: Row[], footer: string): Omit<Rendered, "subject"> {
+function layout(heading: string, intro: string, rows: Row[], links: Row[], footer: string, note = ""): Omit<Rendered, "subject"> {
   const text = [
     heading, "", intro, "",
+    ...(note ? [note, ""] : []),
     ...rows.map(([k, v]) => `${k}: ${v}`), "",
     ...links.map(([k, v]) => `${k}: ${v}`), ...(links.length ? [""] : []),
     footer,
@@ -70,6 +74,7 @@ function layout(heading: string, intro: string, rows: Row[], links: Row[], foote
   const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#171717;line-height:1.5;max-width:560px;margin:0 auto;padding:16px">
 <h1 style="font-size:20px;margin:0 0 12px">${escapeHtml(heading)}</h1>
 <p>${escapeHtml(intro)}</p>
+${note ? `<p style="white-space:pre-wrap;border-left:3px solid #d4d4d4;padding-left:12px">${escapeHtml(note)}</p>` : ""}
 <table role="presentation" style="border-collapse:collapse;width:100%;margin:12px 0">
 ${rows.map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#525252;vertical-align:top;white-space:nowrap">${escapeHtml(k)}</td><td style="padding:6px 0">${escapeHtml(v)}</td></tr>`).join("\n")}
 </table>
@@ -105,6 +110,9 @@ export function renderEmail(kind: EmailKind, recipient: Recipient, d: EmailData)
   }
 
   const foot = `This message is about your booking with ${d.businessName}. Reply to this email to contact them.`;
+  const note = d.shopMessage ? fillMessage(d.shopMessage, {
+    customerName: d.customerName, serviceName: d.serviceName, staffName: d.staffName,
+    businessName: d.businessName, startsAt: d.startsAt, tz: d.tz }) : "";
   const manage: Row[] = [["View or cancel your booking", d.manageUrl]];
   const deadline = d.cancelDeadline
     ? `You can cancel online until ${formatDateTime(d.cancelDeadline, d.tz)}. After that, please contact ${d.businessName} directly.`
@@ -113,10 +121,10 @@ export function renderEmail(kind: EmailKind, recipient: Recipient, d: EmailData)
   switch (kind) {
     case "confirmation":
       return { subject: oneLine(`Booking confirmed: ${d.serviceName} on ${when}`),
-        ...layout("Your booking is confirmed", `Hi ${d.customerName}, your booking with ${d.businessName} is confirmed. ${deadline}`, rows, manage, foot) };
+        ...layout("Your booking is confirmed", `Hi ${d.customerName}, your booking with ${d.businessName} is confirmed. ${deadline}`, rows, manage, foot, note) };
     case "reminder":
       return { subject: oneLine(`Reminder: ${d.serviceName} at ${formatTime(d.startsAt, d.tz)} (${when})`),
-        ...layout("Appointment reminder", `Hi ${d.customerName}, this is a reminder of your booking with ${d.businessName}. ${deadline}`, rows, manage, foot) };
+        ...layout("Appointment reminder", `Hi ${d.customerName}, this is a reminder of your booking with ${d.businessName}. ${deadline}`, rows, manage, foot, note) };
     case "reschedule":
       return { subject: oneLine(`Your booking has moved: ${d.serviceName} on ${when}`),
         ...layout("Your booking has moved", `Hi ${d.customerName}, ${d.businessName} has moved your booking to a new time. The new details are below.`, rows, manage, foot) };
