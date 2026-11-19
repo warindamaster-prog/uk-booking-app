@@ -42,13 +42,13 @@ describe("depositDecision", () => {
 describe("Connect OAuth state", () => {
   const secret = "s".repeat(40);
   const now = new Date("2026-06-01T12:00:00Z");
-  it("round-trips for the same business within ten minutes", () => {
+  it("round-trips for the same business within an hour", () => {
     const state = signConnectState(secret, "biz-1", now);
-    expect(verifyConnectState(secret, state, new Date(now.getTime() + 5 * 60_000))).toEqual({ businessId: "biz-1" });
+    expect(verifyConnectState(secret, state, new Date(now.getTime() + 50 * 60_000))).toEqual({ businessId: "biz-1" });
   });
   it("rejects expired, tampered, wrong-secret and malformed state", () => {
     const state = signConnectState(secret, "biz-1", now);
-    expect(verifyConnectState(secret, state, new Date(now.getTime() + 11 * 60_000))).toBeNull();
+    expect(verifyConnectState(secret, state, new Date(now.getTime() + 61 * 60_000))).toBeNull();
     expect(verifyConnectState(secret, state, new Date(now.getTime() - 1000))).toBeNull();
     expect(verifyConnectState(secret, state.replace("biz-1", "biz-2"), now)).toBeNull();
     expect(verifyConnectState("t".repeat(40), state, now)).toBeNull();

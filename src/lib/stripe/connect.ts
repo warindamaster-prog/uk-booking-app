@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-const TEN_MINUTES = 10 * 60_000;
+const STATE_LIFETIME = 60 * 60_000; // onboarding with identity checks can take a while
 
 function mac(secret: string, payload: string) {
   return createHmac("sha256", secret).update(`stripe-connect-state:${payload}`).digest("base64url");
@@ -23,6 +23,6 @@ export function verifyConnectState(secret: string, state: string, now: Date = ne
   const a = Buffer.from(given), b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   const age = now.getTime() - Number(issued);
-  if (!Number.isFinite(age) || age < 0 || age > TEN_MINUTES) return null;
+  if (!Number.isFinite(age) || age < 0 || age > STATE_LIFETIME) return null;
   return { businessId };
 }
