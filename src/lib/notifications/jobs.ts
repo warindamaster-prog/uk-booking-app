@@ -2,15 +2,16 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isReminderDue } from "./due";
 import type { Mailers } from "./provider";
+import { settleDeposit } from "@/lib/stripe/service";
 import { MAX_ATTEMPTS, sendNotification, type NotifyConfig } from "./send";
 import type { EmailKind, Recipient } from "./templates";
 
 type Db = ReturnType<typeof createAdminClient>;
-export type JobCounts = { expiredHolds: number; remindersSent: number; retried: number; gaveUp: number };
+export type JobCounts = { expiredHolds: number; remindersSent: number; retried: number; gaveUp: number; refundsRetried: number };
 
 /** Run every few minutes: releases expired unpaid holds, sends due reminders, retries failed emails. */
 export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConfig, now: Date = new Date()): Promise<JobCounts> {
-  const counts: JobCounts = { expiredHolds: 0, remindersSent: 0, retried: 0, gaveUp: 0 };
+  const counts: JobCounts = { expiredHolds: 0, remindersSent: 0, retried: 0, gaveUp: 0, refundsRetried: 0 };
 
   // 1. Unpaid holds whose time ran out stop blocking the calendar.
   const expired = await db.from("bookings").update({ status: "expired" }, { count: "exact" })
@@ -48,6 +49,14 @@ export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConf
     const outcome = await sendNotification(db, mail, cfg, { bookingId: n.booking_id, kind: n.kind as EmailKind, recipient: n.recipient as Recipient });
     if (outcome === "sent") counts.retried++;
     if (outcome === "gave_up") counts.gaveUp++;
+  }
+
+  // 4. Deposits still marked paid on a cancelled or expired booking are owed back: retry the refund.
+  const { data: owed } = await db.from("bookings").select("id, cancelled_by")
+    .in("status", ["cancelled", "expired"]).eq("deposit_status", "paid").limit(50);
+  for (const b of owed ?? []) {
+    const result = await settleDeposit(db, b.id, b.cancelled_by === "business" ? "business" : "customer");
+    if (result === "refunded") counts.refundsRetried++;
   }
   return counts;
 }

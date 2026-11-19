@@ -706,3 +706,56 @@ describe("customer privacy: erase and withdraw consent", () => {
     expect((await db.query(`select marketing_consent, marketing_consent_at from customers where id=$1`, [c])).rows[0]).toEqual({ marketing_consent: false, marketing_consent_at: null });
   });
 });
+
+describe("deposit payments (Stripe webhook functions)", () => {
+  const FUT = "2027-10-05"; // Tuesday
+  const at = (hhmm: string) => zonedToUtc(FUT, Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3)), "Europe/London").toISOString();
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  let n = 0;
+  const hold = async (hhmm: string, status = "pending_payment") => {
+    const i = n++;
+    return (await db.query<{ id: string }>(
+      `insert into bookings(business_id,staff_id,service_id,customer_id,starts_at,ends_at,status,service_name,duration_minutes,price_pence,deposit_pence,deposit_status,hold_expires_at,stripe_checkout_session_id,cancel_token_hash)
+       values($1,$2,$3,$4,$5,$5::timestamptz + interval '1 hour',$6,'Gel',60,3000,1000,'pending', now() + interval '30 minutes',$7, decode(md5($8),'hex')) returning id`,
+      [bizA, staffA, svc, cus, at(hhmm), status, `cs_test_${i}`, `dep${i}`])).rows[0].id;
+  };
+  const apply = (session: string, pi = "pi_1") => asServer(() => db.query<{ r: string }>(`select public.apply_deposit_payment($1,$2) r`, [session, pi])).then((r) => r.rows[0].r);
+  const row = async (id: string) => (await db.query<Record<string, unknown>>(`select status, deposit_status, stripe_payment_intent_id, hold_expires_at, stripe_refund_id from bookings where id=$1`, [id])).rows[0];
+  const settle = (id: string, outcome: string, refund: string | null = null) => asServer(() => db.query(`select public.record_deposit_outcome($1,$2,$3)`, [id, outcome, refund]));
+
+  it("confirms a held booking when the payment arrives, once", async () => {
+    const id = await hold("09:00");
+    expect(await apply(`cs_test_${n - 1}`, "pi_a")).toBe("confirmed");
+    expect(await row(id)).toMatchObject({ status: "confirmed", deposit_status: "paid", stripe_payment_intent_id: "pi_a", hold_expires_at: null });
+    expect(await apply(`cs_test_${n - 1}`, "pi_a")).toBe("already_paid"); // the same webhook delivered twice
+    expect(await apply("cs_unknown")).toBe("not_found");
+  });
+
+  it("a payment that arrives after the hold expired or the booking was cancelled needs a refund", async () => {
+    const late = await hold("11:00");
+    await db.query(`update bookings set status='expired' where id=$1`, [late]);
+    expect(await apply(`cs_test_${n - 1}`, "pi_late")).toBe("needs_refund");
+    expect(await row(late)).toMatchObject({ status: "expired", deposit_status: "paid", stripe_payment_intent_id: "pi_late" });
+    await settle(late, "refunded", "re_1");
+    expect(await row(late)).toMatchObject({ deposit_status: "refunded", stripe_refund_id: "re_1" });
+  });
+
+  it("settles a paid deposit once: refunded or kept; nothing to settle if unpaid", async () => {
+    const id = await hold("13:00");
+    await expect(settle(id, "refunded")).rejects.toThrow(/deposit_not_paid/);
+    await apply(`cs_test_${n - 1}`, "pi_b");
+    await settle(id, "retained");
+    expect((await row(id)).deposit_status).toBe("retained");
+    await settle(id, "retained"); // repeat is fine
+    await expect(settle(id, "refunded")).rejects.toThrow(/deposit_not_paid/); // already settled differently
+    await expect(settle(id, "maybe")).rejects.toThrow(/invalid outcome/);
+  });
+
+  it("is server-only", async () => {
+    await expect(as(A, "a@x.com", () => db.query(`select public.apply_deposit_payment('x','y')`))).rejects.toThrow(/permission denied/);
+    await expect(as(A, "a@x.com", () => db.query(`select public.record_deposit_outcome($1,'refunded')`, [bizA]))).rejects.toThrow(/permission denied/);
+  });
+});

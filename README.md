@@ -82,4 +82,12 @@ Vercel Cron also works on plans that allow frequent schedules (Hobby is limited 
 - **Marketing consent** is never pre-ticked, can only be granted by the customer at booking, and the owner can record a withdrawal. No marketing emails are sent by this app.
 - Only name, email and phone are collected. A privacy notice link is shown on the booking page and in the booking form.
 
+## Card payments: deposits (Stripe Connect)
+
+- Each shop connects its **own** Stripe account (Dashboard > Payments). Deposits are paid by card straight to that account (a Checkout Session created on the shop's account, a "direct charge"). We add no application fee, so there is no commission, and we never hold the money.
+- While a customer pays, the slot is held for about 35 minutes. When Stripe reports the payment (webhook `checkout.session.completed`), the database confirms the booking and the confirmation emails go out. If the payment arrives after the hold ended or the booking was cancelled, it is refunded automatically.
+- Cancelling: a customer who cancels (only possible before the cancellation window) gets the deposit back. When the shop cancels, the owner chooses to refund or keep it. Failed refunds are retried by the reminder job.
+- A service with a deposit can't be booked online until the shop's Stripe account is connected and able to take payments.
+- Setup is described in `.env.example` (OAuth client ID, redirect URI, webhook endpoint and secret). Use Stripe test mode first.
+
 More sections (Stripe, Resend, cron) are added as those steps land. See `TODO.md` for what is intentionally left for later.

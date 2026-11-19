@@ -12,7 +12,7 @@ import { blockedInterval, isLive, type LiveBookingRow } from "./slots";
 export type PublicBusiness = {
   id: string; name: string; slug: string; timezone: string; logo_path: string | null;
   slot_interval_minutes: number; min_notice_minutes: number; max_advance_days: number;
-  privacy_notice_url: string | null; stripe_charges_enabled: boolean; cancellation_window_hours: number;
+  privacy_notice_url: string | null; stripe_charges_enabled: boolean; stripe_account_id: string | null; cancellation_window_hours: number;
   billing_status: string; trial_ends_at: string;
   /** Only set when the owner allows customers to see them (Settings). */
   contact: { email: string | null; phone: string | null } | null;
@@ -32,7 +32,7 @@ export const acceptsBookings = (b: Pick<PublicBusiness, "billing_status" | "tria
 export async function getBusinessBySlug(slug: string): Promise<PublicBusiness | null> {
   const db = createAdminClient();
   const { data } = await db.from("businesses")
-    .select("id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, stripe_charges_enabled, cancellation_window_hours, email, phone, show_contact_to_customers")
+    .select("id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, stripe_charges_enabled, stripe_account_id, cancellation_window_hours, email, phone, show_contact_to_customers")
     .eq("slug", slug).maybeSingle();
   if (!data) return null;
   const { data: billing } = await db.from("business_billing").select("status, trial_ends_at").eq("business_id", data.id).maybeSingle();

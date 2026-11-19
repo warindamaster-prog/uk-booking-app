@@ -77,6 +77,15 @@ describe("email templates", () => {
     expect(renderEmail("confirmation", "customer", { ...data, contact: { email: null, phone: "01234 567890" } }).text).toContain("Contact Lily Nails: 01234 567890");
     expect(renderEmail("confirmation", "business", data).text).not.toContain("Contact Lily Nails"); // the business doesn't need its own details
   });
+  it("cancellation emails say what happened to the deposit", () => {
+    const at = (depositStatus: string, cancelledBy: "customer" | "business" = "customer") =>
+      renderEmail("cancellation", "customer", { ...data, cancelledBy, depositStatus }).text;
+    expect(at("refunded")).toContain("Your deposit of £10.00 has been refunded to your card");
+    expect(at("paid")).toContain("will be refunded to your card");
+    expect(at("retained", "business")).toContain("Lily Nails has kept your deposit of £10.00");
+    expect(at("none")).not.toContain("deposit of");
+    expect(renderEmail("cancellation", "customer", { ...data, depositPence: 0, depositStatus: "none" }).text).not.toContain("deposit of");
+  });
   it("without a deadline the email says to contact the business", () => {
     expect(renderEmail("confirmation", "customer", { ...data, cancelDeadline: null }).text).toContain("please contact Lily Nails directly");
   });

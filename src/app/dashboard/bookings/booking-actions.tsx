@@ -18,7 +18,7 @@ function Result({ state }: { state: FormState }) {
   );
 }
 
-export function BookingActions({ id, can }: { id: string; can: Can }) {
+export function BookingActions({ id, can, depositPaid }: { id: string; can: Can; depositPaid: boolean }) {
   const [cancelState, cancelAction, cancelling] = useActionState<FormState, FormData>(cancelBooking, {});
   const [noShowState, noShowAction, markingNoShow] = useActionState<FormState, FormData>(markNoShow, {});
   const [undoState, undoAction, undoing] = useActionState<FormState, FormData>(undoNoShow, {});
@@ -45,6 +45,13 @@ export function BookingActions({ id, can }: { id: string; can: Can }) {
           <form action={cancelAction} className="mt-3 space-y-3">
             <input type="hidden" name="id" value={id} />
             <p className="text-sm">The time becomes free for other customers. This can&apos;t be undone.</p>
+            {depositPaid && (
+              <fieldset className="space-y-2 text-sm">
+                <legend className="font-medium">The customer has paid a deposit</legend>
+                <label className="flex items-center gap-2"><input type="radio" name="depositChoice" value="refund" defaultChecked /> Refund the deposit to the customer</label>
+                <label className="flex items-center gap-2"><input type="radio" name="depositChoice" value="keep" /> Keep the deposit</label>
+              </fieldset>
+            )}
             <button type="submit" disabled={cancelling}
               className="inline-flex min-h-11 items-center rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
               Yes, cancel the booking

@@ -7,6 +7,7 @@ import { getBusinessBySlug } from "@/lib/booking/data";
 import { byteaParam, clientIp, hashToken, limiterKey, TOKEN_RE } from "@/lib/booking/token";
 import type { FormState } from "@/lib/form";
 import { notifyBookingEvent } from "@/lib/notifications/service";
+import { settleDeposit } from "@/lib/stripe/service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SLUG_RE } from "@/lib/slug";
 
@@ -44,7 +45,11 @@ export async function cancelMyBooking(_: FormState, formData: FormData): Promise
     return { error: GENERIC };
   }
 
-  after(() => notifyBookingEvent(String(id), "cancellation"));
+  // Customers who cancel before the window get any deposit back; the email says so once it is done.
+  after(async () => {
+    await settleDeposit(db, String(id), "customer");
+    await notifyBookingEvent(String(id), "cancellation");
+  });
   revalidatePath(`/b/${slug}/booking/${token}`);
   return { message: "Your booking has been cancelled." };
 }

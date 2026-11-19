@@ -33,3 +33,6 @@
 - Automatic deletion of old customer records after a retention period chosen by the business
 - A log of erasure and export requests
 - Marketing email sending (consent is recorded; nothing is sent)
+- Customers finishing a deposit payment later: today an abandoned payment simply releases the slot and they book again
+- Letting customers reschedule (and keep their deposit) themselves
+- Partial refunds and a "refund/keep" decision when a booking is cancelled inside the cancellation window by the customer's request through the shop

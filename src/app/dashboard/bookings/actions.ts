@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notifyBookingEvent } from "@/lib/notifications/service";
+import { settleDeposit } from "@/lib/stripe/service";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { computeSlots } from "@/lib/availability";
 import { requireBusiness } from "@/lib/auth";
 import { loadBookingContext } from "@/lib/booking/data";
@@ -22,7 +24,7 @@ function refresh(id: string) {
   revalidatePath("/dashboard");
 }
 
-async function setStatus(formData: FormData, patch: { status: string; cancelled_by?: string }, done: string, then?: (bookingId: string) => void): Promise<FormState> {
+async function setStatus(formData: FormData, patch: { status: string; cancelled_by?: string }, done: string): Promise<FormState> {
   const { supabase, business } = await requireBusiness();
   const id = uuid.safeParse(String(formData.get("id") ?? ""));
   if (!id.success) return { error: GENERIC };
@@ -34,14 +36,25 @@ async function setStatus(formData: FormData, patch: { status: string; cancelled_
   if (error) return { error: error.message?.includes("invalid_booking") ? NOT_ALLOWED : GENERIC };
   if (!data) return { error: "We couldn't find that booking." };
   refresh(id.data);
-  then?.(id.data);
   return { message: done };
 }
 
 export async function cancelBooking(_: FormState, formData: FormData): Promise<FormState> {
-  // Step 7 (Stripe): refund a paid deposit when the business cancels.
-  return setStatus(formData, { status: "cancelled", cancelled_by: "business" }, "Booking cancelled. The time is free again.",
-    (bookingId) => after(() => notifyBookingEvent(bookingId, "cancellation")));
+  const result = await setStatus(formData, { status: "cancelled", cancelled_by: "business" }, "Booking cancelled. The time is free again.");
+  if (!result.message) return result;
+
+  // A paid deposit is refunded unless the owner chose to keep it.
+  const id = String(formData.get("id") ?? "");
+  const choice = formData.get("depositChoice") === "keep" ? "keep" : "refund";
+  const settled = await settleDeposit(createAdminClient(), id, "business", choice);
+  after(() => notifyBookingEvent(id, "cancellation"));
+  const extra = {
+    refunded: " The deposit was refunded.",
+    retained: " You kept the deposit.",
+    failed: " The deposit refund didn't go through. We'll retry, or you can refund it in your Stripe dashboard.",
+    none: "",
+  }[settled];
+  return { message: result.message + extra };
 }
 export const markNoShow = async (_: FormState, formData: FormData) => setStatus(formData, { status: "no_show" }, "Marked as a no-show.");
 export const undoNoShow = async (_: FormState, formData: FormData) => setStatus(formData, { status: "confirmed" }, "No-show removed.");

@@ -7,6 +7,7 @@ import { formatPence } from "@/lib/money";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDateTime } from "@/lib/time";
 import { PublicFooter, PublicHeader } from "../../chrome";
+import { AutoRefresh } from "./auto-refresh";
 import { CancelForm } from "./cancel-form";
 
 // The token is a credential: keep the page out of search engines and out of Referer headers.
@@ -21,8 +22,9 @@ const STATUS: Record<string, string> = {
   completed: "Booking completed",
 };
 
-export default async function BookingPage({ params }: { params: Promise<{ slug: string; token: string }> }) {
+export default async function BookingPage({ params, searchParams }: { params: Promise<{ slug: string; token: string }>; searchParams: Promise<{ paid?: string }> }) {
   const { slug, token } = await params;
+  const { paid } = await searchParams;
   if (!TOKEN_RE.test(token)) notFound();
   const business = await getBusinessBySlug(slug);
   if (!business) notFound();
@@ -49,6 +51,15 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
       <PublicHeader name={business.name} logo={logoUrl(business.logo_path)} />
       <main className="space-y-4">
         <h1 className="text-xl font-semibold">{STATUS[b.status] ?? "Your booking"}</h1>
+        {b.status === "pending_payment" && paid && (
+          <>
+            <p role="status">Thank you. We&apos;re confirming your payment, which usually takes a few seconds.</p>
+            <AutoRefresh />
+          </>
+        )}
+        {b.status === "pending_payment" && !paid && (
+          <p>This time is held while your deposit is paid. If you didn&apos;t finish paying, the time will be released shortly and you can book again.</p>
+        )}
         <dl className="space-y-3 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700">
           <div><dt className="text-sm text-neutral-600 dark:text-neutral-400">Service</dt><dd>{b.service_name} ({b.duration_minutes} min)</dd></div>
           <div><dt className="text-sm text-neutral-600 dark:text-neutral-400">When</dt><dd>{formatDateTime(b.starts_at, business.timezone)}</dd></div>

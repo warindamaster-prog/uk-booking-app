@@ -53,7 +53,7 @@ export default async function BookingPage({ params, searchParams }: {
         ) : <p>Customer details are not available.</p>}
       </section>
 
-      <BookingActions id={b.id} can={can} />
+      <BookingActions id={b.id} can={can} depositPaid={b.deposit_status === "paid"} />
     </main>
   );
 }

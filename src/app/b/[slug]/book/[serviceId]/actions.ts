@@ -8,7 +8,9 @@ import { acceptsBookings, getBusinessBySlug, loadBookingContext } from "@/lib/bo
 import { bookFirstAvailable } from "@/lib/booking/book";
 import { clientIp, deriveCancelToken, limiterKey } from "@/lib/booking/token";
 import { zodState, type FormState } from "@/lib/form";
+import { publicEnv } from "@/lib/env";
 import { notifyBookingEvent } from "@/lib/notifications/service";
+import { startDepositCheckout } from "@/lib/stripe/service";
 import { bookingTokenSecret } from "@/lib/server-env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayYmd } from "@/lib/time";
@@ -66,10 +68,28 @@ export async function createPublicBooking(_: FormState, formData: FormData): Pro
     { business, base: ctx.base, depositPence: ctx.service.deposit_pence, input },
   );
   if (outcome.ok) {
-    // Confirmation emails go out after the response, so the customer never waits for the email provider.
-    // (Bookings with a deposit are confirmed after payment, in the Stripe step; skipped until then.)
-    after(() => notifyBookingEvent(outcome.bookingId, "confirmation"));
-    redirect(`/b/${business.slug}/booking/${outcome.token}`);
+    const page = `/b/${business.slug}/booking/${outcome.token}`;
+    if (ctx.service.deposit_pence === 0) {
+      // Confirmation emails go out after the response, so the customer never waits for the email provider.
+      after(() => notifyBookingEvent(outcome.bookingId, "confirmation"));
+      redirect(page);
+    }
+
+    // A deposit is due: the slot is held while the customer pays on Stripe. The booking is confirmed
+    // (and the emails sent) by the Stripe webhook once the payment arrives.
+    let checkoutUrl: string;
+    try {
+      checkoutUrl = await startDepositCheckout(db, {
+        bookingId: outcome.bookingId, serviceName: ctx.service.name, depositPence: ctx.service.deposit_pence, customerEmail: input.email,
+        business: { name: business.name, slug: business.slug, stripe_account_id: business.stripe_account_id! },
+        siteUrl: publicEnv().NEXT_PUBLIC_SITE_URL, token: outcome.token,
+      });
+    } catch (e) {
+      console.error("could not start deposit checkout", e instanceof Error ? e.message : e);
+      await db.from("bookings").update({ status: "cancelled", cancelled_by: "business" }).eq("id", outcome.bookingId); // free the held slot
+      return { error: "We couldn't start the payment, so no time has been held. Please try again.", values };
+    }
+    redirect(checkoutUrl);
   }
   if (outcome.reason === "deposit_unavailable") {
     return { error: "This service needs a deposit, which isn't available online yet. Please contact the business.", values };

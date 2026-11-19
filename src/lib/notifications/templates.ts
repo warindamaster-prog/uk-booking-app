@@ -79,6 +79,16 @@ ${links.map(([k, v]) => `<p><a href="${escapeHtml(v)}">${escapeHtml(k)}</a></p>`
   return { text, html };
 }
 
+/** What happened to the deposit, when there was one. */
+function depositSentence(d: EmailData): string {
+  if (d.depositPence <= 0) return "";
+  const amount = formatPence(d.depositPence);
+  if (d.depositStatus === "refunded") return ` Your deposit of ${amount} has been refunded to your card. It can take 5 to 10 days to appear.`;
+  if (d.depositStatus === "paid") return ` Your deposit of ${amount} will be refunded to your card.`;
+  if (d.depositStatus === "retained") return ` ${d.businessName} has kept your deposit of ${amount}.`;
+  return "";
+}
+
 export function renderEmail(kind: EmailKind, recipient: Recipient, d: EmailData): Rendered {
   const when = formatDateTime(d.startsAt, d.tz);
   const rows = details(d, recipient);
@@ -111,7 +121,7 @@ export function renderEmail(kind: EmailKind, recipient: Recipient, d: EmailData)
       return { subject: oneLine(`Your booking has moved: ${d.serviceName} on ${when}`),
         ...layout("Your booking has moved", `Hi ${d.customerName}, ${d.businessName} has moved your booking to a new time. The new details are below.`, rows, manage, foot) };
     case "cancellation": {
-      const who = d.cancelledBy === "business" ? `${d.businessName} has cancelled your booking.` : "You have cancelled your booking.";
+      const who = (d.cancelledBy === "business" ? `${d.businessName} has cancelled your booking.` : "You have cancelled your booking.") + depositSentence(d);
       return { subject: oneLine(`Booking cancelled: ${d.serviceName} on ${when}`),
         ...layout("Your booking is cancelled", `Hi ${d.customerName}, ${who}`, rows, [], foot) };
     }
