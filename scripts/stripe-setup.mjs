@@ -13,7 +13,11 @@ if (!key) {
   process.exit(1);
 }
 // STRIPE_API_HOST/PORT only exist so the script can be tried against a local fake server.
-const stripe = new Stripe(key, process.env.STRIPE_API_HOST ? { host: process.env.STRIPE_API_HOST, port: process.env.STRIPE_API_PORT, protocol: "http" } : {});
+const stripe = new Stripe(key, {
+  ...(process.env.STRIPE_API_HOST ? { host: process.env.STRIPE_API_HOST, port: process.env.STRIPE_API_PORT, protocol: "http" } : {}),
+  // STRIPE_USE_FETCH=1: use fetch instead of node:https, for networks where requests go through an HTTP proxy.
+  ...(process.env.STRIPE_USE_FETCH ? { httpClient: Stripe.createFetchHttpClient() } : {}),
+});
 
 const PLANS = [
   // first person, each extra person (pence), per billing period
