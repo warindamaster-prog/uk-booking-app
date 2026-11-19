@@ -36,3 +36,6 @@
 - Customers finishing a deposit payment later: today an abandoned payment simply releases the slot and they book again
 - Letting customers reschedule (and keep their deposit) themselves
 - Partial refunds and a "refund/keep" decision when a booking is cancelled inside the cancellation window by the customer's request through the shop
+- Switching between monthly and yearly billing after subscribing (use the Stripe customer portal only if you enable plan switching there)
+- VAT numbers for business customers and VAT-compliant invoice branding (Stripe's own invoices are used)
+- Dunning emails beyond Stripe's defaults, and a clearer screen for shops whose card has failed

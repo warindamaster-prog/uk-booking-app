@@ -32,7 +32,7 @@ Customers book at `/b/<slug>` with no account. Pages that read or write bookings
 - Every business gets a 60-day free trial with no card. While `BILLING_ENABLED=false` (the default) nothing is charged, Stripe is not called, and booking pages stay open even after the trial.
 - The number of staff paid for (`business_billing.staff_seats`) is enforced by a database trigger: you cannot have more active staff than seats.
 - Seat changes: during the trial they apply immediately. On a paid subscription a reduction is scheduled for the end of the current period (`next_staff_seats`, `next_price_pence`, `change_effective_at`), so this period's price is unchanged and the next one drops.
-- Real card billing (Stripe Billing) is a later step.
+- Real card billing is built (see below) and stays switched off until `BILLING_ENABLED=true`.
 
 ## Team levels (optional)
 
@@ -89,5 +89,15 @@ Vercel Cron also works on plans that allow frequent schedules (Hobby is limited 
 - Cancelling: a customer who cancels (only possible before the cancellation window) gets the deposit back. When the shop cancels, the owner chooses to refund or keep it. Failed refunds are retried by the reminder job.
 - A service with a deposit can't be booked online until the shop's Stripe account is connected and able to take payments.
 - Setup is described in `.env.example` (OAuth client ID, redirect URI, webhook endpoint and secret). Use Stripe test mode first.
+
+## Card payments: the shop's plan (Stripe Billing)
+
+Switched on with `BILLING_ENABLED=true`; until then every shop keeps its free trial and nothing here is used.
+
+- One-time setup: add `STRIPE_SECRET_KEY` (test key first) to `.env.local`, run `npm run stripe:setup`, and put the three printed ids in the environment. It creates a monthly and a yearly price (first person £15 or £150, each extra person £2 or £20, before VAT) as Stripe "graduated" prices, and a 20% VAT rate. In Stripe, also save the default **Customer portal** settings (Settings > Billing > Customer portal) so shops can update their card and cancel.
+- A shop adds a card from Dashboard > Billing. The free trial is kept: the card is saved and charged only when the trial ends (Stripe needs at least 48 hours of trial left to do this; closer than that, the card is charged straight away).
+- The number of people (quantity) is the number of seats. **Adding** seats is charged immediately, prorated. **Reducing** seats takes effect at the next renewal: this period's price is unchanged and the next one drops (for example 3 people pay £19 now, then £17).
+- The Stripe webhook keeps status and renewal date in step (`sync_subscription`); a reduction is applied when the period rolls over. If a card fails, the shop is `past_due` and its page stays open; `unpaid` or cancelled closes the page.
+- Webhook endpoint: `/api/stripe/webhook` (events listed in `.env.example`).
 
 More sections (Stripe, Resend, cron) are added as those steps land. See `TODO.md` for what is intentionally left for later.

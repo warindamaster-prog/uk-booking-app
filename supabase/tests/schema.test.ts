@@ -759,3 +759,87 @@ describe("deposit payments (Stripe webhook functions)", () => {
     await expect(as(A, "a@x.com", () => db.query(`select public.record_deposit_outcome($1,'refunded')`, [bizA]))).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("subscriptions: syncing with Stripe", () => {
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  let n = 0;
+  const shop = async (seats: number, interval = "month") => {
+    const i = ++n, uid = `00000000-0000-0000-0000-0000000000f${i}`, email = `sub${i}@x.com`;
+    await db.exec(`insert into auth.users values ('${uid}','${email}')`);
+    const id = (await as(uid, email, () => db.query<{ id: string }>(
+      `select public.create_business('Sub ${i}','sub-${i}','Owner',$1,'07700 900003',$2,$3) id`, [email, seats, interval]))).rows[0].id;
+    return { id, uid, email };
+  };
+  const billing = async (id: string) => (await db.query<Record<string, unknown>>(`select * from business_billing where business_id=$1`, [id])).rows[0];
+  const sync = (id: string, o: { sub?: string; cust?: string; status?: string; end?: string; interval?: string; qty?: number | null } = {}) =>
+    asServer(() => db.query(`select public.sync_subscription($1,$2,$3,$4,$5,$6,$7)`,
+      [id, o.sub ?? "sub_1", o.cust ?? "cus_1", o.status ?? "active", o.end ?? new Date(Date.now() + 30 * 86_400_000).toISOString(), o.interval ?? "month", o.qty === undefined ? null : o.qty]));
+
+  it("records the subscription, status and period end, and is repeatable", async () => {
+    const o = await shop(3);
+    const end = new Date(Date.now() + 20 * 86_400_000).toISOString();
+    await sync(o.id, { sub: "sub_a", cust: "cus_a", status: "trialing", end, qty: 3 });
+    await sync(o.id, { sub: "sub_a", cust: "cus_a", status: "trialing", end, qty: 3 });
+    const b = await billing(o.id);
+    expect(b).toMatchObject({ stripe_subscription_id: "sub_a", stripe_customer_id: "cus_a", status: "trialing", staff_seats: 3, current_price_pence: 1900 });
+    expect((b.current_period_end as Date).toISOString()).toBe(end);
+    await sync(o.id, { sub: "sub_a", cust: "cus_a", status: "past_due", end, qty: 3 });
+    expect((await billing(o.id)).status).toBe("past_due");
+    await sync(o.id, { sub: "sub_a", cust: "cus_a", status: "canceled", end, qty: 3 });
+    expect((await billing(o.id)).status).toBe("canceled");
+  });
+
+  it("seats follow Stripe upwards but never downwards", async () => {
+    const o = await shop(3);
+    await sync(o.id, { sub: "sub_b", cust: "cus_b", qty: 5 });
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 5, current_price_pence: 2300 });
+    await sync(o.id, { sub: "sub_b", cust: "cus_b", qty: 4 }); // Stripe lowered early for a scheduled reduction
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 5, current_price_pence: 2300 });
+  });
+
+  it("a scheduled reduction waits for the period to roll over, then applies: pay 19 now, 17 next", async () => {
+    const o = await shop(3);
+    await sync(o.id, { sub: "sub_c", cust: "cus_c", qty: 3, end: new Date(Date.now() + 10 * 86_400_000).toISOString() });
+    await as(o.uid, o.email, () => db.query(`select public.change_staff_seats($1,2)`, [o.id]));
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 3, current_price_pence: 1900, next_staff_seats: 2, next_price_pence: 1700 });
+    await sync(o.id, { sub: "sub_c", cust: "cus_c", qty: 2, end: new Date(Date.now() + 10 * 86_400_000).toISOString() }); // an unrelated update mid-period
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 3, current_price_pence: 1900, next_staff_seats: 2 });
+    await db.query(`update business_billing set change_effective_at = now() - interval '1 minute' where business_id=$1`, [o.id]);
+    await sync(o.id, { sub: "sub_c", cust: "cus_c", qty: 2, end: new Date(Date.now() + 40 * 86_400_000).toISOString() }); // the renewal
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 2, current_price_pence: 1700, next_staff_seats: null, next_price_pence: null, change_effective_at: null });
+  });
+
+  it("buying more seats drops a pending reduction that no longer makes sense", async () => {
+    const o = await shop(3);
+    await sync(o.id, { sub: "sub_d", cust: "cus_d", qty: 3, end: new Date(Date.now() + 10 * 86_400_000).toISOString() });
+    await as(o.uid, o.email, () => db.query(`select public.change_staff_seats($1,2)`, [o.id]));
+    await asServer(() => db.query(`select public.apply_seat_increase($1, 4)`, [o.id]));
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 4, current_price_pence: 2100, next_staff_seats: null, next_price_pence: null });
+    await expect(asServer(() => db.query(`select public.apply_seat_increase($1, 4)`, [o.id]))).rejects.toThrow(/not an increase/);
+  });
+
+  it("refuses a seat increase without a subscription, bad statuses, and unknown businesses", async () => {
+    const o = await shop(2);
+    await expect(asServer(() => db.query(`select public.apply_seat_increase($1, 3)`, [o.id]))).rejects.toThrow(/no subscription/);
+    await expect(sync(o.id, { status: "incomplete" })).rejects.toThrow(/invalid status/);
+    await expect(sync("00000000-0000-4000-8000-00000000dead")).rejects.toThrow(/not found/);
+  });
+
+  it("one Stripe customer or subscription belongs to one business", async () => {
+    const a = await shop(1), b = await shop(1);
+    await sync(a.id, { sub: "sub_x", cust: "cus_x" });
+    await expect(sync(b.id, { sub: "sub_y", cust: "cus_x" })).rejects.toThrow(/duplicate key/);
+    await expect(sync(b.id, { sub: "sub_x", cust: "cus_y" })).rejects.toThrow(/duplicate key/);
+    await db.query(`update businesses set stripe_account_id='acct_1' where id=$1`, [a.id]);
+    await expect(db.query(`update businesses set stripe_account_id='acct_1' where id=$1`, [b.id])).rejects.toThrow(/duplicate key/);
+  });
+
+  it("is server-only", async () => {
+    const o = await shop(1);
+    await expect(as(o.uid, o.email, () => db.query(`select public.sync_subscription($1,'s','c','active',now(),'month',1)`, [o.id]))).rejects.toThrow(/permission denied/);
+    await expect(as(o.uid, o.email, () => db.query(`select public.apply_seat_increase($1,2)`, [o.id]))).rejects.toThrow(/permission denied/);
+  });
+});

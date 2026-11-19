@@ -2,6 +2,8 @@ import type Stripe from "stripe";
 import { after } from "next/server";
 import { notifyBookingEvent } from "@/lib/notifications/service";
 import { getStripe } from "@/lib/stripe/client";
+import { createBillingStore } from "@/lib/stripe/billing-service";
+import { handlePlatformEvent } from "@/lib/stripe/billing-events";
 import { handleConnectEvent } from "@/lib/stripe/events";
 import { createPaymentStore } from "@/lib/stripe/store";
 import { verifyStripeEvent } from "@/lib/stripe/verify";
@@ -31,7 +33,7 @@ export async function POST(request: Request) {
           refund: async (account, paymentIntent, key) => getStripe().refunds.create({ payment_intent: paymentIntent }, { stripeAccount: account, idempotencyKey: key }),
           notifyConfirmed: (bookingId) => after(() => notifyBookingEvent(bookingId, "confirmation")),
         })
-      : "ignored: platform events are handled in the billing step";
+      : await handlePlatformEvent(event, { store: createBillingStore(db), retrieveSubscription: (id) => getStripe().subscriptions.retrieve(id) });
     await db.from("stripe_events").insert({ event_id: event.id, type: event.type });
     return Response.json({ received: true, done });
   } catch (e) {
