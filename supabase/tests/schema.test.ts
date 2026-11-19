@@ -468,3 +468,75 @@ describe("staff levels and per-level prices", () => {
     expect((await db.query(`select 1 from service_level_prices where level_id=$1`, [senior])).rows).toHaveLength(0);
   });
 });
+
+describe("booking status and reschedule rules", () => {
+  const FUT = "2027-05-04"; // Tuesday
+  const PAST = "2020-01-07";
+  const at = (d: string, hhmm: string) => zonedToUtc(d, Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3)), "Europe/London").toISOString();
+  let n = 0;
+  const mk = async (when: string, status = "confirmed", staff = staffA) => (await db.query<{ id: string }>(
+    `insert into bookings(business_id,staff_id,service_id,customer_id,starts_at,ends_at,status,service_name,duration_minutes,price_pence,cancel_token_hash)
+     values($1,$2,$3,$4,$5,$5::timestamptz + interval '1 hour',$6,'Gel',60,3000,decode(md5($7),'hex')) returning id`,
+    [bizA, staff, svc, cus, when, status, `rule${n++}`])).rows[0].id;
+  const set = (id: string, sql: string, params: unknown[] = []) => db.query(`update bookings set ${sql} where id=$1`, [id, ...params]);
+  const status = async (id: string) => (await db.query<{ status: string }>(`select status from bookings where id=$1`, [id])).rows[0].status;
+
+  it("cancelling stamps cancelled_at and frees the slot", async () => {
+    const id = await mk(at(FUT, "09:00"));
+    await set(id, `status='cancelled', cancelled_by='business'`);
+    const r = (await db.query<{ cancelled_at: Date | null; cancelled_by: string }>(`select cancelled_at, cancelled_by from bookings where id=$1`, [id])).rows[0];
+    expect(r.cancelled_at).toBeInstanceOf(Date);
+    expect(r.cancelled_by).toBe("business");
+    await mk(at(FUT, "09:00")); // the same time can now be booked again
+  });
+
+  it("only allows the defined status changes", async () => {
+    const id = await mk(at(FUT, "11:00"));
+    await set(id, `status='cancelled'`);
+    await expect(set(id, `status='confirmed'`)).rejects.toThrow(/invalid_booking_transition/); // cancelled is final
+    const hold = await mk(at(FUT, "12:30"), "pending_payment");
+    await set(hold, `status='confirmed'`);
+    expect(await status(hold)).toBe("confirmed");
+    await expect(set(hold, `status='pending_payment'`)).rejects.toThrow(/invalid_booking_transition/);
+    await expect(set(hold, `status='expired'`)).rejects.toThrow(/invalid_booking_transition/);
+  });
+
+  it("no-show only after the start time, and can be undone", async () => {
+    const future = await mk(at(FUT, "14:30"));
+    await expect(set(future, `status='no_show'`)).rejects.toThrow(/after it starts/);
+    const past = await mk(at(PAST, "10:00"));
+    await set(past, `status='no_show'`);
+    expect(await status(past)).toBe("no_show");
+    await set(past, `status='confirmed'`);
+    expect(await status(past)).toBe("confirmed");
+  });
+
+  it("reschedules upcoming bookings, resets the reminder, and the constraint still applies", async () => {
+    const a = await mk(at(FUT, "16:00"));
+    await db.query(`update bookings set reminder_sent_at=now() where id=$1`, [a]);
+    await set(a, `starts_at=$2, ends_at=$2::timestamptz + interval '1 hour'`, [at(FUT, "17:30")]);
+    const r = (await db.query<{ reminder_sent_at: Date | null; starts_at: Date }>(`select reminder_sent_at, starts_at from bookings where id=$1`, [a])).rows[0];
+    expect(r.reminder_sent_at).toBeNull();
+    expect(r.starts_at.toISOString()).toBe(at(FUT, "17:30"));
+    const b = await mk(at(FUT, "19:00"));
+    await expect(set(b, `starts_at=$2, ends_at=$2::timestamptz + interval '1 hour'`, [at(FUT, "17:45")])).rejects.toThrow(/no_double_booking/);
+  });
+
+  it("refuses to move past or cancelled bookings", async () => {
+    const past = await mk(at(PAST, "12:00"));
+    await expect(set(past, `starts_at=$2`, [at(FUT, "10:00")])).rejects.toThrow(/only upcoming bookings/);
+    const gone = await mk(at(FUT, "20:30"));
+    await set(gone, `status='cancelled'`);
+    await expect(set(gone, `starts_at=$2`, [at(FUT, "21:30")])).rejects.toThrow(/only upcoming bookings/);
+  });
+
+  it("applies to the owner's and staff members' own bookings through RLS as well", async () => {
+    const id = await mk(at(FUT, "08:00"));
+    await as(A, "a@x.com", () => db.query(`update bookings set status='cancelled', cancelled_by='business' where id=$1`, [id]));
+    expect(await status(id)).toBe("cancelled");
+    const other = await mk(at(FUT, "08:00"));
+    const res = await as(B, "b@x.com", () => db.query(`update bookings set status='cancelled' where id=$1 returning id`, [other]));
+    expect(res.rows).toHaveLength(0); // another business can't touch it
+    expect(await status(other)).toBe("confirmed");
+  });
+});

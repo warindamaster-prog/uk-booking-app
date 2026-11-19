@@ -21,3 +21,7 @@
 - Different duration or buffers by team level (levels change price only)
 - Staff photos on the booking page
 - Group classes (several customers per time slot), room or equipment bookings, and multi-service bookings
+- Calendar as an hour-by-hour grid (it is currently a list per day, which is easier to read on a phone), with working hours shaded
+- Creating bookings from the dashboard (phone and walk-in bookings)
+- Notes on a booking or customer
+- Emails when the business cancels or moves a booking (hooks are marked in code; they arrive with the emails step), and refunding a deposit when the business cancels (with Stripe)

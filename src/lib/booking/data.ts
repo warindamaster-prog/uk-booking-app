@@ -84,14 +84,30 @@ export type BookingContext = {
  * `staffChoice` is "any", a staff id, "level:<id>" or "level:none".
  * Returns null if the service isn't bookable or nobody matches the choice.
  */
+export type LoaderBusiness = Pick<PublicBusiness, "id" | "timezone" | "slot_interval_minutes" | "min_notice_minutes" | "max_advance_days">;
+
+export type LoadOptions = {
+  /** Defaults to the service-role client. The dashboard passes the signed-in user's client (RLS applies). */
+  db?: ReturnType<typeof createAdminClient>;
+  /** Leave this booking out of the busy times (used when moving it). */
+  excludeBookingId?: string;
+  /** The business may override customer-facing limits. */
+  minNoticeMinutes?: number;
+  maxAdvanceDays?: number;
+  /** An existing booking may be for a service that has since been hidden. */
+  allowInactiveService?: boolean;
+};
+
 export async function loadBookingContext(
-  business: PublicBusiness, serviceId: string, staffChoice: string,
-  fromYmd: string, days: number, now: Date = new Date(),
+  business: LoaderBusiness, serviceId: string, staffChoice: string,
+  fromYmd: string, days: number, now: Date = new Date(), opts: LoadOptions = {},
 ): Promise<BookingContext | null> {
-  const db = createAdminClient();
-  const { data: service } = await db.from("services")
+  const db = opts.db ?? createAdminClient();
+  let serviceQuery = db.from("services")
     .select("id, name, description, duration_minutes, buffer_before_minutes, buffer_after_minutes, price_pence, deposit_pence")
-    .eq("id", serviceId).eq("business_id", business.id).eq("active", true).maybeSingle();
+    .eq("id", serviceId).eq("business_id", business.id);
+  if (!opts.allowInactiveService) serviceQuery = serviceQuery.eq("active", true);
+  const { data: service } = await serviceQuery.maybeSingle();
   if (!service) return null;
   const svc = service as PublicService;
 
@@ -121,12 +137,15 @@ export async function loadBookingContext(
   const from = new Date(dayBounds(fromYmd, business.timezone).start.getTime() - 86_400_000).toISOString();
   const to = new Date(dayBounds(addDaysYmd(fromYmd, days), business.timezone).start.getTime() + 86_400_000).toISOString();
 
+  let bookingsQuery = db.from("bookings").select("staff_id, starts_at, ends_at, buffer_before_minutes, buffer_after_minutes, status, hold_expires_at")
+      .eq("business_id", business.id).in("staff_id", ids).in("status", ["pending_payment", "confirmed", "completed", "no_show"])
+      .lt("starts_at", to).gt("ends_at", from);
+  if (opts.excludeBookingId) bookingsQuery = bookingsQuery.neq("id", opts.excludeBookingId);
+
   const [hours, off, bookings] = await Promise.all([
     db.from("working_hours").select("staff_id, weekday, start_minute, end_minute").eq("business_id", business.id).in("staff_id", ids),
     db.from("time_off").select("staff_id, starts_at, ends_at").eq("business_id", business.id).in("staff_id", ids).lt("starts_at", to).gt("ends_at", from),
-    db.from("bookings").select("staff_id, starts_at, ends_at, buffer_before_minutes, buffer_after_minutes, status, hold_expires_at")
-      .eq("business_id", business.id).in("staff_id", ids).in("status", ["pending_payment", "confirmed", "completed", "no_show"])
-      .lt("starts_at", to).gt("ends_at", from),
+    bookingsQuery,
   ]);
 
   const staff: StaffDay[] = chosen.map((s) => ({
@@ -142,8 +161,8 @@ export async function loadBookingContext(
     base: {
       tz: business.timezone, now,
       slotIntervalMinutes: business.slot_interval_minutes,
-      minNoticeMinutes: business.min_notice_minutes,
-      maxAdvanceDays: business.max_advance_days,
+      minNoticeMinutes: opts.minNoticeMinutes ?? business.min_notice_minutes,
+      maxAdvanceDays: opts.maxAdvanceDays ?? business.max_advance_days,
       service: { durationMinutes: svc.duration_minutes, bufferBeforeMinutes: svc.buffer_before_minutes, bufferAfterMinutes: svc.buffer_after_minutes },
       staff,
     },

@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BookingCard } from "@/components/booking-card";
 import { requireBusiness } from "@/lib/auth";
+import { rangeFor } from "@/lib/calendar";
+import { fetchBookings, LIVE_STATUSES } from "@/lib/dashboard/bookings";
+import { todayYmd } from "@/lib/time";
 import { publicEnv } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -8,7 +12,9 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default async function DashboardPage({
   searchParams,
 }: { searchParams: Promise<{ logo?: string }> }) {
-  const { business, role } = await requireBusiness();
+  const { supabase, business, role } = await requireBusiness();
+  const { from, to } = rangeFor("day", todayYmd(business.timezone), business.timezone);
+  const { rows: today } = await fetchBookings(supabase, business.id, { startsFrom: from, startsBefore: to, statuses: LIVE_STATUSES });
   const { logo } = await searchParams;
   const publicUrl = `${publicEnv().NEXT_PUBLIC_SITE_URL}/b/${business.slug}`;
 
@@ -19,6 +25,13 @@ export default async function DashboardPage({
           Your business was created, but the logo couldn&apos;t be uploaded. You can add it later.
         </p>
       )}
+      <section aria-labelledby="today-h" className="space-y-2">
+        <h2 id="today-h" className="text-xl font-semibold">Today</h2>
+        {today.length ? (
+          <ul className="space-y-2">{today.map((b) => <li key={b.id}><BookingCard b={b} tz={business.timezone} showStaff={role === "owner"} compact /></li>)}</ul>
+        ) : <p>No bookings today.</p>}
+        <p><Link href="/dashboard/calendar" className="text-sm underline">Open the calendar</Link></p>
+      </section>
       <p>Your booking page: <a className="underline" href={publicUrl}>{publicUrl}</a></p>
       {role === "owner" && (
         <p>

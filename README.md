@@ -38,4 +38,11 @@ Customers book at `/b/<slug>` with no account. Pages that read or write bookings
 
 Businesses whose prices depend on who does the work can add levels (for example Junior and Senior) under Staff, give each person a level and a short description, and set a price per level on each service. Without levels nothing changes: every service has one price. If a service costs the same for everyone who offers it, customers see a simple "Anyone" option. If prices differ, "Anyone" is replaced by one option per level ("Any Junior · £25"), so the price is always known before booking. The booking price is stored with the booking, so later price changes never alter existing bookings.
 
+## Dashboard: calendar and bookings
+
+- Calendar: day and week views, filter by person (owner), shows bookings and days off. Bookings: upcoming, past and cancelled, 25 per page.
+- Each booking can be cancelled, rescheduled (the new time is checked by the availability engine and by the database constraint) and marked as a no-show once it has started. A no-show can be undone.
+- Owners see every booking. A staff member sees only their own; this is enforced by row level security, not by the screens.
+- Which status changes are allowed is decided by a database trigger (`enforce_booking_rules`), so they cannot be bypassed.
+
 More sections (Stripe, Resend, cron) are added as those steps land. See `TODO.md` for what is intentionally left for later.
