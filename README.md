@@ -59,20 +59,10 @@ Booking confirmation (customer and business), 24-hour reminder, cancellation and
 
 ### Reminder job
 
-Reminders, retries and the clean-up of expired unpaid holds run from `GET or POST /api/cron/reminders` with the header `Authorization: Bearer <CRON_SECRET>`. Call it every 15 minutes. Free option: a GitHub Actions workflow in your own repo:
+Reminders, retries and the clean-up of expired unpaid holds run from `GET or POST /api/cron/reminders` with the header `Authorization: Bearer <CRON_SECRET>`. Two schedulers are set up in the repo:
 
-```yaml
-name: reminders
-on:
-  schedule: [{ cron: "*/15 * * * *" }]
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    steps:
-      - run: curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/cron/reminders"
-```
-
-Vercel Cron also works on plans that allow frequent schedules (Hobby is limited to once a day).
+- **Vercel Cron** (`vercel.json`): once a day at 07:00 UTC. Works with no extra setup, because Vercel sends `CRON_SECRET` itself. On the Hobby plan this is the most it allows, so a reminder goes out anywhere from 1 to 24 hours before the appointment, depending on when the daily run lands.
+- **GitHub Actions** (`.github/workflows/reminders.yml`): every 15 minutes, so reminders go out close to 24 hours before. Add two repository secrets (Settings > Secrets and variables > Actions): `CRON_SECRET` (the same value as in Vercel) and `APP_URL` (your site address, no trailing slash). The job is safe to run from both: each reminder is sent once.
 
 ## Customers and privacy (UK GDPR / PECR)
 

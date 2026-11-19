@@ -1,0 +1,19 @@
+# Calls the reminder job every 15 minutes (reminders, retries of failed emails, release of expired
+# unpaid holds). Needs two repository secrets: CRON_SECRET (the same value as in Vercel) and
+# APP_URL (for example https://your-site.vercel.app, no trailing slash).
+name: reminders
+on:
+  schedule: [{ cron: "*/15 * * * *" }]
+  workflow_dispatch: {}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Call the reminder job
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$APP_URL" ]; then echo "Set the CRON_SECRET and APP_URL repository secrets"; exit 1; fi
+          curl -fsS --retry 2 --max-time 60 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reminders"
