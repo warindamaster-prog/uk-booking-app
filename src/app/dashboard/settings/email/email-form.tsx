@@ -4,7 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { removeEmailSettings, saveEmailSettings } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
 import type { FormState } from "@/lib/form";
-import { EMAIL_PRESETS } from "@/lib/validation/email-settings";
+import { EMAIL_PRESETS } from "@/lib/email-presets";
 
 type Saved = { host: string; port: number; user: string; fromName: string };
 
