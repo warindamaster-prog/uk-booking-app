@@ -6,7 +6,7 @@ import { groupByLocalDay, parseCalendarParams, rangeFor, shiftDate, type Calenda
 import { fetchBookings, LIVE_STATUSES } from "@/lib/dashboard/bookings";
 import { addDaysYmd, formatYmd, todayYmd, zonedToUtc } from "@/lib/time";
 
-export const metadata: Metadata = { title: "Calendar" };
+export const metadata: Metadata = { title: "Schedule" };
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -58,7 +58,7 @@ export default async function CalendarPage({ searchParams }: Props) {
 
   return (
     <main className="space-y-6">
-      <h1 className="text-2xl font-semibold">Calendar</h1>
+      <h1 className="text-2xl font-semibold">Schedule</h1>
 
       <div className="flex flex-wrap items-center gap-2">
         <Link href={href({ date: shiftDate(p.view, p.date, -1) })} className={pill} aria-label={`Previous ${p.view}`}>← Previous</Link>

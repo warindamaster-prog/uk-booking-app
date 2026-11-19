@@ -32,7 +32,7 @@ export default async function DashboardPage({
         {today.length ? (
           <ul className="space-y-2">{today.map((b) => <li key={b.id}><BookingCard b={b} tz={business.timezone} showStaff={role === "owner"} compact /></li>)}</ul>
         ) : <p>No bookings today.</p>}
-        <p><Link href="/dashboard/calendar" className="text-sm underline">Open the calendar</Link></p>
+        <p><Link href="/dashboard/calendar" className="text-sm underline">Open the schedule</Link></p>
       </section>
       <MonthSchedule ctx={ctx} params={{ month, staff }} />
       <p>Your booking page: <a className="underline" href={publicUrl}>{publicUrl}</a></p>

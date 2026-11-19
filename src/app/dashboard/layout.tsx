@@ -32,7 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </header>
       <nav aria-label="Dashboard" className="mb-8 flex flex-wrap gap-x-4 gap-y-2 border-b border-neutral-300 pb-3 text-sm dark:border-neutral-700">
         <Link href="/dashboard" className="underline-offset-4 hover:underline">Overview</Link>
-        <Link href="/dashboard/calendar" className="underline-offset-4 hover:underline">Calendar</Link>
+        <Link href="/dashboard/calendar" className="underline-offset-4 hover:underline">Schedule</Link>
         <Link href="/dashboard/bookings" className="underline-offset-4 hover:underline">Bookings</Link>
         {role === "owner" ? (
           <>
