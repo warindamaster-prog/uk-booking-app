@@ -32,3 +32,15 @@ export interface SmsProvider {
   readonly channel: "sms";
   send(message: SmsMessage): Promise<SendResult>;
 }
+
+/**
+ * Who sends what. Emails to customers and emails to the business can use different mailboxes
+ * (for example a Sales mailbox for "you have a new booking" alerts).
+ */
+export type Mailers = {
+  provider(recipient: "customer" | "business"): EmailProvider;
+  /** The sending address for that audience. With SMTP it must be the mailbox you log in to. */
+  fromAddress(recipient: "customer" | "business"): string;
+  /** The display name: the shop's own name for customers, a fixed name for business alerts. */
+  fromName(recipient: "customer" | "business", businessName: string): string;
+};

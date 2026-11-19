@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { runNotificationJobs } from "@/lib/notifications/jobs";
-import { getEmailProvider } from "@/lib/notifications/resend";
+import { createMailers } from "@/lib/notifications/resend";
 import { notifyConfig } from "@/lib/notifications/service";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -17,7 +17,7 @@ function authorised(request: Request): boolean {
 async function handle(request: Request) {
   if (!authorised(request)) return new Response("Unauthorized", { status: 401 });
   try {
-    const counts = await runNotificationJobs(createAdminClient(), getEmailProvider(), notifyConfig());
+    const counts = await runNotificationJobs(createAdminClient(), createMailers(), notifyConfig());
     return Response.json({ ok: true, ...counts });
   } catch (e) {
     console.error("cron failed", e instanceof Error ? e.message : e);

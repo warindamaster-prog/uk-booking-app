@@ -1,14 +1,14 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deriveCancelToken } from "@/lib/booking/token";
-import type { EmailProvider } from "./provider";
+import type { Mailers } from "./provider";
 import { buildIcs } from "./ics";
 import { MAX_ATTEMPTS, safeDisplayName } from "./rules";
 import { renderEmail, type EmailKind, type Recipient } from "./templates";
 
 type Db = ReturnType<typeof createAdminClient>;
 
-export type NotifyConfig = { siteUrl: string; emailFrom: string; tokenSecret: string };
+export type NotifyConfig = { siteUrl: string; tokenSecret: string };
 export type SendOutcome = "sent" | "skipped" | "failed" | "gave_up";
 export { MAX_ATTEMPTS };
 
@@ -25,7 +25,7 @@ const STATUS_OK: Record<EmailKind, string[]> = {
  * is given an idempotency key as a second guard. Failures are recorded for the retry job.
  */
 export async function sendNotification(
-  db: Db, provider: EmailProvider, cfg: NotifyConfig,
+  db: Db, mail: Mailers, cfg: NotifyConfig,
   req: { bookingId: string; kind: EmailKind; recipient: Recipient },
 ): Promise<SendOutcome> {
   const { data: b } = await db.from("bookings").select("*").eq("id", req.bookingId).maybeSingle();
@@ -70,8 +70,8 @@ export async function sendNotification(
   }) : null;
 
   try {
-    const sent = await provider.send({
-      from: `"${safeDisplayName(biz.name)}" <${cfg.emailFrom}>`,
+    const sent = await mail.provider(req.recipient).send({
+      from: `"${safeDisplayName(mail.fromName(req.recipient, biz.name))}" <${mail.fromAddress(req.recipient)}>`,
       to,
       replyTo: req.recipient === "customer" ? biz.email ?? undefined : cust.email ?? undefined,
       subject: rendered.subject, text: rendered.text, html: rendered.html,

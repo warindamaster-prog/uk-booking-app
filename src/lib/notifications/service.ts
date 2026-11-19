@@ -2,7 +2,7 @@ import "server-only";
 import { publicEnv } from "@/lib/env";
 import { bookingTokenSecret } from "@/lib/server-env";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getEmailProvider } from "./resend";
+import { createMailers } from "./resend";
 import { recipientsFor } from "./rules";
 import { sendNotification, type NotifyConfig } from "./send";
 import type { BookingEvent } from "./rules";
@@ -10,7 +10,6 @@ import type { BookingEvent } from "./rules";
 export function notifyConfig(): NotifyConfig {
   return {
     siteUrl: publicEnv().NEXT_PUBLIC_SITE_URL,
-    emailFrom: process.env.EMAIL_FROM ?? "bookings@example.com",
     tokenSecret: bookingTokenSecret(),
   };
 }
@@ -23,11 +22,11 @@ export function notifyConfig(): NotifyConfig {
 export async function notifyBookingEvent(bookingId: string, event: BookingEvent): Promise<void> {
   try {
     const db = createAdminClient();
-    const provider = getEmailProvider();
+    const mail = createMailers();
     const cfg = notifyConfig();
     const { data: b } = await db.from("bookings").select("cancelled_by").eq("id", bookingId).maybeSingle();
     await Promise.allSettled(recipientsFor(event, b?.cancelled_by ?? null).map((recipient) =>
-      sendNotification(db, provider, cfg, { bookingId, kind: event, recipient })));
+      sendNotification(db, mail, cfg, { bookingId, kind: event, recipient })));
   } catch (e) {
     console.error("notifyBookingEvent failed", bookingId, event, e instanceof Error ? e.message : e);
   }

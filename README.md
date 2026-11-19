@@ -51,6 +51,7 @@ Booking confirmation (customer and business), 24-hour reminder, cancellation and
 
 - Sending: your own mailbox over SMTP, or Resend. See `.env.example`. With neither configured, emails are printed to the console in development and fail visibly (and are retried) in production.
 - Customer emails are sent in the shop's name from the sending mailbox configured above, and replies always go to the shop's contact email (Reply-To). If the owner leaves "Show my contact details" on in Settings, the shop's email and phone also appear in customer emails and on the booking page.
+- Alerts to the shop ("you have a new booking", "a customer cancelled") can come from a different mailbox than customer emails: fill the `NOTIFY_*` lines in `.env.example` (for example a Sales mailbox). With SMTP, each `*_FROM` address must be the mailbox you log in to.
 - `EMAIL_OVERRIDE_TO` sends every email to one test address, so no real customer is emailed while testing.
 - SMS is designed as an interface (`src/lib/notifications/provider.ts`) but not implemented.
 - Every email is recorded in `booking_notifications`, which is unique per booking version, kind and recipient, so nothing is sent twice. Failures are retried up to 5 times.

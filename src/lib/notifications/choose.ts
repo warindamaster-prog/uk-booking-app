@@ -26,3 +26,21 @@ export class RedirectingEmailProvider implements EmailProvider {
     return this.inner.send({ ...m, to: this.to, subject: `[to ${m.to}] ${m.subject}`.replace(/[\r\n]+/g, " ").slice(0, 200) });
   }
 }
+
+export type SenderSettings = { customerFrom: string; businessFrom: string; businessName: string; separateBusinessMailbox: boolean };
+
+/**
+ * Customer emails use EMAIL_FROM. Alerts to the business use their own mailbox when NOTIFY_SMTP_HOST
+ * is set (NOTIFY_SMTP_USER / NOTIFY_SMTP_PASS / NOTIFY_EMAIL_FROM / NOTIFY_FROM_NAME), otherwise the
+ * same one as customers.
+ */
+export function senderSettings(env: Record<string, string | undefined>): SenderSettings {
+  const separate = !!env.NOTIFY_SMTP_HOST;
+  const customerFrom = env.EMAIL_FROM ?? "bookings@example.com";
+  return {
+    customerFrom,
+    businessFrom: separate ? env.NOTIFY_EMAIL_FROM ?? env.NOTIFY_SMTP_USER ?? customerFrom : customerFrom,
+    businessName: env.NOTIFY_FROM_NAME?.trim() || "Booking alerts",
+    separateBusinessMailbox: separate,
+  };
+}
