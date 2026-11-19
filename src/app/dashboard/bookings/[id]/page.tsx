@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireBusiness } from "@/lib/auth";
-import { allowedActions, STATUS_LABEL } from "@/lib/calendar";
+import { allowedActions, displayStatus, STATUS_LABEL } from "@/lib/calendar";
 import { fetchBooking } from "@/lib/dashboard/bookings";
 import { formatPence } from "@/lib/money";
 import { formatDateTime, formatTime } from "@/lib/time";
@@ -30,7 +30,7 @@ export default async function BookingPage({ params, searchParams }: {
       <p><Link href="/dashboard/bookings" className="text-sm underline">← All bookings</Link></p>
       <div>
         <h1 className="text-2xl font-semibold">{b.service_name}</h1>
-        <p className="mt-1"><span className="rounded border border-neutral-400 px-2 py-0.5 text-sm">{STATUS_LABEL[b.status] ?? b.status}</span></p>
+        <p className="mt-1"><span className="rounded border border-neutral-400 px-2 py-0.5 text-sm">{STATUS_LABEL[displayStatus(b)] ?? displayStatus(b)}</span></p>
       </div>
       {moved && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">Booking moved.</p>}
 

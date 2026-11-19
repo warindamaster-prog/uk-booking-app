@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allowedActions, groupByLocalDay, parseCalendarParams, rangeFor, shiftDate, weekDays, weekStart } from "../calendar";
+import { allowedActions, displayStatus, groupByLocalDay, parseCalendarParams, rangeFor, shiftDate, weekDays, weekStart } from "../calendar";
 
 describe("calendar params", () => {
   const today = "2026-06-10";
@@ -67,5 +67,27 @@ describe("allowedActions", () => {
   it("no-shows can be undone; cancelled bookings have no actions", () => {
     expect(allowedActions({ status: "no_show", starts_at: past }, now).undoNoShow).toBe(true);
     expect(allowedActions({ status: "cancelled", starts_at: future }, now)).toEqual({ cancel: false, reschedule: false, markNoShow: false, undoNoShow: false });
+  });
+});
+
+describe("displayStatus", () => {
+  const now = new Date("2026-06-10T12:00:00Z");
+  const b = (status: string, end: string | undefined, start = "2026-06-10T10:00:00Z") => ({ status, starts_at: start, ends_at: end });
+  it("shows a confirmed booking as completed once it has ended", () => {
+    expect(displayStatus(b("confirmed", "2026-06-10T11:00:00Z"), now)).toBe("completed");
+    expect(displayStatus(b("confirmed", "2026-06-10T12:00:00Z"), now)).toBe("completed");
+  });
+  it("keeps confirmed while it is still on or in the future", () => {
+    expect(displayStatus(b("confirmed", "2026-06-10T12:30:00Z"), now)).toBe("confirmed");
+    expect(displayStatus(b("confirmed", "2026-06-11T11:00:00Z", "2026-06-11T10:00:00Z"), now)).toBe("confirmed");
+  });
+  it("falls back to the start time when there is no end time", () => {
+    expect(displayStatus(b("confirmed", undefined, "2026-06-10T09:00:00Z"), now)).toBe("completed");
+  });
+  it("never changes other statuses", () => {
+    for (const s of ["cancelled", "no_show", "pending_payment", "expired", "completed"]) expect(displayStatus(b(s, "2026-06-10T11:00:00Z"), now)).toBe(s);
+  });
+  it("does not change what can be done: a past confirmed booking can still be marked no-show", () => {
+    expect(allowedActions({ status: "confirmed", starts_at: "2026-06-10T10:00:00Z" }, now).markNoShow).toBe(true);
   });
 });

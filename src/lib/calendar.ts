@@ -63,6 +63,16 @@ export const STATUS_LABEL: Record<string, string> = {
   completed: "Completed",
 };
 
+/**
+ * The status to show people. A confirmed booking whose time has passed reads as "completed" without
+ * anyone having to mark it. Only the display changes: the stored status (and what can be done to the
+ * booking, such as marking a no-show) still follows the real value.
+ */
+export function displayStatus(b: { status: string; ends_at?: string | Date | null; starts_at: string | Date }, now: Date = new Date()): string {
+  const end = new Date(b.ends_at ?? b.starts_at);
+  return b.status === "confirmed" && end <= now ? "completed" : b.status;
+}
+
 /** What can be done to a booking right now (mirrors the database rules; the database is the judge). */
 export function allowedActions(b: { status: string; starts_at: string | Date }, now: Date = new Date()) {
   const started = new Date(b.starts_at) <= now;

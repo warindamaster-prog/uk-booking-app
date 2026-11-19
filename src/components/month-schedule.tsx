@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { groupByLocalDay, STATUS_LABEL } from "@/lib/calendar";
+import { displayStatus, groupByLocalDay, STATUS_LABEL } from "@/lib/calendar";
 import { fetchBookings, LIVE_STATUSES, type BookingView } from "@/lib/dashboard/bookings";
 import { dayStatus, monthBounds, monthDays, monthLabel, parseMonth, shiftMonth, type DayStatus } from "@/lib/schedule";
 import { formatTime, formatYmd, todayYmd } from "@/lib/time";
@@ -71,7 +71,7 @@ export async function MonthSchedule({ ctx, params }: { ctx: Ctx; params: { month
             className="block truncate rounded border border-neutral-300 px-1 text-[11px] hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900">
             {formatTime(b.starts_at, tz)} {b.customer?.name ?? "Customer"}
             {everyone && ` · ${b.staffName}`}
-            {b.status !== "confirmed" && ` (${(STATUS_LABEL[b.status] ?? b.status).toLowerCase()})`}
+            {displayStatus(b) !== "confirmed" && ` (${(STATUS_LABEL[displayStatus(b)] ?? displayStatus(b)).toLowerCase()})`}
           </Link>
         ))}
         {items.length > max && <Link href={dayHref(d)} className="block text-[11px] underline">+{items.length - max} more</Link>}

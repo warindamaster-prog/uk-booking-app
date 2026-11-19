@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOwner } from "@/lib/auth";
-import { STATUS_LABEL } from "@/lib/calendar";
+import { displayStatus, STATUS_LABEL } from "@/lib/calendar";
 import { formatPence } from "@/lib/money";
 import { formatDate, formatDateTime } from "@/lib/time";
 import { uuid } from "@/lib/validation/catalog";
@@ -21,7 +21,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   if (!c || c.anonymised_at) notFound();
 
   const { data: bookings } = await supabase.from("bookings")
-    .select("id, service_name, starts_at, status, price_pence").eq("business_id", business.id).eq("customer_id", c.id)
+    .select("id, service_name, starts_at, ends_at, status, price_pence").eq("business_id", business.id).eq("customer_id", c.id)
     .order("starts_at", { ascending: false }).limit(50);
   const upcoming = (bookings ?? []).some((b) => (b.status === "confirmed" || b.status === "pending_payment") && new Date(b.starts_at) > new Date());
   const row = "py-2";
@@ -48,7 +48,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
               <li key={b.id}>
                 <Link href={`/dashboard/bookings/${b.id}`} className="flex justify-between gap-3 p-3 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-900">
                   <span>{formatDateTime(b.starts_at, business.timezone)} · {b.service_name}</span>
-                  <span>{formatPence(b.price_pence)} · {STATUS_LABEL[b.status] ?? b.status}</span>
+                  <span>{formatPence(b.price_pence)} · {STATUS_LABEL[displayStatus(b)] ?? displayStatus(b)}</span>
                 </Link>
               </li>
             ))}
