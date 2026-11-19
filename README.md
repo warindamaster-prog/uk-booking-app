@@ -47,7 +47,7 @@ Businesses whose prices depend on who does the work can add levels (for example 
 
 ## Emails
 
-Booking confirmation (customer and business), 24-hour reminder, cancellation and reschedule notices, each with a calendar (.ics) attachment. Customers get a private link to view and cancel their booking. They can cancel online until the business's cancellation window starts (Settings, default 24 hours); the database enforces this.
+Booking confirmation (customer and business), 1-hour reminder, cancellation and reschedule notices, each with a calendar (.ics) attachment. Customers get a private link to view and cancel their booking. They can cancel online until the business's cancellation window starts (Settings, default 24 hours); the database enforces this.
 
 - Sending: your own mailbox over SMTP, or Resend. See `.env.example`. With neither configured, emails are printed to the console in development and fail visibly (and are retried) in production.
 - Customer emails are sent in the shop's name from the sending mailbox configured above, and replies always go to the shop's contact email (Reply-To). If the owner leaves "Show my contact details" on in Settings, the shop's email and phone also appear in customer emails and on the booking page.
@@ -61,8 +61,9 @@ Booking confirmation (customer and business), 24-hour reminder, cancellation and
 
 Reminders, retries and the clean-up of expired unpaid holds run from `GET or POST /api/cron/reminders` with the header `Authorization: Bearer <CRON_SECRET>`. Two schedulers are set up in the repo:
 
-- **Vercel Cron** (`vercel.json`): once a day at 07:00 UTC. Works with no extra setup, because Vercel sends `CRON_SECRET` itself. On the Hobby plan this is the most it allows, so a reminder goes out anywhere from 1 to 24 hours before the appointment, depending on when the daily run lands.
-- **GitHub Actions** (`.github/workflows/reminders.yml`): every 15 minutes, so reminders go out close to 24 hours before. Add two repository secrets (Settings > Secrets and variables > Actions): `CRON_SECRET` (the same value as in Vercel) and `APP_URL` (your site address, no trailing slash). The job is safe to run from both: each reminder is sent once.
+- **GitHub Actions** (`.github/workflows/reminders.yml`): every 15 minutes. This is what sends the reminders: a customer is reminded about 1 hour before their appointment (45 to 60 minutes, depending on where the 15-minute run lands). Add two repository secrets (Settings > Secrets and variables > Actions): `CRON_SECRET` (the same value as in Vercel) and `APP_URL` (your site address, no trailing slash). A booking made less than an hour ahead is not reminded (it has just had its confirmation).
+- **Vercel Cron** (`vercel.json`): once a day at 07:00 UTC, as a safety net for clean-up and retries (expired holds, failed emails, refunds). It cannot send 1-hour reminders by itself: the Hobby plan only allows one run a day. On a plan with frequent crons, change the schedule in `vercel.json` to `*/15 * * * *`.
+- The job is safe to run from both: each reminder is sent once.
 
 ## Customers and privacy (UK GDPR / PECR)
 

@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isReminderDue } from "./due";
+import { isReminderDue, REMINDER_LEAD_MS } from "./due";
 import type { Mailers } from "./provider";
 import { settleDeposit } from "@/lib/stripe/service";
 import { MAX_ATTEMPTS, sendNotification, type NotifyConfig } from "./send";
@@ -18,8 +18,8 @@ export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConf
     .eq("status", "pending_payment").lt("hold_expires_at", now.toISOString());
   counts.expiredHolds = expired.count ?? 0;
 
-  // 2. Reminders: confirmed bookings starting within the next 24 hours that haven't had one.
-  const horizon = new Date(now.getTime() + 24 * 3_600_000).toISOString();
+  // 2. Reminders: confirmed bookings starting within the next hour that haven't had one.
+  const horizon = new Date(now.getTime() + REMINDER_LEAD_MS).toISOString();
   const { data: candidates } = await db.from("bookings")
     .select("id, status, starts_at, created_at, reminder_sent_at")
     .eq("status", "confirmed").is("reminder_sent_at", null)

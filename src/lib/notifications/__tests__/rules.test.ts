@@ -7,27 +7,28 @@ describe("isReminderDue", () => {
   const hours = (h: number) => new Date(now.getTime() + h * 3_600_000).toISOString();
   const ago = (h: number) => hours(-h);
   const b = (over: Partial<Parameters<typeof isReminderDue>[0]> = {}) =>
-    ({ status: "confirmed", starts_at: hours(20), created_at: ago(48), reminder_sent_at: null, ...over });
+    ({ status: "confirmed", starts_at: hours(0.75), created_at: ago(48), reminder_sent_at: null, ...over });
 
-  it("is due inside the 24 hour window for a booking made earlier", () => {
+  it("is due inside the one hour window for a booking made earlier", () => {
     expect(isReminderDue(b(), now)).toBe(true);
-    expect(isReminderDue(b({ starts_at: hours(24) }), now)).toBe(true);
-    expect(isReminderDue(b({ starts_at: hours(0.5) }), now)).toBe(true);
+    expect(isReminderDue(b({ starts_at: hours(1) }), now)).toBe(true);
+    expect(isReminderDue(b({ starts_at: hours(0.1) }), now)).toBe(true);
   });
   it("is not due before the window, after the start, or once sent", () => {
-    expect(isReminderDue(b({ starts_at: hours(24.1) }), now)).toBe(false);
+    expect(isReminderDue(b({ starts_at: hours(1.1) }), now)).toBe(false);
+    expect(isReminderDue(b({ starts_at: hours(20) }), now)).toBe(false);
     expect(isReminderDue(b({ starts_at: ago(1) }), now)).toBe(false);
     expect(isReminderDue(b({ reminder_sent_at: ago(1) }), now)).toBe(false);
   });
   it("only confirmed bookings get reminders", () => {
     for (const status of ["cancelled", "pending_payment", "expired", "no_show"]) expect(isReminderDue(b({ status }), now)).toBe(false);
   });
-  it("skips a booking made less than 24 hours ahead: it just got its confirmation", () => {
-    expect(isReminderDue(b({ starts_at: hours(10), created_at: ago(1) }), now)).toBe(false);
-    expect(isReminderDue(b({ starts_at: hours(23), created_at: ago(0.5) }), now)).toBe(false);
+  it("skips a booking made less than an hour ahead: it just got its confirmation", () => {
+    expect(isReminderDue(b({ starts_at: hours(0.5), created_at: ago(0.1) }), now)).toBe(false);
+    expect(isReminderDue(b({ starts_at: hours(0.9), created_at: ago(0.05) }), now)).toBe(false);
   });
   it("a booking moved into the window still gets a reminder (created long before, reminder flag reset)", () => {
-    expect(isReminderDue(b({ starts_at: hours(6), created_at: ago(200) }), now)).toBe(true);
+    expect(isReminderDue(b({ starts_at: hours(0.5), created_at: ago(200) }), now)).toBe(true);
   });
 });
 
