@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { cancelBooking, markNoShow, undoNoShow } from "./actions";
+import { cancelBooking, markNoShow, refundDeposit, undoNoShow } from "./actions";
 import { FormError } from "@/components/ui";
 import type { FormState } from "@/lib/form";
 
@@ -18,16 +18,17 @@ function Result({ state }: { state: FormState }) {
   );
 }
 
-export function BookingActions({ id, can, depositPaid }: { id: string; can: Can; depositPaid: boolean }) {
+export function BookingActions({ id, can, depositPaid, canRefund = false }: { id: string; can: Can; depositPaid: boolean; canRefund?: boolean }) {
   const [cancelState, cancelAction, cancelling] = useActionState<FormState, FormData>(cancelBooking, {});
   const [noShowState, noShowAction, markingNoShow] = useActionState<FormState, FormData>(markNoShow, {});
   const [undoState, undoAction, undoing] = useActionState<FormState, FormData>(undoNoShow, {});
 
-  if (!Object.values(can).some(Boolean)) return null;
+  const [refundState, refundAction, refunding] = useActionState<FormState, FormData>(refundDeposit, {});
+  if (!Object.values(can).some(Boolean) && !canRefund) return null;
   return (
     <section aria-labelledby="actions-h" className="space-y-3">
       <h2 id="actions-h" className="text-xl font-semibold">Actions</h2>
-      <Result state={cancelState} /><Result state={noShowState} /><Result state={undoState} />
+      <Result state={cancelState} /><Result state={noShowState} /><Result state={undoState} /><Result state={refundState} />
       <div className="flex flex-wrap gap-2">
         {can.reschedule && <Link href={`/dashboard/bookings/${id}/reschedule`} className={btn}>Reschedule</Link>}
         {can.markNoShow && (
@@ -39,6 +40,16 @@ export function BookingActions({ id, can, depositPaid }: { id: string; can: Can;
             <button type="submit" disabled={undoing} className={btn}>Undo no-show</button></form>
         )}
       </div>
+      {canRefund && !refundState.message && (
+        <details className="rounded-md border border-neutral-300 p-3 dark:border-neutral-700">
+          <summary className="cursor-pointer text-sm font-medium">Refund deposit</summary>
+          <form action={refundAction} className="mt-3 space-y-3">
+            <input type="hidden" name="id" value={id} />
+            <p className="text-sm">Sends the deposit back to the customer&apos;s card (for example, a duplicate booking). The booking itself stays as it is. This can&apos;t be undone.</p>
+            <button type="submit" disabled={refunding} className={btn}>{refunding ? "Refunding…" : "Yes, refund the deposit"}</button>
+          </form>
+        </details>
+      )}
       {can.cancel && (
         <details className="rounded-md border border-neutral-300 p-3 dark:border-neutral-700">
           <summary className="cursor-pointer text-sm font-medium">Cancel this booking</summary>

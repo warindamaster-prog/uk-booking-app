@@ -16,7 +16,7 @@ export default async function BookingPage({ params, searchParams }: {
 }) {
   const id = uuid.safeParse((await params).id);
   if (!id.success) notFound();
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business, role } = await requireBusiness();
   const b = await fetchBooking(supabase, business.id, id.data);
   if (!b) notFound();
   const { moved } = await searchParams;
@@ -53,7 +53,7 @@ export default async function BookingPage({ params, searchParams }: {
         ) : <p>Customer details are not available.</p>}
       </section>
 
-      <BookingActions id={b.id} can={can} depositPaid={b.deposit_status === "paid"} />
+      <BookingActions id={b.id} can={can} depositPaid={b.deposit_status === "paid"} canRefund={role === "owner" && b.deposit_status === "paid"} />
     </main>
   );
 }

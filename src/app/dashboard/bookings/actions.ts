@@ -7,7 +7,7 @@ import { notifyBookingEvent } from "@/lib/notifications/service";
 import { settleDeposit } from "@/lib/stripe/service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeSlots } from "@/lib/availability";
-import { requireBusiness } from "@/lib/auth";
+import { requireBusiness, requireOwner } from "@/lib/auth";
 import { loadBookingContext } from "@/lib/booking/data";
 import type { FormState } from "@/lib/form";
 import { todayYmd } from "@/lib/time";
@@ -99,4 +99,19 @@ export async function rescheduleBooking(_: FormState, formData: FormData): Promi
   after(() => notifyBookingEvent(booking.id, "reschedule"));
   refresh(booking.id);
   redirect(`/dashboard/bookings/${booking.id}?moved=1`);
+}
+
+/** Refunds a paid deposit on its own, leaving the booking in place (e.g. a duplicate booking). Owner only. */
+export async function refundDeposit(_: FormState, formData: FormData): Promise<FormState> {
+  const { supabase, business } = await requireOwner();
+  const id = uuid.safeParse(String(formData.get("id") ?? ""));
+  if (!id.success) return { error: GENERIC };
+  const { data: b } = await supabase.from("bookings").select("id, deposit_status").eq("id", id.data).eq("business_id", business.id).maybeSingle();
+  if (!b) return { error: "We couldn't find that booking." };
+  if (b.deposit_status !== "paid") return { error: "There is no paid deposit to refund on this booking." };
+
+  const result = await settleDeposit(createAdminClient(), id.data, "business", "refund");
+  refresh(id.data);
+  if (result === "refunded") return { message: "Deposit refunded to the customer's card. It can take 5 to 10 days to appear." };
+  return { error: "The refund didn't go through. Please try again, or refund it in your Stripe dashboard." };
 }
