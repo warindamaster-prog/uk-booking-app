@@ -639,3 +639,70 @@ describe("show_contact_to_customers", () => {
     expect(staffTry.rows).toHaveLength(0);
   });
 });
+
+describe("customer privacy: erase and withdraw consent", () => {
+  const S = "00000000-0000-0000-0000-00000000000c";
+  const FUT = "2027-09-07"; // Tuesday
+  const at = (hhmm: string) => zonedToUtc(FUT, Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3)), "Europe/London").toISOString();
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  const hash = (t: string) => `decode(md5('${t}'),'hex')`;
+  const newCustomer = async (email: string, consent = true) => (await db.query<{ id: string }>(
+    `insert into customers(business_id,name,email,phone,marketing_consent,marketing_consent_at) values($1,'Dana Doe',$2,'07700 900555',$3,case when $3 then now() end) returning id`,
+    [bizA, email, consent])).rows[0].id;
+  const book = async (customer: string, when: string, status: string, token: string, starts = at(when)) => (await db.query<{ id: string }>(
+    `insert into bookings(business_id,staff_id,service_id,customer_id,starts_at,ends_at,status,service_name,duration_minutes,price_pence,cancel_token_hash)
+     values($1,$2,$3,$4,$5,$5::timestamptz + interval '1 hour',$6,'Gel',60,3000,${hash(token)}) returning id`, [bizA, staffA, svc, customer, starts, status])).rows[0].id;
+  const erase = (uid: string, email: string, id: string) => as(uid, email, () => db.query(`select public.anonymise_customer($1)`, [id]));
+
+  it("removes the person's details but keeps the booking records, and kills their links", async () => {
+    const c = await newCustomer("dana@example.com");
+    const past = await book(c, "10:00", "completed", "dana-token", "2020-02-04T10:00:00Z");
+    await db.query(`insert into booking_notifications(business_id,booking_id,kind,channel,recipient,seq,status,error) values($1,$2,'confirmation','email','customer',0,'failed','550 rejected: dana@example.com')`, [bizA, past]);
+
+    await erase(A, "a@x.com", c);
+
+    expect((await db.query(`select name,email,phone,marketing_consent,marketing_consent_at,anonymised_at is not null as gone from customers where id=$1`, [c])).rows[0])
+      .toEqual({ name: "Deleted customer", email: null, phone: null, marketing_consent: false, marketing_consent_at: null, gone: true });
+    expect((await db.query(`select service_name, price_pence, status from bookings where id=$1`, [past])).rows[0]).toEqual({ service_name: "Gel", price_pence: 3000, status: "completed" });
+    expect((await db.query(`select 1 from bookings where cancel_token_hash=${hash("dana-token")}`)).rows).toHaveLength(0); // old link no longer finds it
+    expect((await db.query(`select error from booking_notifications where booking_id=$1`, [past])).rows[0]).toEqual({ error: null });
+  });
+
+  it("is refused while the customer has upcoming bookings, and works once they are cancelled", async () => {
+    const c = await newCustomer("erin@example.com");
+    const up = await book(c, "10:00", "confirmed", "erin-token");
+    await expect(erase(A, "a@x.com", c)).rejects.toThrow(/customer_has_upcoming_bookings/);
+    expect((await db.query(`select anonymised_at from customers where id=$1`, [c])).rows[0]).toEqual({ anonymised_at: null });
+    await db.query(`update bookings set status='cancelled', cancelled_by='business' where id=$1`, [up]);
+    await erase(A, "a@x.com", c);
+    expect((await db.query(`select email from customers where id=$1`, [c])).rows[0]).toEqual({ email: null });
+  });
+
+  it("is owner-only, and gives the same answer for other businesses' customers", async () => {
+    const c = await newCustomer("fay@example.com");
+    await expect(erase(B, "b@x.com", c)).rejects.toThrow(/customer not found/);
+    await expect(erase(S, "s@x.com", c)).rejects.toThrow(/customer not found/);
+    await expect(erase(A, "a@x.com", "00000000-0000-4000-8000-00000000dead")).rejects.toThrow(/customer not found/);
+    await expect(asServer(() => db.query(`select public.anonymise_customer($1)`, [c]))).rejects.toThrow(/permission denied|not found/); // not callable as the server role either
+    expect((await db.query(`select email from customers where id=$1`, [c])).rows[0]).toEqual({ email: "fay@example.com" });
+  });
+
+  it("can be repeated safely, and the email address can be used again afterwards", async () => {
+    const c = await newCustomer("gus@example.com");
+    await erase(A, "a@x.com", c);
+    await erase(A, "a@x.com", c); // second time: nothing happens
+    const again = await newCustomer("gus@example.com"); // the unique email is free again
+    expect(again).not.toBe(c);
+  });
+
+  it("records a withdrawal of marketing consent, for owners only", async () => {
+    const c = await newCustomer("hal@example.com", true);
+    await expect(as(S, "s@x.com", () => db.query(`select public.withdraw_marketing_consent($1)`, [c]))).rejects.toThrow(/customer not found/);
+    await expect(as(B, "b@x.com", () => db.query(`select public.withdraw_marketing_consent($1)`, [c]))).rejects.toThrow(/customer not found/);
+    await as(A, "a@x.com", () => db.query(`select public.withdraw_marketing_consent($1)`, [c]));
+    expect((await db.query(`select marketing_consent, marketing_consent_at from customers where id=$1`, [c])).rows[0]).toEqual({ marketing_consent: false, marketing_consent_at: null });
+  });
+});

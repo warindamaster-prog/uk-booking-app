@@ -74,4 +74,12 @@ jobs:
 
 Vercel Cron also works on plans that allow frequent schedules (Hobby is limited to once a day).
 
+## Customers and privacy (UK GDPR / PECR)
+
+- Dashboard > Customers (owner only): search customers, see their bookings and whether they agreed to marketing emails.
+- **Export**: download one customer's data as a JSON file (name, contact details, consent, bookings, emails sent). Internal ids, links and payment fields are left out.
+- **Delete** means anonymise: name, email, phone and consent are removed, their booking links stop working and email error text is scrubbed. Past bookings stay (service, date, price) for the business's records, but are no longer linked to a person. Refused while the customer has upcoming bookings. The database does this in one transaction (`anonymise_customer`).
+- **Marketing consent** is never pre-ticked, can only be granted by the customer at booking, and the owner can record a withdrawal. No marketing emails are sent by this app.
+- Only name, email and phone are collected. A privacy notice link is shown on the booking page and in the booking form.
+
 More sections (Stripe, Resend, cron) are added as those steps land. See `TODO.md` for what is intentionally left for later.

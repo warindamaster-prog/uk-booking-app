@@ -29,3 +29,7 @@
 - Cancellation emails don't mention deposit refunds yet (comes with Stripe)
 - Per-business sender name and domain; sending volume limits of a personal mailbox mean Resend (or similar) is advised at launch
 - SMS reminders: implement SmsProvider (for example Twilio) and add an sms channel to the reminder job
+- Correcting a customer's details from the dashboard (the database allows owners to edit name, email and phone; there is no screen yet)
+- Automatic deletion of old customer records after a retention period chosen by the business
+- A log of erasure and export requests
+- Marketing email sending (consent is recorded; nothing is sent)
