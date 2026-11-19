@@ -13,3 +13,11 @@ export function recipientsFor(event: BookingEvent, cancelledBy: string | null): 
   if (event === "cancellation") return cancelledBy === "customer" ? ["customer", "business"] : ["customer"];
   return ["customer"];
 }
+
+/**
+ * When a failed email is retried later, a confirmation or reschedule notice for an appointment that has
+ * already started is pointless (and confusing), so it is dropped. Cancellation notices are still sent.
+ */
+export function isStaleToRetry(kind: string, startsAt: string | Date, now: Date): boolean {
+  return (kind === "confirmation" || kind === "reschedule") && new Date(startsAt).getTime() <= now.getTime();
+}

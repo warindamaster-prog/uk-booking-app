@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isReminderDue, REMINDER_LEAD_MS } from "./due";
 import type { Mailers } from "./provider";
 import { settleDeposit } from "@/lib/stripe/service";
+import { isStaleToRetry } from "./rules";
 import { MAX_ATTEMPTS, sendNotification, type NotifyConfig } from "./send";
 import type { EmailKind, Recipient } from "./templates";
 
@@ -41,8 +42,8 @@ export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConf
     .in("status", ["pending", "failed"]).neq("kind", "reminder").lt("attempts", MAX_ATTEMPTS)
     .gt("created_at", since).limit(100);
   for (const n of stuck ?? []) {
-    const { data: b } = await db.from("bookings").select("ics_sequence").eq("id", n.booking_id).maybeSingle();
-    if (!b || b.ics_sequence !== n.seq) { // the booking has changed since: this email is obsolete
+    const { data: b } = await db.from("bookings").select("ics_sequence, starts_at").eq("id", n.booking_id).maybeSingle();
+    if (!b || b.ics_sequence !== n.seq || isStaleToRetry(n.kind, b.starts_at, now)) { // the booking has changed or already started: this email is obsolete
       await db.from("booking_notifications").update({ attempts: MAX_ATTEMPTS, error: "superseded" }).eq("id", n.id);
       continue;
     }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isReminderDue } from "../due";
-import { MAX_ATTEMPTS, recipientsFor, safeDisplayName } from "../rules";
+import { isStaleToRetry, MAX_ATTEMPTS, recipientsFor, safeDisplayName } from "../rules";
 
 describe("isReminderDue", () => {
   const now = new Date("2026-06-10T12:00:00Z");
@@ -51,5 +51,18 @@ describe("safeDisplayName", () => {
     expect(safeDisplayName('Lily "Nails" <evil@x.com>\r\nBcc: a@b.c')).not.toMatch(/["<>\r\n]/);
     expect(safeDisplayName("   ")).toBe("Bookings");
     expect(safeDisplayName("x".repeat(100)).length).toBe(60);
+  });
+});
+
+describe("isStaleToRetry", () => {
+  const now = new Date("2026-06-10T12:00:00Z");
+  const past = "2026-06-10T11:00:00Z", future = "2026-06-10T13:00:00Z";
+  it("drops confirmations and reschedule notices once the appointment has started", () => {
+    expect(isStaleToRetry("confirmation", past, now)).toBe(true);
+    expect(isStaleToRetry("reschedule", past, now)).toBe(true);
+    expect(isStaleToRetry("confirmation", future, now)).toBe(false);
+  });
+  it("still sends cancellation notices for past appointments", () => {
+    expect(isStaleToRetry("cancellation", past, now)).toBe(false);
   });
 });
