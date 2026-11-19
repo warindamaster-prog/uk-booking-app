@@ -13,7 +13,11 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
   const raw = {
     name: String(formData.get("name") ?? ""),
     slug: String(formData.get("slug") ?? ""),
-    staffName: String(formData.get("staffName") ?? ""),
+    ownerName: String(formData.get("ownerName") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+    seats: String(formData.get("seats") ?? ""),
+    interval: String(formData.get("interval") ?? ""),
   };
   const parsed = onboardingSchema.safeParse(raw);
   if (!parsed.success) return zodState(parsed.error, raw);
@@ -34,7 +38,11 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
   const { data: businessId, error } = await supabase.rpc("create_business", {
     p_name: parsed.data.name,
     p_slug: parsed.data.slug,
-    p_staff_name: parsed.data.staffName,
+    p_owner_name: parsed.data.ownerName,
+    p_email: parsed.data.email,
+    p_phone: parsed.data.phone,
+    p_seats: parsed.data.seats,
+    p_interval: parsed.data.interval,
   });
   if (error) {
     if (error.code === "23505") {

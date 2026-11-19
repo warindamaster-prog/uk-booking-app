@@ -9,6 +9,8 @@ import { addDaysYmd, localMidnightUtc } from "@/lib/time";
 import { staffSchema, timeOffSchema, uuid } from "@/lib/validation/catalog";
 
 const GENERIC = "Something went wrong. Please try again.";
+const SEATS_FULL = "All your team seats are in use. Increase your team size on the Billing page, or set someone else to not take bookings.";
+const isSeatLimit = (e: { message?: string } | null) => !!e?.message?.includes("staff_seats_exceeded");
 
 export async function saveStaff(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, business } = await requireOwner();
@@ -24,12 +26,12 @@ export async function saveStaff(_: FormState, formData: FormData): Promise<FormS
 
   if (id?.success) {
     const { error } = await supabase.from("staff").update(row).eq("id", id.data).eq("business_id", business.id);
-    if (error) return { error: GENERIC, values: { ...raw, active: active ? "on" : "" } };
+    if (error) return { error: isSeatLimit(error) ? SEATS_FULL : GENERIC, values: { ...raw, active: active ? "on" : "" } };
     revalidatePath(`/dashboard/staff/${id.data}`);
     return { message: "Saved." , values: { ...raw, active: active ? "on" : "" } };
   }
   const { data, error } = await supabase.from("staff").insert({ ...row, business_id: business.id }).select("id").single();
-  if (error || !data) return { error: GENERIC, values: { ...raw, active: active ? "on" : "" } };
+  if (error || !data) return { error: isSeatLimit(error) ? SEATS_FULL : GENERIC, values: { ...raw, active: active ? "on" : "" } };
   redirect(`/dashboard/staff/${data.id}`);
 }
 

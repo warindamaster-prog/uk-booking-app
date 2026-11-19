@@ -1,7 +1,10 @@
 import { z } from "zod";
+import { PRICING } from "@/lib/pricing";
 import { SLUG_RE } from "@/lib/slug";
 
 export const RESERVED_SLUGS = new Set(["admin", "api", "app", "login", "signup", "dashboard", "www"]);
+
+export const PHONE_RE = /^[0-9+()\-\s]{7,20}$/;
 
 export const onboardingSchema = z.object({
   name: z.string().trim().min(1, "Enter your business name").max(100),
@@ -11,7 +14,13 @@ export const onboardingSchema = z.object({
     .toLowerCase()
     .regex(SLUG_RE, "Use 3-40 letters, numbers or hyphens, starting with a letter or number")
     .refine((s) => !RESERVED_SLUGS.has(s), "That web address is reserved"),
-  staffName: z.string().trim().min(1, "Enter your name").max(100),
+  ownerName: z.string().trim().min(1, "Enter the owner's name").max(100),
+  email: z.email("Enter a valid email address").max(254).transform((s) => s.trim().toLowerCase()),
+  phone: z.string().trim().regex(PHONE_RE, "Enter a valid phone number, for example 07700 900123"),
+  seats: z.string().trim().regex(/^\d+$/, "Enter a whole number")
+    .transform(Number)
+    .refine((n) => n >= PRICING.minSeats && n <= PRICING.maxSeats, `Enter a number from ${PRICING.minSeats} to ${PRICING.maxSeats}`),
+  interval: z.enum(["month", "year"], { message: "Choose monthly or yearly" }),
 });
 
 export const LOGO_MAX_BYTES = 2 * 1024 * 1024;

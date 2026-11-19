@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dayBounds, type AvailabilityQuery, type StaffDay } from "@/lib/availability";
+import { billingEnabled, bookingsOpen } from "@/lib/billing";
 import { addDaysYmd } from "@/lib/time";
 import { blockedInterval, isLive, type LiveBookingRow } from "./slots";
 
@@ -10,8 +11,8 @@ import { blockedInterval, isLive, type LiveBookingRow } from "./slots";
 export type PublicBusiness = {
   id: string; name: string; slug: string; timezone: string; logo_path: string | null;
   slot_interval_minutes: number; min_notice_minutes: number; max_advance_days: number;
-  privacy_notice_url: string | null; subscription_status: string; stripe_charges_enabled: boolean;
-  cancellation_window_hours: number;
+  privacy_notice_url: string | null; stripe_charges_enabled: boolean; cancellation_window_hours: number;
+  billing_status: string; trial_ends_at: string;
 };
 
 export type PublicService = {
@@ -19,14 +20,18 @@ export type PublicService = {
   buffer_before_minutes: number; buffer_after_minutes: number; price_pence: number; deposit_pence: number;
 };
 
-const ACCEPTING = new Set(["trialing", "active", "past_due"]);
-export const acceptsBookings = (b: Pick<PublicBusiness, "subscription_status">) => ACCEPTING.has(b.subscription_status);
+export const acceptsBookings = (b: Pick<PublicBusiness, "billing_status" | "trial_ends_at">, now: Date = new Date()) =>
+  bookingsOpen({ status: b.billing_status, trial_ends_at: b.trial_ends_at }, { now, billingEnabled: billingEnabled() });
 
 export async function getBusinessBySlug(slug: string): Promise<PublicBusiness | null> {
-  const { data } = await createAdminClient().from("businesses")
-    .select("id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, subscription_status, stripe_charges_enabled, cancellation_window_hours")
+  const db = createAdminClient();
+  const { data } = await db.from("businesses")
+    .select("id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, stripe_charges_enabled, cancellation_window_hours")
     .eq("slug", slug).maybeSingle();
-  return (data as PublicBusiness | null) ?? null;
+  if (!data) return null;
+  const { data: billing } = await db.from("business_billing").select("status, trial_ends_at").eq("business_id", data.id).maybeSingle();
+  // No billing row means something is wrong: keep the page closed rather than open.
+  return { ...data, billing_status: billing?.status ?? "unpaid", trial_ends_at: billing?.trial_ends_at ?? new Date(0).toISOString() } as PublicBusiness;
 }
 
 export function logoUrl(path: string | null): string | null {

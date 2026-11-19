@@ -7,6 +7,7 @@ import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { computeSlots } from "@/lib/availability";
 import { zonedToUtc } from "@/lib/time";
+import { pricePence } from "@/lib/pricing";
 
 const dir = path.join(__dirname, "../migrations");
 const A = "00000000-0000-0000-0000-00000000000a";
@@ -51,8 +52,8 @@ beforeAll(async () => {
     await db.exec(fs.readFileSync(path.join(dir, f), "utf8").replace("create extension if not exists pgcrypto;", ""));
   }
   await db.exec(`insert into auth.users values ('${A}','a@x.com'),('${B}','b@x.com')`);
-  bizA = (await as(A, "a@x.com", () => db.query<{ id: string }>(`select public.create_business('Lily Nails','lily-nails','Lily') id`))).rows[0].id;
-  bizB = (await as(B, "b@x.com", () => db.query<{ id: string }>(`select public.create_business('Other','other-biz','Bob') id`))).rows[0].id;
+  bizA = (await as(A, "a@x.com", () => db.query<{ id: string }>(`select public.create_business('Lily Nails','lily-nails','Lily','lily@x.com','07700 900001',5,'month') id`))).rows[0].id;
+  bizB = (await as(B, "b@x.com", () => db.query<{ id: string }>(`select public.create_business('Other','other-biz','Bob','bob@x.com','07700 900002',2,'year') id`))).rows[0].id;
   staffA = (await db.query<{ id: string }>(`select id from staff where business_id=$1`, [bizA])).rows[0].id;
   await db.query(`insert into services(business_id,name,duration_minutes,buffer_after_minutes) values($1,'Gel',60,10)`, [bizA]);
   svc = (await db.query<{ id: string }>(`select id from services where business_id=$1`, [bizA])).rows[0].id;
@@ -101,8 +102,8 @@ describe("RLS", () => {
     const r = await as(B, "b@x.com", () => db.query(`update businesses set name='hax' where id=$1 returning id`, [bizA]));
     expect(r.rows).toHaveLength(0);
   });
-  it("blocks clients writing subscription or consent columns", async () => {
-    await expect(as(A, "a@x.com", () => db.query(`update businesses set subscription_status='active'`))).rejects.toThrow(/permission denied/);
+  it("blocks clients writing Stripe or consent columns", async () => {
+    await expect(as(A, "a@x.com", () => db.query(`update businesses set stripe_charges_enabled=true`))).rejects.toThrow(/permission denied/);
     await expect(as(A, "a@x.com", () => db.query(`update customers set marketing_consent=true`))).rejects.toThrow(/permission denied/);
   });
   it("gives anon no access", async () => {
@@ -111,7 +112,7 @@ describe("RLS", () => {
     finally { await db.exec("reset role"); }
   });
   it("allows a second business only once per user", async () => {
-    await expect(as(A, "a@x.com", () => db.query(`select public.create_business('X','xxx','A')`))).rejects.toThrow(/already belongs/);
+    await expect(as(A, "a@x.com", () => db.query(`select public.create_business('X','xxx','A','a@x.com','1234567',1,'month')`))).rejects.toThrow(/already belongs/);
   });
   it("scopes logo uploads to the owner's business folder", async () => {
     await as(A, "a@x.com", () => db.query(`insert into storage.objects(bucket_id,name) values('logos',$1)`, [`${bizA}/x.png`]));
@@ -288,5 +289,108 @@ describe("create_booking and rate_limit_hit (server-only functions)", () => {
     const hit = (k: string) => asServer(() => db.query<{ ok: boolean }>(`select public.rate_limit_hit($1, 600, 3) ok`, [k])).then((r) => r.rows[0].ok);
     expect([await hit("ip:1"), await hit("ip:1"), await hit("ip:1"), await hit("ip:1")]).toEqual([true, true, true, false]);
     expect(await hit("ip:2")).toBe(true);
+  });
+});
+
+describe("billing: pricing, trial and staff seats", () => {
+  const S = "00000000-0000-0000-0000-00000000000c"; // staff user of bizA (from an earlier block)
+  const billing = async (biz: string) => (await db.query<Record<string, unknown>>(`select * from business_billing where business_id=$1`, [biz])).rows[0];
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  let n = 0;
+  const newBusiness = async (seats: number, interval = "month") => {
+    const i = ++n, uid = `00000000-0000-0000-0000-0000000000e${i}`, email = `owner${i}@x.com`;
+    await db.exec(`insert into auth.users values ('${uid}','${email}')`);
+    const id = (await as(uid, email, () => db.query<{ id: string }>(
+      `select public.create_business('Shop ${i}','shop-${i}','Owner ${i}',$1,'07700 900003',$2,$3) id`, [email, seats, interval]))).rows[0].id;
+    return { id, uid, email };
+  };
+  const addStaff = (b: string, name = "Extra") => db.query(`insert into staff(business_id,name) values($1,$2)`, [b, name]);
+  const setSeats = (o: { id: string; uid: string; email: string }, seats: number) =>
+    as(o.uid, o.email, () => db.query(`select public.change_staff_seats($1,$2)`, [o.id, seats]));
+
+  it("SQL and TypeScript prices agree for every seat count and both intervals", async () => {
+    for (let seats = 1; seats <= 50; seats++) {
+      for (const interval of ["month", "year"] as const) {
+        const r = await db.query<{ p: number }>(`select public.billing_price_pence($1,$2) p`, [seats, interval]);
+        expect(r.rows[0].p, `${seats} ${interval}`).toBe(pricePence(seats, interval));
+      }
+    }
+  });
+
+  it("creates a billing row with a 60 day trial, the computed price and the contact details", async () => {
+    const a = await billing(bizA);
+    expect(a).toMatchObject({ status: "trialing", staff_seats: 5, billing_interval: "month", current_price_pence: 2300, stripe_subscription_id: null });
+    const days = ((a.trial_ends_at as Date).getTime() - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(59.9);
+    expect(days).toBeLessThan(60.1);
+    expect(await billing(bizB)).toMatchObject({ billing_interval: "year", staff_seats: 2, current_price_pence: 17000 });
+    expect((await db.query(`select owner_name, phone, email from businesses where id=$1`, [bizA])).rows[0])
+      .toEqual({ owner_name: "Lily", phone: "07700 900001", email: "lily@x.com" });
+    await expect(as(A, "a@x.com", () => db.query(`select public.create_business('Z','zzz','Z','z@x.com','1234567',0,'month')`))).rejects.toThrow(/already belongs|seats must be/);
+  });
+
+  it("the database stops active staff exceeding the seats paid for", async () => {
+    const o = await newBusiness(2);
+    await addStaff(o.id, "Second");
+    await expect(addStaff(o.id, "Third")).rejects.toThrow(/staff_seats_exceeded/);
+    await db.query(`update staff set active=false where business_id=$1 and name='Second'`, [o.id]);
+    await addStaff(o.id, "Third"); // a freed seat can be reused
+    await expect(db.query(`update staff set active=true where business_id=$1 and name='Second'`, [o.id])).rejects.toThrow(/staff_seats_exceeded/);
+    await db.query(`insert into staff(business_id,name,active) values($1,'Inactive person',false)`, [o.id]); // inactive staff don't use a seat
+  });
+
+  it("during the trial seat changes apply immediately and are never charged", async () => {
+    const o = await newBusiness(2);
+    await setSeats(o, 4);
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 4, current_price_pence: 2100, next_staff_seats: null });
+    await addStaff(o.id, "B"); await addStaff(o.id, "C");
+    await expect(setSeats(o, 2)).rejects.toThrow(/staff_seats_below_active/);
+    await setSeats(o, 3);
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 3, current_price_pence: 1900 });
+  });
+
+  it("only the owner can change seats", async () => {
+    const o = await newBusiness(3);
+    const other = await newBusiness(1);
+    await expect(as(other.uid, other.email, () => db.query(`select public.change_staff_seats($1,4)`, [o.id]))).rejects.toThrow(/not allowed/);
+    await expect(as(S, "s@x.com", () => db.query(`select public.change_staff_seats($1,4)`, [bizA]))).rejects.toThrow(/not allowed/);
+    await expect(setSeats(o, 51)).rejects.toThrow(/between 1 and 50/);
+  });
+
+  it("with a subscription a reduction waits for the next period: 3 staff pay 19 now and 17 next", async () => {
+    const o = await newBusiness(3);
+    await db.query(`update business_billing set stripe_subscription_id='sub_1', status='active', current_period_end=now() + interval '10 days' where business_id=$1`, [o.id]);
+    await addStaff(o.id, "B"); // 2 active of 3 seats
+
+    await setSeats(o, 2);
+    const b = await billing(o.id);
+    expect(b).toMatchObject({ staff_seats: 3, current_price_pence: 1900, next_staff_seats: 2, next_price_pence: 1700 });
+    expect((b.change_effective_at as Date).getTime()).toBe((b.current_period_end as Date).getTime());
+
+    await expect(setSeats(o, 4)).rejects.toThrow(/seat_increase_requires_payment/);
+    await expect(addStaff(o.id, "C")).rejects.toThrow(/staff_seats_exceeded/); // capped by the scheduled 2
+
+    await setSeats(o, 3); // setting the current count cancels the reduction
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 3, current_price_pence: 1900, next_staff_seats: null, next_price_pence: null });
+    await addStaff(o.id, "C");
+    await expect(setSeats(o, 2)).rejects.toThrow(/staff_seats_below_active/); // 3 people are active
+
+    await db.query(`update staff set active=false where business_id=$1 and name='C'`, [o.id]);
+    await setSeats(o, 2);
+    expect(await asServer(() => db.query<{ n: number }>(`select public.apply_due_seat_changes() n`)).then((r) => r.rows[0].n)).toBe(0); // not due yet
+    await db.query(`update business_billing set change_effective_at = now() - interval '1 minute' where business_id=$1`, [o.id]);
+    expect(await asServer(() => db.query<{ n: number }>(`select public.apply_due_seat_changes() n`)).then((r) => r.rows[0].n)).toBeGreaterThanOrEqual(1);
+    expect(await billing(o.id)).toMatchObject({ staff_seats: 2, current_price_pence: 1700, next_staff_seats: null, change_effective_at: null });
+  });
+
+  it("billing is readable by the owner only and never writable from the client", async () => {
+    expect((await as(A, "a@x.com", () => db.query(`select 1 from business_billing`))).rows).toHaveLength(1);
+    expect((await as(S, "s@x.com", () => db.query(`select 1 from business_billing`))).rows).toHaveLength(0); // staff member
+    expect((await as(B, "b@x.com", () => db.query(`select 1 from business_billing where business_id=$1`, [bizA]))).rows).toHaveLength(0);
+    await expect(as(A, "a@x.com", () => db.query(`update business_billing set current_price_pence=1`))).rejects.toThrow(/permission denied/);
+    await expect(as(A, "a@x.com", () => db.query(`select public.apply_due_seat_changes()`))).rejects.toThrow(/permission denied/);
   });
 });

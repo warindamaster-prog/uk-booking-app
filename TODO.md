@@ -14,3 +14,6 @@
 - Per-business privacy notice URL setting (the column exists; there is no settings screen yet)
 - Rate limiting covers booking submissions only; page views are not limited
 - Scheduled clean-up of expired unpaid holds (they already stop blocking slots and are marked expired on the next booking; a cron comes with the Stripe step)
+- Stripe Billing: subscribe at launch (card via Checkout), VAT invoices, seat increases on a paid plan, the scheduled reduction mirrored in Stripe, Customer Portal link. The data model and rules are built and tested; no Stripe calls exist yet
+- Switching between monthly and yearly billing after sign-up
+- Editing business contact details (owner name, phone, email) after setup

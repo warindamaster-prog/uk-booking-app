@@ -11,10 +11,19 @@ export default async function StaffPage() {
     .from("staff").select("id, name, email, active").eq("business_id", business.id)
     .order("active", { ascending: false }).order("sort_order").order("name");
 
+  const { data: billing } = await supabase.from("business_billing").select("staff_seats, next_staff_seats").eq("business_id", business.id).maybeSingle();
+  const used = (staff ?? []).filter((s) => s.active).length;
+
   return (
     <main className="space-y-10">
       <section aria-labelledby="staff-h">
-        <h1 id="staff-h" className="mb-4 text-2xl font-semibold">Staff</h1>
+        <h1 id="staff-h" className="mb-2 text-2xl font-semibold">Staff</h1>
+        {billing && (
+          <p className="mb-4 text-sm">
+            {used} of {Math.min(billing.staff_seats, billing.next_staff_seats ?? billing.staff_seats)} team seats in use.{" "}
+            <Link href="/dashboard/billing" className="underline">Change team size</Link>
+          </p>
+        )}
         <ul className="divide-y divide-neutral-300 rounded-md border border-neutral-300 dark:divide-neutral-700 dark:border-neutral-700">
           {staff?.map((s) => (
             <li key={s.id} className="flex items-center justify-between gap-4 p-3">

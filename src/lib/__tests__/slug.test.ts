@@ -28,7 +28,7 @@ describe("safeNext", () => {
 });
 
 describe("onboardingSchema", () => {
-  const ok = { name: "Lily Nails", slug: "lily-nails", staffName: "Lily" };
+  const ok = { name: "Lily Nails", slug: "lily-nails", ownerName: "Lily", email: "lily@example.com", phone: "07700 900123", seats: "1", interval: "month" };
   it("accepts valid input and lowercases the slug", () => {
     expect(onboardingSchema.parse({ ...ok, slug: "Lily-Nails" }).slug).toBe("lily-nails");
   });
