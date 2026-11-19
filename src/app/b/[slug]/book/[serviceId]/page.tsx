@@ -74,8 +74,13 @@ export default async function BookPage({ params, searchParams }: Props) {
           <h1 className="mt-3 text-xl font-semibold">{service.name}</h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
             {service.duration_minutes} min · {formatPence(price)}
-            {service.deposit_pence > 0 && ` · ${formatPence(service.deposit_pence)} deposit to book`}
           </p>
+          {service.deposit_pence > 0 && (
+            <p className="mt-2 rounded-md border border-neutral-300 p-3 text-sm dark:border-neutral-700">
+              Deposit to pay now by card: <strong>{formatPence(service.deposit_pence)}</strong>
+              {price > service.deposit_pence && <> · Rest to pay at the appointment: {formatPence(price - service.deposit_pence)}</>}
+            </p>
+          )}
         </div>
 
         {choices.people.length === 1 && (

@@ -33,7 +33,7 @@ export default async function BusinessPage({ params }: Props) {
                     <span>{s.price_varies ? `from ${formatPence(s.from_pence)}` : formatPence(s.from_pence)}</span>
                   </span>
                   <span className="block text-sm text-neutral-600 dark:text-neutral-400">
-                    {s.duration_minutes} min{s.deposit_pence > 0 && ` · ${formatPence(s.deposit_pence)} deposit`}
+                    {s.duration_minutes} min{s.deposit_pence > 0 && ` · pay ${formatPence(s.deposit_pence)} deposit now`}
                   </span>
                   {s.description && <span className="mt-1 block text-sm">{s.description}</span>}
                 </Link>
