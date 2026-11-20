@@ -115,25 +115,52 @@ export async function setSubscriptionSmsPacks(subscriptionId: string, packs: num
  * is declined, and then leaves nothing behind (the draft invoice is voided).
  */
 export async function chargeForExtraSeats(db: Db, businessId: string, amountPence: number, description: string, idempotencyKey: string): Promise<string> {
-  const { data } = await db.from("business_billing").select("stripe_customer_id").eq("business_id", businessId).single();
+  const { data } = await db.from("business_billing").select("stripe_customer_id, stripe_subscription_id").eq("business_id", businessId).single();
   if (!data?.stripe_customer_id) throw new Error("no Stripe customer");
   const stripe = getStripe();
   const customer = data.stripe_customer_id;
+  const paymentMethod = await findPaymentMethod(customer, data.stripe_subscription_id);
+  if (!paymentMethod) throw new Error("no saved card to charge");
 
+  // A failed attempt leaves a voided invoice behind, and Stripe replays an idempotency key forever, so a
+  // retry must use a new key. The one-minute bucket still stops a double click from charging twice.
+  const key = `${idempotencyKey}:${Math.floor(Date.now() / 60_000)}`;
   await stripe.invoiceItems.create(
     { customer, currency: "gbp", amount: amountPence, description, tax_rates: [process.env.STRIPE_VAT_TAX_RATE_ID!] },
-    { idempotencyKey: `${idempotencyKey}:item` },
+    { idempotencyKey: `${key}:item` },
   );
   const invoice = await stripe.invoices.create(
-    { customer, collection_method: "charge_automatically", auto_advance: false, pending_invoice_items_behavior: "include", description },
-    { idempotencyKey: `${idempotencyKey}:invoice` },
+    { customer, collection_method: "charge_automatically", auto_advance: false, pending_invoice_items_behavior: "include", description, default_payment_method: paymentMethod },
+    { idempotencyKey: `${key}:invoice` },
   );
   try {
     const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
-    const paid = await stripe.invoices.pay(finalized.id);
+    const paid = await stripe.invoices.pay(finalized.id, { payment_method: paymentMethod });
     return paid.id;
   } catch (e) {
     await stripe.invoices.voidInvoice(invoice.id).catch(() => undefined);
     throw e;
   }
+}
+
+/**
+ * The card to charge for a one-off invoice. Checkout saves the card on the subscription, not as the
+ * customer's default, and a standalone invoice only uses the customer's default: so look for the
+ * subscription's card first, then the customer's default, then any saved card.
+ */
+async function findPaymentMethod(customerId: string, subscriptionId: string | null): Promise<string | null> {
+  const stripe = getStripe();
+  const id = (pm: string | { id: string } | null | undefined) => (typeof pm === "string" ? pm : pm?.id ?? null);
+  if (subscriptionId) {
+    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+    const fromSub = id(sub.default_payment_method);
+    if (fromSub) return fromSub;
+  }
+  const customer = await stripe.customers.retrieve(customerId);
+  if (!customer.deleted) {
+    const fromCustomer = id(customer.invoice_settings?.default_payment_method);
+    if (fromCustomer) return fromCustomer;
+  }
+  const cards = await stripe.paymentMethods.list({ customer: customerId, type: "card", limit: 1 });
+  return cards.data[0]?.id ?? null;
 }
