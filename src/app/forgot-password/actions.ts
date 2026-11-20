@@ -5,7 +5,7 @@ import { renderResetEmail } from "@/lib/auth-email";
 import { clientIp, limiterKey } from "@/lib/booking/token";
 import { publicEnv } from "@/lib/env";
 import { zodState, type FormState } from "@/lib/form";
-import { createMailers } from "@/lib/notifications/resend";
+import { sendAccountEmail } from "@/lib/auth-mail";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { forgotSchema } from "@/lib/validation/auth";
 
@@ -38,14 +38,7 @@ export async function requestReset(_: FormState, formData: FormData): Promise<Fo
     const token = data?.properties?.hashed_token;
     if (!error && token) {
       const link = `${publicEnv().NEXT_PUBLIC_SITE_URL}/reset-password/confirm?token_hash=${encodeURIComponent(token)}`;
-      const mail = createMailers();
-      const rendered = renderResetEmail(link);
-      await mail.provider("business").send({
-        from: `"Booking account" <${mail.fromAddress("business")}>`,
-        to: parsed.data.email,
-        ...rendered,
-        idempotencyKey: `pwreset:${parsed.data.email}:${Date.now()}`,
-      });
+      await sendAccountEmail(parsed.data.email, renderResetEmail(link));
     }
   } catch (e) {
     console.error("password reset email failed", e instanceof Error ? e.message : e);
