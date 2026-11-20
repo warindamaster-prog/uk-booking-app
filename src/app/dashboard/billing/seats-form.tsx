@@ -9,7 +9,7 @@ import { isValidSeats, pricePence, type BillingInterval } from "@/lib/pricing";
 import { describeSeatChange, summariseSeatChange } from "@/lib/seat-change";
 import { planSeatChange } from "@/lib/stripe/billing";
 
-export function SeatsForm({ current, scheduled, interval, hasSubscription, periodEnd, periodEndLabel }: {
+export function SeatsForm({ current, scheduled, interval, hasSubscription, periodEnd, periodEndLabel, noTrial = false }: {
   /** Seats paid for now. */
   current: number;
   /** A reduction already planned for the next period, if any. */
@@ -18,6 +18,7 @@ export function SeatsForm({ current, scheduled, interval, hasSubscription, perio
   hasSubscription: boolean;
   periodEnd: string | null;
   periodEndLabel: string | null;
+  noTrial?: boolean;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateSeats, {});
   const [text, setText] = useState(String(scheduled ?? current));
@@ -31,7 +32,7 @@ export function SeatsForm({ current, scheduled, interval, hasSubscription, perio
   const summary = valid
     ? summariseSeatChange({ plan, current, requested: n, interval, periodEnd: periodEnd ? new Date(periodEnd) : null, now: new Date() })
     : null;
-  const popup = summary && plan !== "noop" ? describeSeatChange(summary, { current, requested: n, interval, periodEndLabel }) : null;
+  const popup = summary && plan !== "noop" ? describeSeatChange(summary, { current, requested: n, interval, periodEndLabel, noTrial }) : null;
 
   return (
     <>
@@ -47,7 +48,7 @@ export function SeatsForm({ current, scheduled, interval, hasSubscription, perio
           onChange={(e) => setText(e.target.value)} errors={state.fieldErrors?.seats}
           hint={hasSubscription
             ? "Adding people is charged straight away. Reducing takes effect at the end of your current billing period."
-            : "Changes apply immediately. Nothing is charged during your free trial."} />
+            : (noTrial ? "Changes apply immediately. Nothing is charged until you subscribe." : "Changes apply immediately. Nothing is charged during your free trial.")} />
         {valid && <p className="text-sm" aria-live="polite">Plan price: {formatPence(pricePence(n, interval))} + VAT per {interval}</p>}
         <SubmitButton pending={pending}>Update team size</SubmitButton>
       </form>

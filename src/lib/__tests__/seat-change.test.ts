@@ -92,3 +92,15 @@ describe("SMS pack changes", () => {
     expect(red.lines[0]).toContain("£15.00 + VAT per month");
   });
 });
+
+describe("popup wording when there is no free trial", () => {
+  const sum = (plan: "immediate") => summariseSeatChange({ plan, current: 2, requested: 3, interval: "month", periodEnd: null, now: new Date() });
+  it("says nothing is charged because they have not subscribed, not because of a trial", async () => {
+    const { describeSeatChange } = await import("../seat-change");
+    const d = describeSeatChange(sum("immediate"), { current: 2, requested: 3, interval: "month", periodEndLabel: null, noTrial: true });
+    expect(d.lines.join(" ")).toContain("you haven't subscribed");
+    expect(d.lines.join(" ")).not.toMatch(/trial/i);
+    const t = describeSeatChange(sum("immediate"), { current: 2, requested: 3, interval: "month", periodEndLabel: null });
+    expect(t.lines.join(" ")).toContain("free trial");
+  });
+});

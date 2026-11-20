@@ -9,7 +9,7 @@ import { isValidSmsPacks, PRICING, smsPackPricePence, type BillingInterval } fro
 import { describeSmsChange, summariseSmsChange } from "@/lib/seat-change";
 import { planSeatChange } from "@/lib/stripe/billing";
 
-export function SmsForm({ current, scheduled, enabled, seats, interval, hasSubscription, periodEnd, periodEndLabel }: {
+export function SmsForm({ current, scheduled, enabled, seats, interval, hasSubscription, periodEnd, periodEndLabel, noTrial = false }: {
   /** SMS packs paid for now. */
   current: number;
   /** A reduction already planned for the next period, if any. */
@@ -21,6 +21,7 @@ export function SmsForm({ current, scheduled, enabled, seats, interval, hasSubsc
   hasSubscription: boolean;
   periodEnd: string | null;
   periodEndLabel: string | null;
+  noTrial?: boolean;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateSmsPacks, {});
   const [toggle, toggleAction, toggling] = useActionState<FormState, FormData>(setSmsEnabled, {});
@@ -35,7 +36,7 @@ export function SmsForm({ current, scheduled, enabled, seats, interval, hasSubsc
   const summary = valid
     ? summariseSmsChange({ plan, current, requested: n, seats, interval, periodEnd: periodEnd ? new Date(periodEnd) : null, now: new Date() })
     : null;
-  const popup = summary && plan !== "noop" ? describeSmsChange(summary, { current, requested: n, interval, periodEndLabel }) : null;
+  const popup = summary && plan !== "noop" ? describeSmsChange(summary, { current, requested: n, interval, periodEndLabel, noTrial }) : null;
   const unit = smsPackPricePence(interval);
 
   return (
@@ -60,7 +61,7 @@ export function SmsForm({ current, scheduled, enabled, seats, interval, hasSubsc
           onChange={(e) => setText(e.target.value)} errors={state.fieldErrors?.packs}
           hint={hasSubscription
             ? `0 to ${PRICING.maxSmsPacks}. Adding packs is charged straight away. Reducing takes effect at the end of your current billing period.`
-            : `0 to ${PRICING.maxSmsPacks}. Changes apply immediately. Nothing is charged during your free trial.`} />
+            : `0 to ${PRICING.maxSmsPacks}. Changes apply immediately. ${noTrial ? "Nothing is charged until you subscribe." : "Nothing is charged during your free trial."}`} />
         {valid && <p className="text-sm" aria-live="polite">{n} {n === 1 ? "pack" : "packs"} = {n * PRICING.smsPackTexts} texts a month, {formatPence(n * unit)} + VAT per {interval}</p>}
         <SubmitButton pending={pending}>Update SMS packs</SubmitButton>
       </form>

@@ -61,6 +61,8 @@ const people = (n: number) => `${n} ${n === 1 ? "person" : "people"}`;
 /** The wording of the confirmation popup. */
 export function describeSeatChange(sum: SeatChangeSummary, c: {
   current: number; requested: number; interval: BillingInterval; periodEndLabel: string | null;
+  /** No free trial: nothing is charged yet only because they have not subscribed. */
+  noTrial?: boolean;
 }): { title: string; lines: string[]; confirm: string } {
   const per = c.interval;
   const newPrice = `${formatPence(sum.newPriceNet)} + VAT per ${per}`;
@@ -68,7 +70,9 @@ export function describeSeatChange(sum: SeatChangeSummary, c: {
     case "immediate":
       return {
         title: `Change your team to ${people(c.requested)}?`,
-        lines: ["Nothing is charged during your free trial.", `After the trial your plan is ${newPrice}.`],
+        lines: c.noTrial
+          ? ["Nothing is charged yet: you haven't subscribed.", `Your plan will be ${newPrice} when you subscribe.`]
+          : ["Nothing is charged during your free trial.", `After the trial your plan is ${newPrice}.`],
         confirm: "Confirm",
       };
     case "paid_increase": {
@@ -126,7 +130,7 @@ export function summariseSmsChange(i: {
 const packs = (n: number) => `${n} SMS ${n === 1 ? "pack" : "packs"}`;
 
 export function describeSmsChange(sum: SmsChangeSummary, c: {
-  current: number; requested: number; interval: BillingInterval; periodEndLabel: string | null;
+  current: number; requested: number; interval: BillingInterval; periodEndLabel: string | null; noTrial?: boolean;
 }): { title: string; lines: string[]; confirm: string } {
   const newPrice = `${formatPence(sum.newPriceNet)} + VAT per ${c.interval}`;
   const texts = (n: number) => `${n * PRICING.smsPackTexts} texts a month`;
@@ -134,7 +138,9 @@ export function describeSmsChange(sum: SmsChangeSummary, c: {
     case "immediate":
       return {
         title: c.requested === 0 ? "Stop SMS confirmations?" : `Choose ${packs(c.requested)}?`,
-        lines: ["Nothing is charged during your free trial.", `After the trial your plan is ${newPrice}${c.requested ? ` (${texts(c.requested)} included)` : ""}.`],
+        lines: c.noTrial
+          ? ["Nothing is charged yet: you haven't subscribed.", `Your plan will be ${newPrice}${c.requested ? ` (${texts(c.requested)} included)` : ""} when you subscribe.`]
+          : ["Nothing is charged during your free trial.", `After the trial your plan is ${newPrice}${c.requested ? ` (${texts(c.requested)} included)` : ""}.`],
         confirm: "Confirm",
       };
     case "paid_increase": {
