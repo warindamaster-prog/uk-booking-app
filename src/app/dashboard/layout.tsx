@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </nav>
       {billing && billingEnabled() && !bookingsOpen(billing, { now: new Date(), billingEnabled: true }) && (
         <p role="alert" className="mb-6 rounded-md border border-amber-700 p-3 text-sm">
-          Your booking page is closed: customers can&apos;t book until you subscribe. <Link href="/dashboard/billing" className="underline">Open Billing</Link>. You can still use everything here.
+          Your booking page is closed: customers can&apos;t book until you subscribe. <Link href="/dashboard/billing" className="underline">Open Billing</Link> or <Link href="/dashboard/support" className="underline">contact us</Link>. You can still use everything here, including your bookings.
         </p>
       )}
       {billing?.status === "trialing" && bookingsOpen(billing, { now: new Date(), billingEnabled: billingEnabled() }) && (

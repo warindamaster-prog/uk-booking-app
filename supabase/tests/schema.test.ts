@@ -1090,3 +1090,15 @@ describe("paid this period", () => {
     await expect(as(o.uid, o.email, () => db.query(`update business_billing set paid_this_period_pence=0 where business_id=$1`, [o.id]))).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("trial emails: sent once per shop", () => {
+  it("the two timestamps start empty and can only be claimed once", async () => {
+    const r = await db.query<{ business_id: string }>(`select business_id from business_billing limit 1`);
+    const id = r.rows[0].business_id;
+    const before = (await db.query<Record<string, unknown>>(`select trial_reminder_sent_at, trial_ended_email_sent_at from business_billing where business_id=$1`, [id])).rows[0];
+    expect(before).toEqual({ trial_reminder_sent_at: null, trial_ended_email_sent_at: null });
+    const claim = () => db.query(`update business_billing set trial_reminder_sent_at=now() where business_id=$1 and trial_reminder_sent_at is null returning business_id`, [id]);
+    expect((await claim()).rows).toHaveLength(1);
+    expect((await claim()).rows).toHaveLength(0); // a second run finds it already claimed
+  });
+});

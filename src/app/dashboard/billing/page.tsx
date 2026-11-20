@@ -40,7 +40,10 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       )}
       {b.status === "trialing" && bookingsOpen(b, { now: new Date(), billingEnabled: billingEnabled() }) && (
         <p role="status" className="rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
-          You&apos;re on a free trial: {trialDaysLeft(b.trial_ends_at)} days left (until {formatDate(b.trial_ends_at)}). No card is needed until we launch.
+          You&apos;re on a free trial: {trialDaysLeft(b.trial_ends_at)} days left (until {formatDate(b.trial_ends_at)}).{" "}
+          {b.stripe_subscription_id
+            ? "Your card is saved: the first payment is taken when the trial ends, not before."
+            : "No card is needed for the trial. If you add a card, nothing is charged until the trial ends; after that your subscription starts."}
         </p>
       )}
 

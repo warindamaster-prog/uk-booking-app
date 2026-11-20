@@ -5,14 +5,15 @@ import type { Mailers } from "./provider";
 import { settleDeposit } from "@/lib/stripe/service";
 import { isStaleToRetry } from "./rules";
 import { MAX_ATTEMPTS, sendNotification, type NotifyConfig } from "./send";
+import { runTrialEmails } from "./trial-jobs";
 import type { EmailKind, Recipient } from "./templates";
 
 type Db = ReturnType<typeof createAdminClient>;
-export type JobCounts = { expiredHolds: number; remindersSent: number; retried: number; gaveUp: number; refundsRetried: number; reductionsApplied: number };
+export type JobCounts = { expiredHolds: number; remindersSent: number; retried: number; gaveUp: number; refundsRetried: number; reductionsApplied: number; trialEmailsSent: number };
 
 /** Run every few minutes: releases expired unpaid holds, sends due reminders, retries failed emails and refunds, applies plan reductions that have come due. */
 export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConfig, now: Date = new Date()): Promise<JobCounts> {
-  const counts: JobCounts = { expiredHolds: 0, remindersSent: 0, retried: 0, gaveUp: 0, refundsRetried: 0, reductionsApplied: 0 };
+  const counts: JobCounts = { expiredHolds: 0, remindersSent: 0, retried: 0, gaveUp: 0, refundsRetried: 0, reductionsApplied: 0, trialEmailsSent: 0 };
 
   // 1. Unpaid holds whose time ran out stop blocking the calendar.
   const expired = await db.from("bookings").update({ status: "expired" }, { count: "exact" })
@@ -65,5 +66,8 @@ export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConf
   const due = await db.rpc("apply_due_seat_changes");
   if (due.error) console.error("apply_due_seat_changes failed", due.error.message);
   else counts.reductionsApplied = Number(due.data ?? 0);
+
+  // 6. Free-trial emails (a week before the end, and once after it ended without a subscription). Never lets a problem here stop the jobs above.
+  try { counts.trialEmailsSent = await runTrialEmails(db, mail, now); } catch (e) { console.error("trial emails failed", e instanceof Error ? e.message : e); }
   return counts;
 }
