@@ -1,16 +1,19 @@
 "use server";
 
 import { headers } from "next/headers";
+import { renderResetEmail } from "@/lib/auth-email";
 import { clientIp, limiterKey } from "@/lib/booking/token";
 import { publicEnv } from "@/lib/env";
 import { zodState, type FormState } from "@/lib/form";
+import { createMailers } from "@/lib/notifications/resend";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { forgotSchema } from "@/lib/validation/auth";
 
+const SAME_ANSWER = "If that email has an account, we've sent a link to choose a new password. It can take a minute to arrive, so check your junk folder too.";
+
 /**
- * Sends a password reset link. The answer is the same whether or not the email has an account, so this
- * can't be used to find out who is registered. Rate limited per address and per visitor.
+ * Sends a password reset link from our own mailbox. The answer is the same whether or not the email has an
+ * account, so this can't be used to find out who is registered. Rate limited per address and per visitor.
  */
 export async function requestReset(_: FormState, formData: FormData): Promise<FormState> {
   const raw = { email: String(formData.get("email") ?? "") };
@@ -29,10 +32,23 @@ export async function requestReset(_: FormState, formData: FormData): Promise<Fo
     if (!hit.data) return { error: "Too many attempts. Please wait a while and try again.", values: { email: raw.email } };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${publicEnv().NEXT_PUBLIC_SITE_URL}/auth/callback?next=/reset-password`,
-  });
-  if (error) console.error("password reset email failed", error.message);
-  return { message: "If that email has an account, we've sent a link to choose a new password. It can take a minute to arrive, so check your junk folder too.", values: { email: raw.email } };
+  try {
+    // generateLink only makes the one-time token: nothing is sent by Supabase, and an unknown email just errors.
+    const { data, error } = await db.auth.admin.generateLink({ type: "recovery", email: parsed.data.email });
+    const token = data?.properties?.hashed_token;
+    if (!error && token) {
+      const link = `${publicEnv().NEXT_PUBLIC_SITE_URL}/reset-password/confirm?token_hash=${encodeURIComponent(token)}`;
+      const mail = createMailers();
+      const rendered = renderResetEmail(link);
+      await mail.provider("business").send({
+        from: `"Booking account" <${mail.fromAddress("business")}>`,
+        to: parsed.data.email,
+        ...rendered,
+        idempotencyKey: `pwreset:${parsed.data.email}:${Date.now()}`,
+      });
+    }
+  } catch (e) {
+    console.error("password reset email failed", e instanceof Error ? e.message : e);
+  }
+  return { message: SAME_ANSWER, values: { email: raw.email } };
 }
