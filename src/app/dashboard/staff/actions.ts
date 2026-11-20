@@ -10,7 +10,14 @@ import { staffSchema, timeOffSchema, uuid } from "@/lib/validation/catalog";
 
 const GENERIC = "Something went wrong. Please try again.";
 const SEATS_FULL = "All your team seats are in use. Increase your team size on the Billing page, or set someone else to not take bookings.";
+const SEATS_FULL_REDUCTION = "You have planned a reduction in team size for your next billing period, so only the lower number of people can take bookings. To add someone now, go to Billing and choose \"Keep my current plan instead\", or set someone else to not take bookings.";
 const isSeatLimit = (e: { message?: string } | null) => !!e?.message?.includes("staff_seats_exceeded");
+
+/** Why the seat limit was hit: a planned reduction is the confusing case, so say so. */
+async function seatsFullMessage(supabase: Awaited<ReturnType<typeof requireOwner>>["supabase"], businessId: string): Promise<string> {
+  const { data } = await supabase.from("business_billing").select("staff_seats, next_staff_seats").eq("business_id", businessId).maybeSingle();
+  return data && data.next_staff_seats !== null && data.next_staff_seats < data.staff_seats ? SEATS_FULL_REDUCTION : SEATS_FULL;
+}
 
 export async function saveStaff(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, business } = await requireOwner();
@@ -32,12 +39,12 @@ export async function saveStaff(_: FormState, formData: FormData): Promise<FormS
 
   if (id?.success) {
     const { error } = await supabase.from("staff").update(row).eq("id", id.data).eq("business_id", business.id);
-    if (error) return { error: isSeatLimit(error) ? SEATS_FULL : GENERIC, values: { ...raw, active: active ? "on" : "" } };
+    if (error) return { error: isSeatLimit(error) ? await seatsFullMessage(supabase, business.id) : GENERIC, values: { ...raw, active: active ? "on" : "" } };
     revalidatePath(`/dashboard/staff/${id.data}`);
     return { message: "Saved." , values: { ...raw, active: active ? "on" : "" } };
   }
   const { data, error } = await supabase.from("staff").insert({ ...row, business_id: business.id }).select("id").single();
-  if (error || !data) return { error: isSeatLimit(error) ? SEATS_FULL : GENERIC, values: { ...raw, active: active ? "on" : "" } };
+  if (error || !data) return { error: isSeatLimit(error) ? await seatsFullMessage(supabase, business.id) : GENERIC, values: { ...raw, active: active ? "on" : "" } };
   redirect(`/dashboard/staff/${data.id}`);
 }
 

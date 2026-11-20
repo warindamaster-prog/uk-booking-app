@@ -24,6 +24,11 @@ export default async function StaffPage() {
           <p className="mb-4 text-sm">
             {used} of {Math.min(billing.staff_seats, billing.next_staff_seats ?? billing.staff_seats)} team seats in use.{" "}
             <Link href="/dashboard/billing" className="underline">Change team size</Link>
+            {billing.next_staff_seats !== null && billing.next_staff_seats < billing.staff_seats && (
+              <span className="mt-1 block text-neutral-600 dark:text-neutral-400">
+                You have paid for {billing.staff_seats} until your next billing period, but you planned a reduction to {billing.next_staff_seats}, so only {billing.next_staff_seats} can take bookings. To add someone now, cancel the planned reduction on the Billing page.
+              </span>
+            )}
           </p>
         )}
         <ul className="divide-y divide-neutral-300 rounded-md border border-neutral-300 dark:divide-neutral-700 dark:border-neutral-700">
