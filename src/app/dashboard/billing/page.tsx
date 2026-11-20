@@ -91,7 +91,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             </div>
           )}
         </dl>
-        {b.next_staff_seats !== null && <div className="mt-2"><CancelReductionForm current={b.staff_seats} /></div>}
+        {b.next_price_pence !== null && <div className="mt-2"><CancelReductionForm /></div>}
       </section>
 
       <section aria-labelledby="team-h" className="space-y-3">

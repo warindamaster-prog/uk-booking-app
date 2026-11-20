@@ -181,6 +181,26 @@ export async function updateSmsPacks(_: FormState, formData: FormData): Promise<
   return { message: "Saved.", values };
 }
 
+/** Cancels every change planned for the next billing period (team size and SMS packs): the plan stays as it is. */
+export async function keepCurrentPlan(): Promise<FormState> {
+  const { supabase, business } = await requireOwner();
+  const { data: b } = await supabase.from("business_billing")
+    .select("stripe_subscription_id, staff_seats, next_staff_seats, sms_packs, next_sms_packs, billing_interval").eq("business_id", business.id).single();
+  if (!b) return { error: GENERIC };
+  const subId = b.stripe_subscription_id as string | null;
+  try {
+    if (subId && b.next_staff_seats !== null) await setSubscriptionSeats(subId, b.staff_seats); // Stripe first, so it never bills fewer than we allow
+    if (subId && b.next_sms_packs !== null) await setSubscriptionSmsPacks(subId, b.sms_packs, b.billing_interval as BillingInterval);
+    if (b.next_staff_seats !== null) { const r = await supabase.rpc("change_staff_seats", { p_business_id: business.id, p_new_seats: b.staff_seats }); if (r.error) throw r.error; }
+    if (b.next_sms_packs !== null) { const r = await supabase.rpc("change_sms_packs", { p_business_id: business.id, p_new_packs: b.sms_packs }); if (r.error) throw r.error; }
+  } catch (e) {
+    console.error("keep current plan failed", e instanceof Error ? e.message : e);
+    return { error: GENERIC };
+  }
+  refresh();
+  return { message: "Done. Your plan stays as it is." };
+}
+
 /** Switch SMS confirmations on or off without changing what is paid for. */
 export async function setSmsEnabled(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, business } = await requireOwner();
