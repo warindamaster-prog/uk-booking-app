@@ -30,7 +30,7 @@ The live account's ids and secrets are different from the sandbox ones. Mixing t
 
 ## 3. Clean up test data and test switches
 - [ ] Delete the demo and test businesses (their Stripe ids are test-mode ids and will not work live). See "Deleting a business" below.
-- [ ] Remove `BILLING_SKIP_TRIAL` from Vercel (it takes the first payment at once and ends the free trial for new shops). Decide: free 60 days (leave it out, set `BILLING_ENABLED=true`) or pay at sign-up.
+- [x] DECIDED: free 60-day trial for new shops. `BILLING_SKIP_TRIAL` is `false` in Vercel Production (done 20 Nov 2026) and `BILLING_ENABLED=true`: the booking page is open for 60 days, then closes until the shop subscribes (a card added during the trial is first charged when the trial ends).
 - [ ] `EMAIL_OVERRIDE_TO` empty (it redirects every email to one address).
 - [ ] GitHub Actions: secrets `CRON_SECRET` (same as Vercel) and `APP_URL` set; the "reminders" workflow runs green every 15 minutes.
 
