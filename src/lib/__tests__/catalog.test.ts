@@ -133,3 +133,20 @@ describe("settingsSchema", () => {
     expect(cancellationLabel(12)).toBe("Up to 12 hours before");
   });
 });
+
+import { forgotSchema, resetSchema } from "../validation/auth";
+
+describe("password reset forms", () => {
+  it("normalises the email", () => {
+    expect(forgotSchema.parse({ email: "  Shop@Example.COM " }).email).toBe("shop@example.com");
+    expect(forgotSchema.safeParse({ email: "nope" }).success).toBe(false);
+  });
+  it("needs 10+ characters that match", () => {
+    expect(resetSchema.safeParse({ password: "long-enough-1", confirm: "long-enough-1" }).success).toBe(true);
+    expect(resetSchema.safeParse({ password: "short", confirm: "short" }).success).toBe(false);
+    const mismatch = resetSchema.safeParse({ password: "long-enough-1", confirm: "different-123" });
+    expect(mismatch.success).toBe(false);
+    expect(JSON.stringify(mismatch)).toContain("don't match");
+    expect(resetSchema.safeParse({ password: "x".repeat(73), confirm: "x".repeat(73) }).success).toBe(false);
+  });
+});
