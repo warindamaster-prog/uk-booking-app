@@ -46,6 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         ) : myStaffId ? (
           <Link href={`/dashboard/staff/${myStaffId}`} className="underline-offset-4 hover:underline">My hours</Link>
         ) : null}
+        <Link href="/dashboard/support" className="underline-offset-4 hover:underline">Support</Link>
       </nav>
       {billing && billingEnabled() && !bookingsOpen(billing, { now: new Date(), billingEnabled: true }) && (
         <p role="alert" className="mb-6 rounded-md border border-amber-700 p-3 text-sm">
