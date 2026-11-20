@@ -13,6 +13,13 @@ describe("which trial email is due", () => {
     expect(trialEmailDue(row(), now)).toBe("reminder");
     expect(trialEmailDue(row({ trial_reminder_sent_at: now.toISOString() }), now)).toBeNull();
   });
+  it("a second reminder in the last day, once, if the first went out earlier", () => {
+    const last = { trial_ends_at: new Date(now.getTime() + 20 * 3_600_000).toISOString() };
+    const earlier = new Date(now.getTime() - 4 * DAY).toISOString();
+    expect(trialEmailDue(row({ ...last, trial_reminder_sent_at: earlier }), now)).toBe("final");
+    expect(trialEmailDue(row({ ...last, trial_reminder_sent_at: now.toISOString() }), now)).toBeNull(); // already sent within the last day
+    expect(trialEmailDue(row({ ...last }), now)).toBe("reminder"); // never reminded: the first one goes out instead
+  });
   it("nothing earlier than a week before the end", () => {
     expect(trialEmailDue(row({ trial_ends_at: new Date(now.getTime() + 8 * DAY).toISOString() }), now)).toBeNull();
   });
@@ -42,6 +49,12 @@ describe("trial emails", () => {
     expect(none.text).toContain("help@x.test");
     expect(none.subject).toBe("Your free trial ends on Sat, 23 Jan 2027");
     expect(none.html).not.toContain("<b>"); // shop name is escaped
+  });
+  it("the final reminder says tomorrow", () => {
+    const f = renderTrialReminderEmail({ ...base, endsOn: "Sat, 23 Jan 2027", hasCard: false, final: true });
+    expect(f.subject).toBe("Your free trial ends tomorrow");
+    expect(f.text).toContain("ends tomorrow (Sat, 23 Jan 2027)");
+    expect(renderTrialReminderEmail({ ...base, endsOn: "Sat, 23 Jan 2027", hasCard: true, final: true }).text).toContain("Nothing has been charged before it");
   });
   it("ended email says bookings are still visible and who to contact", () => {
     const e = renderTrialEndedEmail(base);
