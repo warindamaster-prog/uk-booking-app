@@ -8,29 +8,55 @@ import type { SeatPlan } from "./stripe/billing";
 
 /** Stripe cannot charge less than 30p. */
 export const MIN_CHARGE_PENCE = 30;
-const YEAR_MS = 365 * 86_400_000;
 
 /** The price of one extra person for a whole billing period. */
 export const extraSeatPence = (interval: BillingInterval) =>
   interval === "year" ? PRICING.extraSeatMonthlyPence * PRICING.yearlyMonthsCharged : PRICING.extraSeatMonthlyPence;
 
 /**
- * Charged straight away when seats are added on a paid plan.
- * Monthly: the full month for each added person (2 people = £4). Yearly: only the part of the
- * year that is left, because charging a whole year in month 11 would be unfair.
+ * Whole months from `now` to `periodEnd`, at most 12. Adding a person in the 3rd month of a year leaves
+ * 9 whole months (the 3rd is already under way).
  */
-export function chargeNowPence(i: { added: number; interval: BillingInterval; periodEnd: Date | null; now: Date }): number {
-  return proratedChargePence(Math.max(0, i.added) * extraSeatPence(i.interval), i);
+export function fullMonthsLeft(now: Date, periodEnd: Date): number {
+  const addMonths = (d: Date, n: number) => {
+    const out = new Date(d.getTime());
+    const day = out.getUTCDate();
+    out.setUTCDate(1);
+    out.setUTCMonth(out.getUTCMonth() + n);
+    const last = new Date(Date.UTC(out.getUTCFullYear(), out.getUTCMonth() + 1, 0)).getUTCDate();
+    out.setUTCDate(Math.min(day, last));
+    return out;
+  };
+  let m = 0;
+  while (m < 12 && addMonths(now, m + 1).getTime() <= periodEnd.getTime()) m++;
+  return m;
 }
 
-/** The charge for `full` pence of added items: all of it monthly, the part of the year left when yearly. */
-function proratedChargePence(full: number, i: { interval: BillingInterval; periodEnd: Date | null; now: Date }): number {
-  let amount = full;
-  if (i.interval === "year" && i.periodEnd) {
-    const fraction = Math.min(1, Math.max(0, (i.periodEnd.getTime() - i.now.getTime()) / YEAR_MS));
-    amount = Math.round(full * fraction);
-  }
+/**
+ * What one added item costs now. Monthly plan: its price for the month. Yearly plan: its MONTHLY price for each
+ * whole month left until the plan renews (at least one), never more than its yearly price. From the renewal on,
+ * the normal yearly price applies. Example: a yearly plan, 1 person, a second added in month 3: 9 x £2 = £18 now,
+ * then £170 a year at renewal for two.
+ */
+function itemChargePence(i: { monthlyPence: number; yearlyPence: number; interval: BillingInterval; periodEnd: Date | null; now: Date }): { each: number; months: number | null } {
+  if (i.interval === "month") return { each: i.monthlyPence, months: null };
+  if (!i.periodEnd) return { each: i.yearlyPence, months: null };
+  const months = Math.max(1, fullMonthsLeft(i.now, i.periodEnd));
+  return { each: Math.min(months * i.monthlyPence, i.yearlyPence), months };
+}
+
+type ChargeInput = { added: number; interval: BillingInterval; periodEnd: Date | null; now: Date };
+
+/** Charged straight away when seats are added on a paid plan (see itemChargePence). */
+export function chargeNowPence(i: ChargeInput): number {
+  const { each } = itemChargePence({ monthlyPence: PRICING.extraSeatMonthlyPence, yearlyPence: extraSeatPence("year"), ...i });
+  const amount = Math.max(0, i.added) * each;
   return amount < MIN_CHARGE_PENCE ? 0 : amount;
+}
+
+/** How many whole months an added seat or pack is charged for on a yearly plan (null on a monthly plan). */
+export function monthsCharged(i: { interval: BillingInterval; periodEnd: Date | null; now: Date }): number | null {
+  return itemChargePence({ monthlyPence: 1, yearlyPence: 12, ...i }).months;
 }
 
 export type SeatChangeSummary = {
@@ -40,6 +66,8 @@ export type SeatChangeSummary = {
   chargeNowNet: number;
   /** The plan price from the next billing period (net), per interval. */
   newPriceNet: number;
+  /** Yearly plans: the whole months the charge covers (until the renewal). null otherwise. */
+  months: number | null;
 };
 
 export function summariseSeatChange(i: {
@@ -51,6 +79,7 @@ export function summariseSeatChange(i: {
     added,
     chargeNowNet: i.plan === "paid_increase" ? chargeNowPence({ added, interval: i.interval, periodEnd: i.periodEnd, now: i.now }) : 0,
     newPriceNet: pricePence(i.requested, i.interval),
+    months: i.plan === "paid_increase" ? monthsCharged({ interval: i.interval, periodEnd: i.periodEnd, now: i.now }) : null,
   };
 }
 
@@ -81,7 +110,7 @@ export function describeSeatChange(sum: SeatChangeSummary, c: {
         : "There is nothing to pay now.";
       return {
         title: `Add ${sum.added} more ${sum.added === 1 ? "person" : "people"}?`,
-        lines: [now, `From your next billing period your plan is ${newPrice}.`],
+        lines: [now, ...(sum.months && sum.chargeNowNet > 0 ? [`That covers the ${sum.months} ${sum.months === 1 ? "month" : "months"} left until your plan renews, at ${formatPence(PRICING.extraSeatMonthlyPence)} a month for each person.`] : []), `From your next billing period your plan is ${newPrice}.`],
         confirm: sum.chargeNowNet > 0 ? `Pay ${formatPence(grossPence(sum.chargeNowNet))} and add` : "Add",
       };
     }
@@ -109,11 +138,13 @@ export function describeSeatChange(sum: SeatChangeSummary, c: {
 // The same rules as seats: adding is charged at once, reducing waits for the next billing period.
 // A pack is £5 a month; on a yearly plan £60 a year (no yearly discount), charged for the part of the year left.
 
-export function chargeNowSmsPence(i: { added: number; interval: BillingInterval; periodEnd: Date | null; now: Date }): number {
-  return proratedChargePence(Math.max(0, i.added) * smsPackPricePence(i.interval), i);
+export function chargeNowSmsPence(i: ChargeInput): number {
+  const { each } = itemChargePence({ monthlyPence: PRICING.smsPackMonthlyPence, yearlyPence: smsPackPricePence("year"), ...i });
+  const amount = Math.max(0, i.added) * each;
+  return amount < MIN_CHARGE_PENCE ? 0 : amount;
 }
 
-export type SmsChangeSummary = { plan: SeatPlan; added: number; chargeNowNet: number; newPriceNet: number };
+export type SmsChangeSummary = { plan: SeatPlan; added: number; chargeNowNet: number; newPriceNet: number; months: number | null };
 
 export function summariseSmsChange(i: {
   plan: SeatPlan; current: number; requested: number; seats: number; interval: BillingInterval; periodEnd: Date | null; now: Date;
@@ -124,6 +155,7 @@ export function summariseSmsChange(i: {
     added,
     chargeNowNet: i.plan === "paid_increase" ? chargeNowSmsPence({ added, interval: i.interval, periodEnd: i.periodEnd, now: i.now }) : 0,
     newPriceNet: pricePence(i.seats, i.interval, i.requested),
+    months: i.plan === "paid_increase" ? monthsCharged({ interval: i.interval, periodEnd: i.periodEnd, now: i.now }) : null,
   };
 }
 
@@ -149,7 +181,7 @@ export function describeSmsChange(sum: SmsChangeSummary, c: {
         : "There is nothing to pay now.";
       return {
         title: `Add ${packs(sum.added)}?`,
-        lines: [now, `You will have ${texts(c.requested)}. From your next billing period your plan is ${newPrice}.`],
+        lines: [now, ...(sum.months && sum.chargeNowNet > 0 ? [`That covers the ${sum.months} ${sum.months === 1 ? "month" : "months"} left until your plan renews, at ${formatPence(PRICING.smsPackMonthlyPence)} a month for each pack.`] : []), `You will have ${texts(c.requested)}. From your next billing period your plan is ${newPrice}.`],
         confirm: sum.chargeNowNet > 0 ? `Pay ${formatPence(grossPence(sum.chargeNowNet))} and add` : "Add",
       };
     }
