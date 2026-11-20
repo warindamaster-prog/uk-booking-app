@@ -131,3 +131,18 @@ describe("yearly popup wording", () => {
     expect(d.lines.join(" ")).toContain("£170.00 + VAT per year");
   });
 });
+
+import { afterEach, vi } from "vitest";
+import { smsPacksEnabled } from "../sms-switch";
+
+describe("SMS switch", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it("is off unless SMS_PACKS_ENABLED is exactly true", () => {
+    vi.stubEnv("SMS_PACKS_ENABLED", "");
+    expect(smsPacksEnabled()).toBe(false);
+    vi.stubEnv("SMS_PACKS_ENABLED", "1");
+    expect(smsPacksEnabled()).toBe(false);
+    vi.stubEnv("SMS_PACKS_ENABLED", "true");
+    expect(smsPacksEnabled()).toBe(true);
+  });
+});

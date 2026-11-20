@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { noTrialMode } from "@/lib/billing";
+import { smsPacksEnabled } from "@/lib/sms-switch";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { zodState, type FormState } from "@/lib/form";
 import {
@@ -20,7 +21,7 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
     phone: String(formData.get("phone") ?? ""),
     seats: String(formData.get("seats") ?? ""),
     interval: String(formData.get("interval") ?? ""),
-    smsPacks: formData.get("smsOn") === "on" ? String(formData.get("smsPacks") ?? "1") : "0",
+    smsPacks: smsPacksEnabled() && formData.get("smsOn") === "on" ? String(formData.get("smsPacks") ?? "1") : "0",
   };
   const parsed = onboardingSchema.safeParse(raw);
   if (!parsed.success) return zodState(parsed.error, { ...raw, smsOn: formData.get("smsOn") === "on" ? "on" : "" });

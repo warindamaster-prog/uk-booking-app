@@ -34,8 +34,8 @@ The live account's ids and secrets are different from the sandbox ones. Mixing t
 - [ ] `EMAIL_OVERRIDE_TO` empty (it redirects every email to one address).
 - [ ] GitHub Actions: secrets `CRON_SECRET` (same as Vercel) and `APP_URL` set; the "reminders" workflow runs green every 15 minutes.
 
-## 4. SMS (open decision)
-SMS packs can be bought, but no text is sent yet (no provider connected). Either hide the option until it works, or connect Twilio first. Do not take real money for texts that cannot be sent.
+## 4. SMS
+Decided: SMS is switched **off** for the two-month trial period. No text is sent yet (no provider connected), so the option is hidden (sign-up and Billing) and cannot be bought while `SMS_PACKS_ENABLED` is not `true` (it is unset in Vercel, which means off). Shops that already hold packs (test shops) keep them but cannot change them. To switch it on later: connect Twilio, make the sending code respect the pack count, then set `SMS_PACKS_ENABLED=true`.
 
 ## 5. Test once with real money (small amounts)
 - [ ] A shop connects its real Stripe account; a £1 deposit service is booked and paid with a real card; the booking is confirmed; the deposit is refunded with "Refund deposit".

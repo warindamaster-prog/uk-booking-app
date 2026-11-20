@@ -10,6 +10,7 @@ import { isValidSeats, isValidSmsPacks, PRICING, pricePence, type BillingInterva
 import { planSeatChange } from "@/lib/stripe/billing";
 import { billingStripeReady, chargeForExtraSeats, openBillingPortal, setSubscriptionSeats, setSubscriptionSmsPacks, smsStripeReady, startSubscriptionCheckout } from "@/lib/stripe/billing-service";
 import { summariseSeatChange, summariseSmsChange } from "@/lib/seat-change";
+import { smsPacksEnabled } from "@/lib/sms-switch";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/time";
 
@@ -103,6 +104,7 @@ export async function updateSeats(_: FormState, formData: FormData): Promise<For
  */
 export async function updateSmsPacks(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, business } = await requireOwner();
+  if (!smsPacksEnabled()) return { error: "SMS packs aren't available yet." };
   const text = String(formData.get("packs") ?? "").trim();
   const packs = /^\d+$/.test(text) ? Number(text) : NaN;
   const values = { packs: text };
@@ -204,6 +206,7 @@ export async function keepCurrentPlan(): Promise<FormState> {
 /** Switch SMS confirmations on or off without changing what is paid for. */
 export async function setSmsEnabled(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, business } = await requireOwner();
+  if (!smsPacksEnabled()) return { error: "SMS confirmations aren't available yet." };
   const enabled = formData.get("enabled") === "on";
   const { error } = await supabase.rpc("set_sms_enabled", { p_business_id: business.id, p_enabled: enabled });
   if (error) return { error: error.message?.includes("sms_needs_a_pack") ? "Choose at least one SMS pack first." : GENERIC };

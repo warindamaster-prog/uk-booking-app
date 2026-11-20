@@ -8,7 +8,7 @@ import { formatPence } from "@/lib/money";
 import { grossPence, isValidSeats, isValidSmsPacks, PRICING, pricePence, smsPackPricePence, vatPence, yearlySavingPence, type BillingInterval } from "@/lib/pricing";
 import { slugify } from "@/lib/slug";
 
-export function OnboardingForm({ siteHost, noTrial = false }: { siteHost: string; noTrial?: boolean }) {
+export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false }: { siteHost: string; noTrial?: boolean; smsEnabled?: boolean }) {
   const [state, action, pending] = useActionState<FormState, FormData>(createBusiness, {});
   const v = state.values ?? {};
   const [slug, setSlug] = useState<string | null>(null); // null = follow the business name
@@ -22,7 +22,7 @@ export function OnboardingForm({ siteHost, noTrial = false }: { siteHost: string
   const seats = /^\d+$/.test(seatsText) ? Number(seatsText) : NaN;
   const seatsOk = isValidSeats(seats);
   const packsN = /^\d+$/.test(packsText) ? Number(packsText) : NaN;
-  const packs = smsOn && isValidSmsPacks(packsN) ? packsN : 0;
+  const packs = smsEnabled && smsOn && isValidSmsPacks(packsN) ? packsN : 0;
   const e = state.fieldErrors ?? {};
 
   return (
@@ -79,6 +79,7 @@ export function OnboardingForm({ siteHost, noTrial = false }: { siteHost: string
           {e.interval && <p className="mt-1 text-sm text-red-700 dark:text-red-400">{e.interval[0]}</p>}
         </fieldset>
 
+        {smsEnabled && (
         <div className="space-y-2">
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" name="smsOn" checked={smsOn} onChange={(ev) => setSmsOn(ev.target.checked)} className="mt-1 h-5 w-5" />
@@ -96,6 +97,7 @@ export function OnboardingForm({ siteHost, noTrial = false }: { siteHost: string
               errors={e.smsPacks} />
           )}
         </div>
+        )}
 
         <div role="status" aria-live="polite" className="rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
           <p className="font-medium">{noTrial ? "No free trial. You subscribe after setting up, and your booking page opens once you have." : `Free for ${PRICING.trialDays} days. No card needed.`}</p>

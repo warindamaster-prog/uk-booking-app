@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireOwner } from "@/lib/auth";
 import { billingEnabled, bookingsOpen, noTrialMode, trialDaysLeft } from "@/lib/billing";
+import { smsPacksEnabled } from "@/lib/sms-switch";
 import { billingStripeReady } from "@/lib/stripe/billing-service";
 import { formatPence } from "@/lib/money";
 import { grossPence, vatPence } from "@/lib/pricing";
@@ -77,7 +78,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <h2 id="plan-h" className="mb-2 text-xl font-semibold">Your plan</h2>
         <dl className="divide-y divide-neutral-300 rounded-md border border-neutral-300 px-3 dark:divide-neutral-700 dark:border-neutral-700">
           <div className={row}><dt>Team members paid for</dt><dd>{b.staff_seats} ({count ?? 0} in use)</dd></div>
-          <div className={row}><dt>SMS packs</dt><dd>{b.sms_packs === 0 ? "None" : `${b.sms_packs} (${b.sms_packs * 50} texts a month, ${b.sms_enabled ? "on" : "off"})`}</dd></div>
+          {(smsPacksEnabled() || b.sms_packs > 0) && <div className={row}><dt>SMS packs</dt><dd>{b.sms_packs === 0 ? "None" : `${b.sms_packs} (${b.sms_packs * 50} texts a month, ${b.sms_enabled ? "on" : "off"})`}</dd></div>}
           <div className={row}><dt>Billing</dt><dd>{per === "year" ? "Yearly" : "Monthly"}</dd></div>
           {b.stripe_subscription_id && b.status !== "trialing" ? (
             <>
@@ -120,12 +121,14 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           periodEnd={b.current_period_end} periodEndLabel={b.current_period_end ? formatDate(b.current_period_end) : null} />
       </section>
 
+      {smsPacksEnabled() && (
       <section aria-labelledby="sms-h" className="space-y-3">
         <h2 id="sms-h" className="text-xl font-semibold">SMS confirmations</h2>
         <SmsForm noTrial={noTrialMode()} current={b.sms_packs} scheduled={b.next_sms_packs} enabled={b.sms_enabled} seats={b.next_staff_seats ?? b.staff_seats}
           interval={per} hasSubscription={!!b.stripe_subscription_id}
           periodEnd={b.current_period_end} periodEndLabel={b.current_period_end ? formatDate(b.current_period_end) : null} />
       </section>
+      )}
     </main>
   );
 }
