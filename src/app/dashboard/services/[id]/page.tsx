@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOwner } from "@/lib/auth";
 import { penceToInput } from "@/lib/money";
+import { connectConfigured } from "@/lib/stripe/client";
+import { depositStatus } from "@/lib/stripe/deposit-status";
 import { uuid } from "@/lib/validation/catalog";
 import { LevelPricesForm } from "../level-prices-form";
 import { ServiceForm } from "../service-form";
@@ -20,6 +22,8 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
     supabase.from("staff_levels").select("id, name").eq("business_id", business.id).order("sort_order").order("name"),
     supabase.from("service_level_prices").select("level_id, price_pence").eq("service_id", s.id),
   ]);
+  const { data: biz } = await supabase.from("businesses").select("stripe_account_id, stripe_charges_enabled").eq("id", business.id).single();
+  const deposits = depositStatus({ siteConfigured: connectConfigured(), stripeAccountId: biz?.stripe_account_id ?? null, chargesEnabled: biz?.stripe_charges_enabled === true });
   const priceOf = new Map((levelPrices ?? []).map((p) => [p.level_id, p.price_pence]));
 
   return (
@@ -30,7 +34,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
         id: s.id, name: s.name, description: s.description ?? "", duration: String(s.duration_minutes),
         bufferBefore: String(s.buffer_before_minutes), bufferAfter: String(s.buffer_after_minutes),
         price: penceToInput(s.price_pence), deposit: s.deposit_pence ? penceToInput(s.deposit_pence) : "", active: s.active,
-      }} />
+      }} deposits={deposits} />
 
       {levels && levels.length > 0 && (
         <section aria-labelledby="levels-h" className="space-y-4">

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
 import { formatPence } from "@/lib/money";
+import { connectConfigured } from "@/lib/stripe/client";
+import { depositStatus } from "@/lib/stripe/deposit-status";
 import { EMPTY_SERVICE, ServiceForm } from "./service-form";
 
 export const metadata: Metadata = { title: "Services" };
@@ -14,6 +16,9 @@ export default async function ServicesPage() {
     .eq("business_id", business.id)
     .order("active", { ascending: false })
     .order("name");
+
+  const { data: biz } = await supabase.from("businesses").select("stripe_account_id, stripe_charges_enabled").eq("id", business.id).single();
+  const deposits = depositStatus({ siteConfigured: connectConfigured(), stripeAccountId: biz?.stripe_account_id ?? null, chargesEnabled: biz?.stripe_charges_enabled === true });
 
   return (
     <main className="space-y-10">
@@ -29,6 +34,9 @@ export default async function ServicesPage() {
                     {s.duration_minutes} min · {formatPence(s.price_pence)}
                     {s.deposit_pence > 0 && ` · ${formatPence(s.deposit_pence)} deposit`}
                   </p>
+                  {s.deposit_pence > 0 && deposits !== "ready" && (
+                    <p className="text-sm text-amber-800 dark:text-amber-400">Can&apos;t be booked online until Stripe is connected and ready. <Link href="/dashboard/payments" className="underline">Open Payments</Link></p>
+                  )}
                 </div>
                 <Link href={`/dashboard/services/${s.id}`} className="text-sm underline">Edit<span className="sr-only"> {s.name}</span></Link>
               </li>
@@ -40,7 +48,7 @@ export default async function ServicesPage() {
       </section>
       <section aria-labelledby="add-h">
         <h2 id="add-h" className="mb-4 text-xl font-semibold">Add a service</h2>
-        <ServiceForm defaults={EMPTY_SERVICE} />
+        <ServiceForm defaults={EMPTY_SERVICE} deposits={deposits} />
       </section>
     </main>
   );

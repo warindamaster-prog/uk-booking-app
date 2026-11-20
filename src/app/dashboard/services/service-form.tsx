@@ -3,7 +3,9 @@
 import { useActionState } from "react";
 import { saveService } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
+import Link from "next/link";
 import type { FormState } from "@/lib/form";
+import { depositNote, type DepositStatus } from "@/lib/stripe/deposit-status";
 
 export type ServiceDefaults = {
   id?: string; name: string; description: string; duration: string;
@@ -14,7 +16,8 @@ export const EMPTY_SERVICE: ServiceDefaults = {
   name: "", description: "", duration: "60", bufferBefore: "0", bufferAfter: "0", price: "", deposit: "", active: true,
 };
 
-export function ServiceForm({ defaults }: { defaults: ServiceDefaults }) {
+export function ServiceForm({ defaults, deposits = "ready" }: { defaults: ServiceDefaults; deposits?: DepositStatus }) {
+  const note = depositNote(deposits);
   const [state, action, pending] = useActionState<FormState, FormData>(saveService, {});
   const v = state.values ?? {};
   const e = state.fieldErrors ?? {};
@@ -37,6 +40,11 @@ export function ServiceForm({ defaults }: { defaults: ServiceDefaults }) {
         <Field label="Deposit (£, optional)" name="deposit" inputMode="decimal" defaultValue={v.deposit ?? defaults.deposit}
           hint="Leave blank for no deposit." errors={e.deposit} />
       </div>
+      {note && (
+        <p role="note" className="rounded-md border border-amber-700 p-3 text-sm">
+          {note}{deposits !== "off" && <> <Link href="/dashboard/payments" className="underline">Open Payments</Link>.</>}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <Field label="Buffer before (min)" name="bufferBefore" inputMode="numeric" defaultValue={v.bufferBefore ?? defaults.bufferBefore} errors={e.bufferBefore} />
         <Field label="Buffer after (min)" name="bufferAfter" inputMode="numeric" defaultValue={v.bufferAfter ?? defaults.bufferAfter} errors={e.bufferAfter} />
