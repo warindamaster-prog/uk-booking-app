@@ -8,7 +8,7 @@ import { formatPence } from "@/lib/money";
 import { grossPence, isValidSeats, isValidSmsPacks, PRICING, pricePence, smsPackPricePence, vatPence, yearlySavingPence, type BillingInterval } from "@/lib/pricing";
 import { slugify } from "@/lib/slug";
 
-export function OnboardingForm({ siteHost }: { siteHost: string }) {
+export function OnboardingForm({ siteHost, noTrial = false }: { siteHost: string; noTrial?: boolean }) {
   const [state, action, pending] = useActionState<FormState, FormData>(createBusiness, {});
   const v = state.values ?? {};
   const [slug, setSlug] = useState<string | null>(null); // null = follow the business name
@@ -92,21 +92,21 @@ export function OnboardingForm({ siteHost }: { siteHost: string }) {
           </label>
           {smsOn && (
             <Field label="SMS packs" name="smsPacks" inputMode="numeric" value={packsText} onChange={(ev) => setPacksText(ev.target.value)}
-              hint={`${isValidSmsPacks(packsN) ? packsN * PRICING.smsPackTexts : "…"} texts a month. Texts start sending once we switch SMS on; you are not charged before then.`}
+              hint={`${isValidSmsPacks(packsN) ? packsN * PRICING.smsPackTexts : "…"} texts a month. Texts start sending once we switch SMS on.${noTrial ? "" : " You are not charged before then."}`}
               errors={e.smsPacks} />
           )}
         </div>
 
         <div role="status" aria-live="polite" className="rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
-          <p className="font-medium">Free for {PRICING.trialDays} days. No card needed.</p>
+          <p className="font-medium">{noTrial ? "No free trial. You subscribe after setting up, and your booking page opens once you have." : `Free for ${PRICING.trialDays} days. No card needed.`}</p>
           {seatsOk && (() => {
             const net = pricePence(seats, interval, packs);
-            return <p>After the trial: {formatPence(net)} + {formatPence(vatPence(net))} VAT = {formatPence(grossPence(net))} per {interval}.</p>;
+            return <p>{noTrial ? "Your plan" : "After the trial"}: {formatPence(net)} + {formatPence(vatPence(net))} VAT = {formatPence(grossPence(net))} per {interval}.</p>;
           })()}
         </div>
       </fieldset>
 
-      <SubmitButton pending={pending}>Start my free trial</SubmitButton>
+      <SubmitButton pending={pending}>{noTrial ? "Set up my business" : "Start my free trial"}</SubmitButton>
     </form>
   );
 }
