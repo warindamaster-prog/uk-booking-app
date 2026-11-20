@@ -16,6 +16,14 @@ export async function setNewPassword(_: FormState, formData: FormData): Promise<
   if (!data.user) redirect("/forgot-password?error=expired");
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-  if (error) return { error: "We couldn't change your password. Choose a different one, or request a new link.", values: {} };
+  if (error) {
+    // The link already signed them in, so "same as the old one" simply means they remembered it.
+    if (error.code === "same_password") {
+      return { message: "That is already your current password, so nothing needed to change. You're logged in. You can carry on, or choose a different password below.", values: { loggedIn: "1" } };
+    }
+    if (error.code === "weak_password") return { error: "That password is too easy to guess. Choose a longer or less common one.", values: {} };
+    console.error("password change failed", error.code, error.message);
+    return { error: "We couldn't change your password. Choose a different one, or request a new link.", values: {} };
+  }
   redirect("/dashboard");
 }
