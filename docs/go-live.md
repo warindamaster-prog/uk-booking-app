@@ -20,7 +20,7 @@ The live account's ids and secrets are different from the sandbox ones. Mixing t
 - [ ] Connect > Settings: **Platform**; Onboarding options > OAuth: enable OAuth for Standard accounts; redirect URI `<site>/api/stripe/connect/callback` (add the new domain's too). Copy the **live client ID** (`ca_...`).
 - [ ] Developers > Webhooks, **two** destinations, both to `<site>/api/stripe/webhook`, payload style Snapshot:
   - Events from **Your account**: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
-  - Events from **Connected accounts**: `checkout.session.completed`, `checkout.session.expired`, `charge.refunded`
+  - Events from **Connected accounts**: `checkout.session.completed`, `checkout.session.expired`, `charge.refunded`, `account.updated`, `account.application.deauthorized` (the last two keep "can this shop take cards" up to date and notice a shop disconnecting from inside Stripe)
   - Each has its own signing secret (`whsec_...`): the Your account one is `STRIPE_WEBHOOK_SECRET`, the Connected one is `STRIPE_CONNECT_WEBHOOK_SECRET`. Check which is which in the destination's own page.
 - [ ] Create the live prices and VAT rate with the live key: `npm run stripe:setup` (on a network behind an HTTP proxy add `STRIPE_USE_FETCH=1`). It prints `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`, `STRIPE_PRICE_SMS_MONTHLY`, `STRIPE_PRICE_SMS_YEARLY`, `STRIPE_VAT_TAX_RATE_ID`.
 - [ ] Vercel (Production) set: `STRIPE_SECRET_KEY` (`sk_live_...`), `STRIPE_CONNECT_CLIENT_ID`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, the five ids above. Redeploy.
