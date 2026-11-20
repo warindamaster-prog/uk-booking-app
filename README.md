@@ -59,7 +59,7 @@ Booking confirmation (customer and business), 1-hour reminder, cancellation and 
 
 ### Reminder job
 
-Reminders, retries and the clean-up of expired unpaid holds run from `GET or POST /api/cron/reminders` with the header `Authorization: Bearer <CRON_SECRET>`. Two schedulers are set up in the repo:
+Reminders, retries, the clean-up of expired unpaid holds and the safety net that applies planned plan reductions (fewer people or SMS packs) when their date has passed run from `GET or POST /api/cron/reminders` with the header `Authorization: Bearer <CRON_SECRET>`. Two schedulers are set up in the repo:
 
 - **GitHub Actions** (`.github/workflows/reminders.yml`): every 15 minutes. This is what sends the reminders: a customer is reminded about 1 hour before their appointment (45 to 60 minutes, depending on where the 15-minute run lands). Add two repository secrets (Settings > Secrets and variables > Actions): `CRON_SECRET` (the same value as in Vercel) and `APP_URL` (your site address, no trailing slash). A booking made less than an hour ahead is not reminded (it has just had its confirmation).
 - **Vercel Cron** (`vercel.json`): once a day at 07:00 UTC, as a safety net for clean-up and retries (expired holds, failed emails, refunds). It cannot send 1-hour reminders by itself: the Hobby plan only allows one run a day. On a plan with frequent crons, change the schedule in `vercel.json` to `*/15 * * * *`.

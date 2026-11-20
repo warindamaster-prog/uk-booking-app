@@ -8,11 +8,11 @@ import { MAX_ATTEMPTS, sendNotification, type NotifyConfig } from "./send";
 import type { EmailKind, Recipient } from "./templates";
 
 type Db = ReturnType<typeof createAdminClient>;
-export type JobCounts = { expiredHolds: number; remindersSent: number; retried: number; gaveUp: number; refundsRetried: number };
+export type JobCounts = { expiredHolds: number; remindersSent: number; retried: number; gaveUp: number; refundsRetried: number; reductionsApplied: number };
 
-/** Run every few minutes: releases expired unpaid holds, sends due reminders, retries failed emails. */
+/** Run every few minutes: releases expired unpaid holds, sends due reminders, retries failed emails and refunds, applies plan reductions that have come due. */
 export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConfig, now: Date = new Date()): Promise<JobCounts> {
-  const counts: JobCounts = { expiredHolds: 0, remindersSent: 0, retried: 0, gaveUp: 0, refundsRetried: 0 };
+  const counts: JobCounts = { expiredHolds: 0, remindersSent: 0, retried: 0, gaveUp: 0, refundsRetried: 0, reductionsApplied: 0 };
 
   // 1. Unpaid holds whose time ran out stop blocking the calendar.
   const expired = await db.from("bookings").update({ status: "expired" }, { count: "exact" })
@@ -59,5 +59,11 @@ export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConf
     const result = await settleDeposit(db, b.id, b.cancelled_by === "business" ? "business" : "customer");
     if (result === "refunded") counts.refundsRetried++;
   }
+
+  // 5. Safety net for plan reductions (fewer people / SMS packs) planned for the end of the billing period.
+  // Normally Stripe's renewal event applies them; if that event is late or lost, this does it. Safe to repeat.
+  const due = await db.rpc("apply_due_seat_changes");
+  if (due.error) console.error("apply_due_seat_changes failed", due.error.message);
+  else counts.reductionsApplied = Number(due.data ?? 0);
   return counts;
 }
