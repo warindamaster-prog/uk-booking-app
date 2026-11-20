@@ -79,16 +79,36 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           <div className={row}><dt>Team members paid for</dt><dd>{b.staff_seats} ({count ?? 0} in use)</dd></div>
           <div className={row}><dt>SMS packs</dt><dd>{b.sms_packs === 0 ? "None" : `${b.sms_packs} (${b.sms_packs * 50} texts a month, ${b.sms_enabled ? "on" : "off"})`}</dd></div>
           <div className={row}><dt>Billing</dt><dd>{per === "year" ? "Yearly" : "Monthly"}</dd></div>
-          <div className={row}><dt>{b.status === "trialing" && !noTrialMode() ? `Price after trial (per ${per})` : b.status === "trialing" ? `Plan price (per ${per})` : `Price this ${per}`}</dt><dd>{line(b.current_price_pence)}</dd></div>
-          {b.next_price_pence !== null && b.change_effective_at && (
-            <div className={row}>
-              <dt>From {formatDate(b.change_effective_at)}</dt>
-              <dd>
-                {b.next_staff_seats ?? b.staff_seats} team members
-                {(b.next_sms_packs ?? b.sms_packs) > 0 && `, ${b.next_sms_packs ?? b.sms_packs} SMS ${(b.next_sms_packs ?? b.sms_packs) === 1 ? "pack" : "packs"}`}
-                {`, ${line(b.next_price_pence)}`}
-              </dd>
-            </div>
+          {b.stripe_subscription_id && b.status !== "trialing" ? (
+            <>
+              <div className={row}><dt>{`Paid this ${per}`}</dt><dd>{line(b.paid_this_period_pence)}</dd></div>
+              <div className={row}>
+                <dt>{b.current_period_end ? `From your next renewal (${formatDate(b.current_period_end)})` : "From your next renewal"}</dt>
+                <dd>
+                  {b.next_price_pence !== null && b.change_effective_at ? (
+                    <>
+                      {b.next_staff_seats ?? b.staff_seats} team members
+                      {(b.next_sms_packs ?? b.sms_packs) > 0 && `, ${b.next_sms_packs ?? b.sms_packs} SMS ${(b.next_sms_packs ?? b.sms_packs) === 1 ? "pack" : "packs"}`}
+                      {`, ${line(b.next_price_pence)}`}
+                    </>
+                  ) : line(b.current_price_pence)}
+                </dd>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={row}><dt>{b.status === "trialing" && !noTrialMode() ? `Price after trial (per ${per})` : `Plan price (per ${per})`}</dt><dd>{line(b.current_price_pence)}</dd></div>
+              {b.next_price_pence !== null && b.change_effective_at && (
+                <div className={row}>
+                  <dt>From {formatDate(b.change_effective_at)}</dt>
+                  <dd>
+                    {b.next_staff_seats ?? b.staff_seats} team members
+                    {(b.next_sms_packs ?? b.sms_packs) > 0 && `, ${b.next_sms_packs ?? b.sms_packs} SMS ${(b.next_sms_packs ?? b.sms_packs) === 1 ? "pack" : "packs"}`}
+                    {`, ${line(b.next_price_pence)}`}
+                  </dd>
+                </div>
+              )}
+            </>
           )}
         </dl>
         {b.next_price_pence !== null && <div className="mt-2"><CancelReductionForm /></div>}

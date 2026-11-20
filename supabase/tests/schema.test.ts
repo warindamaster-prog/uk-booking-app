@@ -1037,3 +1037,56 @@ describe("SMS packs", () => {
     await expect(as(o.uid, o.email, () => db.query(`select public.apply_sms_increase($1,3)`, [o.id]))).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("paid this period", () => {
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  let n = 0;
+  const shop = async (seats: number, interval = "year") => {
+    const i = ++n, uid = `00000000-0000-0000-0000-0000000bb${String(i).padStart(3, "0")}`, email = `paid${i}@x.com`;
+    await db.exec(`insert into auth.users values ('${uid}','${email}')`);
+    const id = (await as(uid, email, () => db.query<{ id: string }>(
+      `select public.create_business('Paid ${i}','paid-${i}','Owner',$1,'07700 900003',$2,$3,1) id`, [email, seats, interval]))).rows[0].id;
+    return { id, uid, email };
+  };
+  const row = async (id: string) => (await db.query<Record<string, unknown>>(`select paid_this_period_pence p, current_price_pence c, current_period_end e from business_billing where business_id=$1`, [id])).rows[0];
+  const sync = (id: string, o: { status?: string; end: string; sub?: string; qty?: number; sms?: number }) =>
+    asServer(() => db.query(`select public.sync_subscription($1,$2,$3,$4,$5,'year',$6,$7)`, [id, o.sub ?? `sub_${id}`, `cus_${id}`, o.status ?? "active", o.end, o.qty ?? 1, o.sms ?? 1]));
+
+  it("starts at the plan price when the subscription starts and nothing is paid during a trial", async () => {
+    const t = await shop(1);
+    expect((await row(t.id)).p).toBe(0);
+    await sync(t.id, { status: "trialing", end: "2027-01-01T00:00:00Z" });
+    expect((await row(t.id)).p).toBe(0);
+    const a = await shop(1);
+    await sync(a.id, { end: "2027-11-20T17:22:00Z" });
+    expect(await row(a.id)).toMatchObject({ p: 21000, c: 21000 });
+  });
+  it("adds what was charged for extra people and packs, and webhooks arriving again change nothing", async () => {
+    const o = await shop(1);
+    await sync(o.id, { end: "2027-11-20T17:22:00Z" });
+    await asServer(() => db.query(`select public.apply_seat_increase($1,2,1600)`, [o.id]));
+    await asServer(() => db.query(`select public.apply_sms_increase($1,2,4500)`, [o.id]));
+    expect(await row(o.id)).toMatchObject({ p: 21000 + 1600 + 4500 });
+    await sync(o.id, { end: "2027-11-20T17:22:00Z", qty: 2, sms: 2 }); // same period again
+    await sync(o.id, { end: "2027-10-01T00:00:00Z", qty: 2, sms: 2 }); // an older event arriving late
+    expect((await row(o.id)).p).toBe(21000 + 1600 + 4500);
+  });
+  it("a renewal starts the next period at the new plan price", async () => {
+    const o = await shop(1);
+    await sync(o.id, { end: "2027-11-20T17:22:00Z" });
+    await asServer(() => db.query(`select public.apply_seat_increase($1,3,3000)`, [o.id]));
+    await sync(o.id, { end: "2028-11-20T17:22:00Z", qty: 3 });
+    const r = await row(o.id);
+    expect(r.c).toBe(25000); // 3 people (£190) + 1 SMS pack (£60)
+    expect(r.p).toBe(25000);
+  });
+  it("only the server can add to it", async () => {
+    const o = await shop(1);
+    await sync(o.id, { end: "2027-11-20T17:22:00Z" });
+    await expect(as(o.uid, o.email, () => db.query(`select public.apply_seat_increase($1,2,100)`, [o.id]))).rejects.toThrow(/permission denied/);
+    await expect(as(o.uid, o.email, () => db.query(`update business_billing set paid_this_period_pence=0 where business_id=$1`, [o.id]))).rejects.toThrow(/permission denied/);
+  });
+});

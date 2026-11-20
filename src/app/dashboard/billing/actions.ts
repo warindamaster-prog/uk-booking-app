@@ -63,7 +63,7 @@ export async function updateSeats(_: FormState, formData: FormData): Promise<For
         // 2. From the next invoice on, the larger quantity applies.
         await setSubscriptionSeats(subId!, seats);
         // 3. Our own record (it is the paid-for number the staff limit is enforced against).
-        const { error } = await admin.rpc("apply_seat_increase", { p_business_id: business.id, p_new_seats: seats });
+        const { error } = await admin.rpc("apply_seat_increase", { p_business_id: business.id, p_new_seats: seats, p_amount_pence: sum.chargeNowNet });
         if (error) console.error("apply_seat_increase failed after payment; the webhook will catch up", error.message);
         refresh();
         const charged = sum.chargeNowNet > 0 ? ` ${formatPence(sum.chargeNowNet)} + VAT was charged to your card.` : "";
@@ -147,7 +147,7 @@ export async function updateSmsPacks(_: FormState, formData: FormData): Promise<
         // 2. From the next invoice on, the larger quantity applies.
         await setSubscriptionSmsPacks(subId!, packs, interval);
         // 3. Our own record.
-        const { error } = await admin.rpc("apply_sms_increase", { p_business_id: business.id, p_new_packs: packs });
+        const { error } = await admin.rpc("apply_sms_increase", { p_business_id: business.id, p_new_packs: packs, p_amount_pence: sum.chargeNowNet });
         if (error) console.error("apply_sms_increase failed after payment; the webhook will catch up", error.message);
         refresh();
         const charged = sum.chargeNowNet > 0 ? ` ${formatPence(sum.chargeNowNet)} + VAT was charged to your card.` : "";
