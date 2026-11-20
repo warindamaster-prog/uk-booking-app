@@ -75,4 +75,4 @@ console.log(`STRIPE_PRICE_YEARLY=${yearly.id}`);
 console.log(`STRIPE_PRICE_SMS_MONTHLY=${smsMonthly.id}`);
 console.log(`STRIPE_PRICE_SMS_YEARLY=${smsYearly.id}`);
 console.log(`STRIPE_VAT_TAX_RATE_ID=${vat.id}`);
-console.log(`\n(${key.startsWith("sk_live") ? "LIVE" : "test"} mode)`);
+console.log(`\n(${/^(sk|rk)_live_/.test(key) ? "LIVE" : "test"} mode)`);
