@@ -85,7 +85,7 @@ export default function Home() {
           <div className="mx-auto flex max-w-[1120px] flex-col items-center justify-between gap-5 lg:flex-row">
             <p className="text-sm text-[#54604c]">Big on your business. Small on admin.</p>
             <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 md:gap-x-12">
-              {["Salons & barbers", "Health & wellness", "Massage & spas", "Coaches & tutors"].map((s, i) => <div key={s} className="flex items-center gap-2.5 text-sm font-medium text-[#58634d]"><span className="text-lg" aria-hidden="true">{["✂", "✧", "◈", "⌘"][i]}</span>{s}</div>)}
+              {[["Salons & beauty", "/for/salons-beauty", "✂"], ["Therapists & wellness", "/for/therapists-wellness", "✧"], ["Massage & spas", "/for/massage-spas", "◈"], ["Coaches & tutors", "/for/coaches-tutors-trainers", "⌘"], ["Barbers", "/for/barbers", "✂"], ["Cleaners & home services", "/for/cleaners-home-services", "◇"]].map(([s, href, icon]) => <Link key={s} href={href} className="flex items-center gap-2.5 text-sm font-medium text-[#58634d] hover:text-[#34553e] hover:underline"><span className="text-lg" aria-hidden="true">{icon}</span>{s}</Link>)}
             </div>
           </div>
         </section>
@@ -140,6 +140,8 @@ export default function Home() {
         <div className="flex gap-6">
           <Link href="/login" className="flex min-h-11 items-center hover:underline">Log in</Link>
           <Link href="/signup" className="flex min-h-11 items-center hover:underline">Get started ↗</Link>
+          <Link href="/for" className="flex min-h-11 items-center hover:underline">Who it&apos;s for</Link>
+          <Link href="/faq" className="flex min-h-11 items-center hover:underline">Questions</Link>
           <Link href="/privacy" className="flex min-h-11 items-center hover:underline">Privacy</Link>
         </div>
       </footer>

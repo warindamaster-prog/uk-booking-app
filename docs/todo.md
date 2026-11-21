@@ -52,3 +52,7 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 
 - [ ] Choose the brand and domain (getitbook.com at Vercel was the recommendation). Then migrate: `NEXT_PUBLIC_SITE_URL`, Supabase redirect URLs, Stripe webhook and Connect redirect URIs, GitHub `APP_URL`, email sender. Per-shop subdomains later.
 - [ ] Selling outside the UK needs accountant input (VAT and tax).
+
+## Next week: let Google index each shop's booking page (<shop>.getitbook.com)
+- Currently shop booking pages are `noindex` and the sub-domains are not in the sitemap.
+- To do: remove noindex on `/b/<shop>` pages (maybe only for shops that opt in), host-aware robots.ts/sitemap for sub-domains (each sub-domain serves its own sitemap), unique title/description per shop, LocalBusiness JSON-LD, canonical to the sub-domain; keep /book/*, /booking/* (cancel/confirm pages) noindex. Add a shop-level "show on Google" switch in Settings.
