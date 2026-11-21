@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookingCard } from "@/components/booking-card";
+import { CopyLink } from "@/components/copy-link";
 import { groupByLocalDay } from "@/lib/calendar";
 import { fetchBookings, LIVE_STATUSES, type BookingView } from "@/lib/dashboard/bookings";
 import { dayStatus, monthBounds, monthDays, monthLabel, parseMonth, shiftMonth, type DayStatus } from "@/lib/schedule";
@@ -167,7 +168,7 @@ export async function MonthSchedule({ ctx, params, publicUrl }: { ctx: Ctx; para
           <section className="rounded-2xl border border-[#dce5ca] bg-[#edf2e1] p-5">
             <h2 className="text-sm font-semibold">{t("Your booking link")}</h2>
             <p className="mt-2 text-sm leading-6 text-[#657854]">{t("One link. A simpler way for customers to find you.")}</p>
-            <p className="mt-3 break-all rounded-lg border border-[#dce5cb] bg-[#f9fbf3] p-3 text-xs text-[#587344]">{publicUrl}</p>
+            <CopyLink url={publicUrl} />
             <a href={publicUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[#4a6736]">{t("Preview booking page")} ↗</a>
           </section>
         </div>

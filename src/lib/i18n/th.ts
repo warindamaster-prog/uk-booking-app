@@ -1,5 +1,8 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "Copy": "คัดลอก",
+ "Link copied.": "คัดลอกลิงก์แล้ว",
+ "Couldn't copy. Select the link and copy it.": "คัดลอกไม่ได้ เลือกลิงก์แล้วคัดลอกเอง",
  "Your business, at a glance": "ภาพรวมธุรกิจของคุณ",
  "A clearer view of your day.": "จัดการทุกวันได้ชัดเจนขึ้น",
  "A little less admin. More time for what you do best.": "ลดงานจัดการ เพิ่มเวลาให้สิ่งที่คุณถนัด",
