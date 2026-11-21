@@ -42,7 +42,7 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 - [x] **Shop sub-domains** (`shop.getitbook.com`) are live and tested (21 Nov 2026). DNS is now managed at Vercel (nameservers `ns1/ns2.vercel-dns.com`); the domain is still registered and renewed at Namecheap. See `docs/shop-subdomains.md`.
 
 - [x] Domain `getitbook.com` bought at Namecheap (21 Nov 2026), DNS points to Vercel, `NEXT_PUBLIC_SITE_URL`, Supabase URLs, Stripe Connect redirect URI and both Live webhooks, and the GitHub `APP_URL` secret all moved to it.
-- [ ] Redirect the old `book.wpprecisionsystems.co.uk` to `getitbook.com` (keep the old domain for at least a year: customers hold old links). Do it only after a test sign-up on the new domain works.
+- [x] Old domain `book.wpprecisionsystems.co.uk`: no redirect set up (decided 21 Nov 2026: no real shop uses it yet). It still points at the same site, so old links keep working. Revisit if a real shop ever gets customers on old links.
 - [ ] **Domain renewal (manual, by the owner's choice):** `getitbook.com` expires 21 Nov 2027 and Auto-Renew is OFF on purpose (the owner will renew by hand with a discount code). Renew in Oct 2027 at the latest, and renew the WithheldforPrivacy protection with it. If it lapses, the whole site goes offline. A reminder is scheduled in the assistant session for 4 Oct 2027; also put one in your own calendar (4 Oct and 1 Nov 2027).
 - [x] ICANN email verification done (status ACTIVE, 21 Nov 2026). Auto-Renew was found switched off on 21 Nov: switch it on. Original note: confirm the ICANN email verification for the domain at Namecheap (the yellow ALERT), keep Auto-Renew on and 2-step verification on the Namecheap account.
 
