@@ -1193,3 +1193,18 @@ describe("3-year prepaid plan", () => {
     expect((await row(s.id)).status).toBe("canceled");
   });
 });
+
+describe("shop colour", () => {
+  it("defaults to none; the owner can pick a palette or go back to the default; an unknown name is refused", async () => {
+    const o = await db.query<{ id: string; uid: string }>(`select b.id, m.user_id as uid from businesses b join business_members m on m.business_id=b.id and m.role='owner' limit 1`);
+    const { id, uid } = o.rows[0];
+    const email = (await db.query<{ email: string }>(`select email from auth.users where id=$1`, [uid])).rows[0].email;
+    expect((await db.query<{ accent_color: string | null }>(`select accent_color from businesses where id=$1`, [id])).rows[0].accent_color).toBeNull();
+    await as(uid, email, () => db.query(`update businesses set accent_color='blue' where id=$1`, [id]));
+    expect((await db.query<{ accent_color: string | null }>(`select accent_color from businesses where id=$1`, [id])).rows[0].accent_color).toBe("blue");
+    await as(uid, email, () => db.query(`update businesses set accent_color=null where id=$1`, [id]));
+    expect((await db.query<{ accent_color: string | null }>(`select accent_color from businesses where id=$1`, [id])).rows[0].accent_color).toBeNull();
+    await expect(as(uid, email, () => db.query(`update businesses set accent_color='pink' where id=$1`, [id]))).rejects.toThrow(/check/i);
+    await expect(as(uid, email, () => db.query(`update businesses set accent_color='green' where id=$1`, [id]))).rejects.toThrow(/check/i); // green is stored as null
+  });
+});

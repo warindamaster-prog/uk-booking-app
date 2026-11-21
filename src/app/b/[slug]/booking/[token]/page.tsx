@@ -50,7 +50,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
       : !canCancel ? <p className="text-sm">Online cancellation has closed. To change or cancel, please reply to your confirmation email or contact {business.name} directly.</p> : null;
 
   return (
-    <PublicShell base={shop} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url}>
+    <PublicShell accent={business.accent_color} base={shop} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url}>
       <div className="space-y-4">
         <h1 className="text-[28px] font-semibold leading-tight tracking-[-1px]">{STATUS[b.status] ?? "Your booking"}</h1>
         {b.status === "pending_payment" && paid && (
@@ -84,7 +84,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
         )}
         <p className="text-sm">Keep this page&apos;s link to see your booking again.</p>
         <p>
-          <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[#f1f5ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]">
+          <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[color:var(--brand-softer,#f1f5ed)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-ring,#397451)]">
             Book another appointment <span aria-hidden="true">→</span>
           </Link>
         </p>

@@ -20,9 +20,9 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const pill = "inline-flex min-h-11 items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]";
+const pill = "inline-flex min-h-11 items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-ring,#397451)]";
 const idle = "border-stone-200 bg-white text-stone-700 hover:bg-stone-50";
-const active = "border-[#496746] bg-[#eef3e9] text-[#34553e]";
+const active = "border-[color:var(--brand-border,#496746)] bg-[color:var(--brand-soft,#eef3e9)] text-[color:var(--brand,#34553e)]";
 
 export default async function BookPage({ params, searchParams }: Props) {
   const { slug, serviceId: sid } = await params;
@@ -76,11 +76,11 @@ export default async function BookPage({ params, searchParams }: Props) {
   };
 
   return (
-    <PublicShell base={shop} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={chosen ? 3 : 2} summary={summary}>
+    <PublicShell accent={business.accent_color} base={shop} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={chosen ? 3 : 2} summary={summary}>
       <div className="space-y-8">
         <div>
           <p>
-            <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[#f1f5ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]">
+            <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[color:var(--brand-softer,#f1f5ed)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-ring,#397451)]">
               <svg className="h-4 w-4 shrink-0 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
               All services
             </Link>

@@ -1,3 +1,4 @@
+import { shopColorsEnabled } from "@/lib/theme";
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dayBounds, type AvailabilityQuery, type StaffDay } from "@/lib/availability";
@@ -15,6 +16,8 @@ export type PublicBusiness = {
   slot_interval_minutes: number; min_notice_minutes: number; max_advance_days: number;
   privacy_notice_url: string | null; stripe_charges_enabled: boolean; stripe_account_id: string | null; cancellation_window_hours: number;
   deposit_policy: string | null; deposit_refundable: boolean;
+  /** The shop's colour name (only read while SHOP_COLORS_ENABLED). */
+  accent_color?: string | null;
   billing_status: string; trial_ends_at: string;
   /** Only set when the owner allows customers to see them (Settings). */
   contact: { email: string | null; phone: string | null } | null;
@@ -33,9 +36,10 @@ export const acceptsBookings = (b: Pick<PublicBusiness, "billing_status" | "tria
 
 export async function getBusinessBySlug(slug: string): Promise<PublicBusiness | null> {
   const db = createAdminClient();
-  const { data } = await db.from("businesses")
-    .select("id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, stripe_charges_enabled, stripe_account_id, cancellation_window_hours, deposit_policy, deposit_refundable, email, phone, show_contact_to_customers")
-    .eq("slug", slug).maybeSingle();
+  const cols: string = `id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, stripe_charges_enabled, stripe_account_id, cancellation_window_hours, deposit_policy, deposit_refundable, email, phone, show_contact_to_customers${shopColorsEnabled() ? ", accent_color" : ""}`;
+  // The column list is built at run time (accent_color only once its migration is live), so supabase-js cannot type it: describe the row here.
+  type Row = Omit<PublicBusiness, "billing_status" | "trial_ends_at" | "contact"> & { email: string | null; phone: string | null; show_contact_to_customers: boolean };
+  const { data } = (await db.from("businesses").select(cols).eq("slug", slug).maybeSingle()) as unknown as { data: Row | null };
   if (!data) return null;
   const { data: billing } = await db.from("business_billing").select("status, trial_ends_at").eq("business_id", data.id).maybeSingle();
   // No billing row means something is wrong: keep the page closed rather than open.

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireOwner } from "@/lib/auth";
 import { zodState, type FormState } from "@/lib/form";
 import { settingsSchema } from "@/lib/validation/settings";
+import { isThemeName, shopColorsEnabled } from "@/lib/theme";
 
 export async function saveSettings(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, business } = await requireOwner();
@@ -21,4 +22,16 @@ export async function saveSettings(_: FormState, formData: FormData): Promise<Fo
   if (error) return { error: "Something went wrong. Please try again.", values: { ...raw, showContact: showContact ? "on" : "" } };
   revalidatePath("/dashboard/settings");
   return { message: "Settings saved.", values: { ...raw, showContact: showContact ? "on" : "" } };
+}
+
+/** The shop's colour (a palette name). The default green is stored as null. */
+export async function saveColor(_: FormState, formData: FormData): Promise<FormState> {
+  const { supabase, business } = await requireOwner();
+  if (!shopColorsEnabled()) return { error: "Choosing a colour isn't available yet." };
+  const color = String(formData.get("color") ?? "");
+  if (!isThemeName(color)) return { error: "Choose one of the colours." };
+  const { error } = await supabase.from("businesses").update({ accent_color: color === "green" ? null : color }).eq("id", business.id);
+  if (error) return { error: "Something went wrong. Please try again." };
+  revalidatePath("/dashboard", "layout");
+  return { message: "Colour saved." };
 }

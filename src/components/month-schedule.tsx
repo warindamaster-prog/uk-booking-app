@@ -59,7 +59,7 @@ export async function MonthSchedule({ ctx, params, publicUrl }: { ctx: Ctx; para
   const selectedDay = params.day && isValidYmd(params.day) && days.includes(params.day) ? params.day : days.includes(today) ? today : days[0];
   const qs = (m: string, day?: string) => `?month=${m}${picked && role === "owner" ? `&staff=${picked.id}` : ""}${day ? `&day=${day}` : ""}#${SCHEDULE_ANCHOR}`;
   const dayHref = (d: string) => `/dashboard/calendar?view=day&date=${d}${picked ? `&staff=${picked.id}` : ""}`;
-  const pill = "inline-flex min-h-11 items-center justify-center rounded-lg border border-[#e1e7d8] bg-white px-3 text-sm font-medium text-[#415044] hover:bg-[#f2f5ed]";
+  const pill = "inline-flex min-h-11 items-center justify-center rounded-lg border border-[#e1e7d8] bg-white px-3 text-sm font-medium text-[#415044] hover:bg-[color:var(--brand-softer,#f2f5ed)]";
   const selectedRows: BookingView[] = byDay.get(selectedDay) ?? [];
   const todayRows: BookingView[] = byDay.get(today) ?? [];
 
@@ -71,14 +71,14 @@ export async function MonthSchedule({ ctx, params, publicUrl }: { ctx: Ctx; para
     return (
       <Link key={d} href={qs(month, d)} scroll={false} role="gridcell" aria-current={sel ? "date" : undefined}
         aria-label={`${formatYmd(d, tz, loc)}, ${items.length}`}
-        className={`relative flex min-h-[76px] min-w-0 flex-col items-start border-t border-[#e9ede1] p-1.5 text-left md:min-h-[96px] md:p-2 ${(leadingBlanks + i) % 7 !== 6 ? "border-r" : ""} ${sel ? "bg-[#f1f5e9] ring-1 ring-inset ring-[#9bb27e]" : "hover:bg-[#f7f9f1]"} ${st === "off" || st === "not_working" ? "opacity-70" : ""}`}>
-        <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs ${d === today ? "bg-[#385e3a] font-semibold text-white" : sel ? "bg-[#e1ebce] font-semibold text-[#476638]" : ""}`}>
+        className={`relative flex min-h-[76px] min-w-0 flex-col items-start border-t border-[#e9ede1] p-1.5 text-left md:min-h-[96px] md:p-2 ${(leadingBlanks + i) % 7 !== 6 ? "border-r" : ""} ${sel ? "bg-[color:var(--brand-soft,#f1f5e9)] ring-1 ring-inset ring-[color:var(--brand-border,#9bb27e)]" : "hover:bg-[color:var(--brand-softer,#f7f9f1)]"} ${st === "off" || st === "not_working" ? "opacity-70" : ""}`}>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs ${d === today ? "bg-[#385e3a] font-semibold text-white" : sel ? "bg-[color:var(--brand-soft,#e1ebce)] font-semibold text-[#476638]" : ""}`}>
           {Number(d.slice(8))}{d === today && <span className="sr-only"> ({t("today")})</span>}
         </span>
         {STATUS_TEXT[st] && <span className="mt-1 w-full truncate rounded bg-[#f2f0e6] px-1 text-[11px]">{t(STATUS_TEXT[st]!)}</span>}
         {away.slice(0, 1).map((n) => <span key={n} className="mt-1 w-full truncate rounded bg-[#f2f0e6] px-1 text-[11px]">{t("{name} off", { name: n })}</span>)}
         {items.slice(0, 1).map((b) => (
-          <span key={b.id} className="mt-1 w-full truncate rounded border-l-2 border-[#7d9a5c] bg-[#e5edda] px-1 py-1 text-xs font-medium text-[#49633c]">
+          <span key={b.id} className="mt-1 w-full truncate rounded border-l-2 border-[color:var(--brand-border,#7d9a5c)] bg-[color:var(--brand-soft,#e5edda)] px-1 py-1 text-xs font-medium text-[#49633c]">
             <span className="block">{formatTime(b.starts_at, tz, loc)}</span>
             <span className="hidden truncate md:block">{b.customer?.name ?? t("Customer")}</span>
           </span>
@@ -128,7 +128,7 @@ export async function MonthSchedule({ ctx, params, publicUrl }: { ctx: Ctx; para
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebdf] px-5 py-3 text-xs text-[#6f7b64]">
-            <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#88a360]" />{t("Confirmed booking")}</span>
+            <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[color:var(--brand-border,#88a360)]" />{t("Confirmed booking")}</span>
             <span>{t("Select a day to see its bookings")}</span>
           </div>
         </div>
@@ -137,18 +137,18 @@ export async function MonthSchedule({ ctx, params, publicUrl }: { ctx: Ctx; para
           <section aria-labelledby="today-h" className="rounded-2xl border border-[#e0e6d7] bg-white">
             <div className="flex items-center justify-between border-b border-[#ebeee4] px-5 py-4">
               <h2 id="today-h" className="text-base font-semibold">{t("Today's schedule")}</h2>
-              <span className="rounded-md bg-[#eff3e6] px-2 py-1 text-xs text-[#647b4e]">{todayRows.length}</span>
+              <span className="rounded-md bg-[color:var(--brand-soft,#eff3e6)] px-2 py-1 text-xs text-[#647b4e]">{todayRows.length}</span>
             </div>
             {todayRows.length ? (
               <ul className="space-y-3 p-4">{todayRows.map((b) => <li key={b.id}><BookingCard b={b} tz={tz} showStaff={role === "owner"} compact /></li>)}</ul>
             ) : (
               <div className="flex flex-col items-center px-5 py-10 text-center">
-                <span aria-hidden="true" className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#f0f4eb] text-[#6a8259]">
+                <span aria-hidden="true" className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--brand-soft,#f0f4eb)] text-[#6a8259]">
                   <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M7 3v4m10-4v4M3 11h18" /></svg>
                 </span>
                 <h3 className="text-base font-semibold">{t("A little breathing room.")}</h3>
                 <p className="mt-2 max-w-xs text-sm leading-6 text-[#6c776a]">{t("No bookings today. A good moment to get ready for what's next.")}</p>
-                <Link href="/dashboard/calendar" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#55713e]">{t("Open the schedule")} →</Link>
+                <Link href="/dashboard/calendar" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[color:var(--brand-text,#55713e)]">{t("Open the schedule")} →</Link>
               </div>
             )}
           </section>
@@ -165,11 +165,11 @@ export async function MonthSchedule({ ctx, params, publicUrl }: { ctx: Ctx; para
             </div>
           </section>
 
-          <section className="rounded-2xl border border-[#dce5ca] bg-[#edf2e1] p-5">
+          <section className="rounded-2xl border border-[color:var(--brand-border,#dce5ca)] bg-[color:var(--brand-soft,#edf2e1)] p-5">
             <h2 className="text-sm font-semibold">{t("Your booking link")}</h2>
             <p className="mt-2 text-sm leading-6 text-[#657854]">{t("One link. A simpler way for customers to find you.")}</p>
             <CopyLink url={publicUrl} />
-            <a href={publicUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[#4a6736]">{t("Preview booking page")} ↗</a>
+            <a href={publicUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[color:var(--brand-text,#4a6736)]">{t("Preview booking page")} ↗</a>
           </section>
         </div>
       </div>

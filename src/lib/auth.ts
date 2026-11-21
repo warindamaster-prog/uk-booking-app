@@ -1,3 +1,4 @@
+import { shopColorsEnabled } from "@/lib/theme";
 import "server-only";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -15,7 +16,7 @@ export async function requireBusiness() {
   const { supabase, user } = await requireUser();
   const { data: member } = await supabase
     .from("business_members")
-    .select("role, business_id, businesses(id, name, slug, logo_path, timezone, slot_interval_minutes, min_notice_minutes, max_advance_days)")
+    .select(`role, business_id, businesses(id, name, slug, logo_path, timezone, slot_interval_minutes, min_notice_minutes, max_advance_days${shopColorsEnabled() ? ", accent_color" : ""})`)
     .eq("user_id", user.id)
     .maybeSingle();
   const business = Array.isArray(member?.businesses) ? member?.businesses[0] : member?.businesses;

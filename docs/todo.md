@@ -31,6 +31,8 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 
 ## Product and design
 
+- [ ] **Shop colours:** code ready, switched off (`SHOP_COLORS_ENABLED`); migration `0020_shop_colour.sql` waits for the owner to approve running it. See `docs/shop-colours.md`.
+
 - [ ] **Customer booking page, shop's own look** (hero text, accent colour). Needs two new columns, `description` and `accent_color`, which have not been approved. Write the migration for review first.
 - [ ] Optional: Thai for the customer booking pages and emails (only the owner side is Thai now).
 - [ ] Optional: skip the "choose a service" step when a shop has just one service; show-password toggle on login.

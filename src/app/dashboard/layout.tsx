@@ -1,3 +1,4 @@
+import { themeStyle } from "@/lib/theme";
 import Link from "next/link";
 import { requireBusiness } from "@/lib/auth";
 import { billingEnabled, bookingsOpen, daysLeftLabel, trialDaysLeft } from "@/lib/billing";
@@ -40,14 +41,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const initial = business.name.trim().charAt(0).toUpperCase();
 
   return (
-    <div className="public-light min-h-screen overflow-x-hidden bg-[#f7f8f3] text-[#293a2c] selection:bg-[#e0eabe]">
+    <div className="public-light min-h-screen overflow-x-hidden bg-[#f7f8f3] text-[#293a2c] selection:bg-[color:var(--brand-soft,#e0eabe)]" style={themeStyle((business as { accent_color?: string | null }).accent_color)}>
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[224px] flex-col border-r border-[#e2e7da] bg-[#fcfdf9] lg:flex">
         <Link href="/dashboard" className="flex h-[84px] items-center gap-3 px-6">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-xl object-cover" />
           ) : (
-            <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#355c3e] font-semibold text-[#e6efca]">{initial}</span>
+            <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--brand,#355c3e)] font-semibold text-[color:var(--brand-on,#e6efca)]">{initial}</span>
           )}
           <span className="truncate text-lg font-bold tracking-tight">{business.name}</span>
         </Link>
@@ -84,7 +85,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </p>
       )}
       {billing?.status === "trialing" && bookingsOpen(billing, { now: new Date(), billingEnabled: billingEnabled() }) && (
-        <p role="status" className="mb-6 rounded-xl border border-[#dce5ca] bg-[#edf2e1] p-4 text-sm leading-6 text-[#4a6736]">
+        <p role="status" className="mb-6 rounded-xl border border-[color:var(--brand-border,#dce5ca)] bg-[color:var(--brand-soft,#edf2e1)] p-4 text-sm leading-6 text-[color:var(--brand-text,#4a6736)]">
           {billingEnabled()
             ? rich(t, "Free trial: {left}. {addCard} to keep your booking page open afterwards.", {
               left: daysLeftLabel(trialDaysLeft(billing.trial_ends_at), t),

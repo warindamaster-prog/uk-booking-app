@@ -1,3 +1,4 @@
+import { themeStyle } from "@/lib/theme";
 import Link from "next/link";
 import { DM_Sans } from "next/font/google";
 import { formatPence } from "@/lib/money";
@@ -15,8 +16,8 @@ export type SummaryData = {
   depositPence?: number;
 };
 
-export function PublicShell({ base, name, logo, privacyUrl, step, summary, children }: {
-  base: string; name: string; logo: string | null; privacyUrl: string | null;
+export function PublicShell({ base, accent, name, logo, privacyUrl, step, summary, children }: {
+  base: string; accent?: string | null; name: string; logo: string | null; privacyUrl: string | null;
   /** 1-3 shows the progress bar; omit on pages outside the booking flow. */
   step?: 1 | 2 | 3;
   /** Shows the "Your booking" box next to the content. */
@@ -24,7 +25,7 @@ export function PublicShell({ base, name, logo, privacyUrl, step, summary, child
   children: React.ReactNode;
 }) {
   return (
-    <div className={`public-light ${sans.variable} flex min-h-screen flex-col overflow-x-hidden bg-[#f8f9f5] font-[family-name:var(--font-dm-sans)] text-[#243e32] selection:bg-[#d7eac2]`}>
+    <div className={`public-light ${sans.variable} flex min-h-screen flex-col overflow-x-hidden bg-[#f8f9f5] font-[family-name:var(--font-dm-sans)] text-[#243e32] selection:bg-[color:var(--brand-soft,#d7eac2)]`} style={themeStyle(accent)}>
       <header className="border-b border-[#e3e8de] bg-[#fffefa]">
         <div className="mx-auto flex min-h-20 max-w-[1100px] items-center justify-between gap-4 px-5 py-3 lg:px-8">
           <Link href={base || "/"} className="flex min-h-11 items-center gap-3">
@@ -32,7 +33,7 @@ export function PublicShell({ base, name, logo, privacyUrl, step, summary, child
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logo} alt="" width={44} height={44} className="h-11 w-11 rounded-xl object-cover" />
             ) : (
-              <span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#215b48] text-lg font-semibold text-[#d6efbe]">{name.trim().charAt(0).toUpperCase()}</span>
+              <span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-xl bg-[color:var(--brand,#215b48)] text-lg font-semibold text-[color:var(--brand-on,#d6efbe)]">{name.trim().charAt(0).toUpperCase()}</span>
             )}
             <span className="text-xl font-bold tracking-tight text-[#193e36]">{name}</span>
           </Link>
@@ -46,7 +47,7 @@ export function PublicShell({ base, name, logo, privacyUrl, step, summary, child
           {summary && <Summary name={name} data={summary} />}
         </div>
         <p className="mt-12 border-t border-[#e0e6da] pt-6 text-center text-sm text-[#6b756d]">
-          You&apos;re booking directly with <span className="font-semibold text-[#36543c]">{name}</span>
+          You&apos;re booking directly with <span className="font-semibold text-[color:var(--brand-text,#36543c)]">{name}</span>
         </p>
       </div>
       <footer className="border-t border-[#e2e7dc] bg-[#f1f3ed] px-5 py-5 lg:px-8">
@@ -82,8 +83,8 @@ function Progress({ step }: { step: 1 | 2 | 3 }) {
           return (
             <li key={label} className="flex items-center gap-3" aria-current={current ? "step" : undefined}>
               {i > 0 && <span aria-hidden="true" className="mr-1 h-px w-5 bg-[#d5ddcf] md:w-10" />}
-              <span className={`flex items-center gap-2 ${current ? "font-semibold text-[#2d5941]" : done ? "text-[#2d5941]" : "text-[#6b756d]"}`}>
-                <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${current || done ? "bg-[#275d46] text-white" : "border border-[#d9dfd4] bg-white"}`}>{done ? "✓" : n}</span>
+              <span className={`flex items-center gap-2 ${current ? "font-semibold text-[color:var(--brand-text,#2d5941)]" : done ? "text-[color:var(--brand-text,#2d5941)]" : "text-[#6b756d]"}`}>
+                <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${current || done ? "bg-[color:var(--brand-text,#275d46)] text-white" : "border border-[#d9dfd4] bg-white"}`}>{done ? "✓" : n}</span>
                 {label}
               </span>
             </li>
@@ -111,7 +112,7 @@ function Summary({ name, data }: { name: string; data: SummaryData }) {
                   <p className="text-sm font-medium">{data.serviceName}</p>
                   {data.minutes != null && <p className="mt-1.5 text-xs text-[#6b756d]">{data.minutes} minutes</p>}
                   {data.with && <p className="mt-1 text-xs text-[#6b756d]">With {data.with}</p>}
-                  {data.when && <p className="mt-1 text-xs font-medium text-[#2d5941]">{data.when}</p>}
+                  {data.when && <p className="mt-1 text-xs font-medium text-[color:var(--brand-text,#2d5941)]">{data.when}</p>}
                 </div>
                 {data.pricePence != null && <p className="text-sm font-semibold">{formatPence(data.pricePence)}</p>}
               </div>

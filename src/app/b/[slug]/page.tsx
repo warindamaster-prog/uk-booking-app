@@ -20,7 +20,7 @@ export default async function BusinessPage({ params }: Props) {
   const services = acceptsBookings(business) ? await listBookableServices(business.id) : [];
 
   return (
-    <PublicShell base={base} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={1} summary={{}}>
+    <PublicShell accent={business.accent_color} base={base} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={1} summary={{}}>
       <p className="mb-2 text-xs font-semibold uppercase tracking-[1.5px] text-[#738064]">Let&apos;s get you booked</p>
       <h1 className="text-[28px] font-semibold leading-tight tracking-[-1px]">Choose your service</h1>
       <p className="mb-6 mt-2 text-sm text-[#6b756d]">Pick a service, then find a day and time that suits you.</p>
@@ -29,7 +29,7 @@ export default async function BusinessPage({ params }: Props) {
           {services.map((s) => (
             <li key={s.id}>
               <Link href={`${base}/book/${s.id}`}
-                className="group block rounded-xl border border-[#dfe5da] bg-white p-5 transition hover:border-[#789467] hover:shadow-[0_0_0_1px_#78946720] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451] sm:p-6">
+                className="group block rounded-xl border border-[#dfe5da] bg-white p-5 transition hover:border-[color:var(--brand-border,#789467)] hover:shadow-[0_0_0_1px_#78946720] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-ring,#397451)] sm:p-6">
                 <span className="flex items-start justify-between gap-4">
                   <span className="min-w-0">
                     <span className="block text-lg font-semibold tracking-tight">{s.name}</span>
@@ -40,7 +40,7 @@ export default async function BusinessPage({ params }: Props) {
                   </span>
                   <span className="shrink-0 text-right">
                     <span className="block text-lg font-semibold tracking-tight">{s.price_varies ? `from ${formatPence(s.from_pence)}` : formatPence(s.from_pence)}</span>
-                    <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[#215b48] group-hover:underline">Choose <span aria-hidden="true">→</span></span>
+                    <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[color:var(--brand,#215b48)] group-hover:underline">Choose <span aria-hidden="true">→</span></span>
                   </span>
                 </span>
               </Link>
@@ -48,7 +48,7 @@ export default async function BusinessPage({ params }: Props) {
           ))}
         </ul>
       ) : (
-        <p className="rounded-xl bg-[#edf1e7] p-5 text-sm">Online booking isn&apos;t available right now. Please contact {business.name} directly.</p>
+        <p className="rounded-xl bg-[color:var(--brand-soft,#edf1e7)] p-5 text-sm">Online booking isn&apos;t available right now. Please contact {business.name} directly.</p>
       )}
     </PublicShell>
   );
