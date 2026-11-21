@@ -1,10 +1,17 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "This week": "สัปดาห์นี้",
+ "Workspace owner": "เจ้าของธุรกิจ",
+ "Team member": "สมาชิกทีม",
+ "Bookings today": "การจองวันนี้",
+ "Next 7 days": "7 วันข้างหน้า",
+ "Customers": "ลูกค้า",
+ "Your booking link": "ลิงก์หน้าจองของคุณ",
+ "Open booking page": "เปิดหน้าจอง",
  "Overview": "ภาพรวม",
  "Schedule": "ตารางนัด",
  "Bookings": "การจอง",
  "Services": "บริการ",
- "Customers": "ลูกค้า",
  "Staff": "พนักงาน",
  "Payments": "การชำระเงิน",
  "Billing": "ค่าบริการ",

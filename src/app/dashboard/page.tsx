@@ -22,24 +22,43 @@ export default async function DashboardPage({
   const { rows: today } = await fetchBookings(supabase, business.id, { startsFrom: from, startsBefore: to, statuses: LIVE_STATUSES });
   const { logo, month, staff } = await searchParams;
   const { count: serviceCount } = await supabase.from("services").select("id", { count: "exact", head: true }).eq("business_id", business.id);
+  const weekRange = rangeFor("week", todayYmd(business.timezone), business.timezone);
+  const { count: weekCount } = await supabase.from("bookings").select("id", { count: "exact", head: true })
+    .eq("business_id", business.id).in("status", [...LIVE_STATUSES]).gte("starts_at", weekRange.from.toISOString()).lt("starts_at", weekRange.to.toISOString());
+  const { count: customerCount } = await supabase.from("customers").select("id", { count: "exact", head: true }).eq("business_id", business.id);
   const publicUrl = `${publicEnv().NEXT_PUBLIC_SITE_URL}/b/${business.slug}`;
 
   return (
-    <main className="space-y-4">
+    <main className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: t("Bookings today"), value: today.length },
+          { label: t("This week"), value: weekCount ?? 0 },
+          { label: t("Customers"), value: customerCount ?? 0 },
+        ].map((x) => (
+          <article key={x.label} className="rounded-xl border border-[#e2e7da] bg-white px-5 py-5">
+            <p className="text-sm text-[#68755e]">{x.label}</p>
+            <p className="mt-1 text-[34px] font-semibold tracking-[-1px]">{x.value}</p>
+          </article>
+        ))}
+      </div>
       {logo === "failed" && (
         <p role="status" className="rounded-md border border-amber-700 p-3 text-sm">
           {t("Your business was created, but the logo couldn't be uploaded. You can add it later.")}
         </p>
       )}
-      <section aria-labelledby="today-h" className="space-y-2">
-        <h2 id="today-h" className="text-xl font-semibold">{t("Today")}</h2>
+      <section aria-labelledby="today-h" className="space-y-3 rounded-2xl border border-[#e0e6d7] bg-white p-5">
+        <h2 id="today-h" className="text-lg font-semibold tracking-tight">{t("Today")}</h2>
         {today.length ? (
           <ul className="space-y-2">{today.map((b) => <li key={b.id}><BookingCard b={b} tz={business.timezone} showStaff={role === "owner"} compact /></li>)}</ul>
         ) : <p>{t("No bookings today.")}</p>}
         <p><Link href="/dashboard/calendar" className="text-sm underline">{t("Open the schedule")}</Link></p>
       </section>
       <MonthSchedule ctx={ctx} params={{ month, staff }} />
-      <p>{t("Your booking page:")} <a className="underline" href={publicUrl}>{publicUrl}</a></p>
+      <section className="rounded-2xl border border-[#dce5ca] bg-[#edf2e1] p-5">
+        <h2 className="text-sm font-semibold">{t("Your booking link")}</h2>
+        <p className="mt-2 break-all text-sm"><a className="text-[#4a6736] underline" href={publicUrl}>{publicUrl}</a></p>
+      </section>
       {role === "owner" && !serviceCount && (
         <p>
           {rich(t, "Next: add your {services}, then set up your {staff} and their working hours.", {

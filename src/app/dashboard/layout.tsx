@@ -4,6 +4,7 @@ import { billingEnabled, bookingsOpen, daysLeftLabel, trialDaysLeft } from "@/li
 import { LanguageSwitch } from "@/components/language-switch";
 import { getT } from "@/lib/i18n/server";
 import { rich } from "@/lib/i18n/rich";
+import { DashboardNav, type NavItem } from "@/components/dashboard-nav";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { supabase, business, role, user } = await requireBusiness();
@@ -22,41 +23,60 @@ export default async function DashboardLayout({ children }: { children: React.Re
     myStaffId = data?.id ?? null;
   }
 
+  const items: NavItem[] = [
+    { href: "/dashboard", label: t("Overview"), icon: "grid" },
+    { href: "/dashboard/calendar", label: t("Schedule"), icon: "calendar" },
+    { href: "/dashboard/bookings", label: t("Bookings"), icon: "book" },
+    ...(role === "owner" ? [
+      { href: "/dashboard/services", label: t("Services"), icon: "spark" },
+      { href: "/dashboard/customers", label: t("Customers"), icon: "users" },
+      { href: "/dashboard/staff", label: t("Staff"), icon: "staff" },
+      { href: "/dashboard/payments", label: t("Payments"), icon: "wallet" },
+      { href: "/dashboard/billing", label: t("Billing"), icon: "card" },
+      { href: "/dashboard/settings", label: t("Settings"), icon: "settings" },
+    ] as NavItem[] : myStaffId ? [{ href: `/dashboard/staff/${myStaffId}`, label: t("My hours"), icon: "staff" }] as NavItem[] : []),
+    { href: "/dashboard/support", label: t("Support"), icon: "help" },
+  ];
+  const initial = business.name.trim().charAt(0).toUpperCase();
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6">
-      <header className="mb-6 flex items-center justify-between gap-4">
-        <Link href="/dashboard" className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {logoUrl && <img src={logoUrl} alt="" width={40} height={40} className="h-10 w-10 rounded-md object-cover" />}
-          <span className="text-xl font-semibold">{business.name}</span>
+    <div className="public-light min-h-screen overflow-x-hidden bg-[#f7f8f3] text-[#293a2c] selection:bg-[#e0eabe]">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[224px] flex-col border-r border-[#e2e7da] bg-[#fcfdf9] lg:flex">
+        <Link href="/dashboard" className="flex h-[84px] items-center gap-3 px-6">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-xl object-cover" />
+          ) : (
+            <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#355c3e] font-semibold text-[#e6efca]">{initial}</span>
+          )}
+          <span className="truncate text-lg font-bold tracking-tight">{business.name}</span>
         </Link>
-        <div className="flex items-center gap-3">
-          <LanguageSwitch />
+        <DashboardNav items={items} label={t("Dashboard")} variant="side" />
+        <div className="flex items-center gap-3 border-t border-[#e5e9dd] p-4">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{user.email}</p>
+            <p className="text-xs text-[#6a765f]">{role === "owner" ? t("Workspace owner") : t("Team member")}</p>
+          </div>
           <form action="/auth/signout" method="post">
-            <button type="submit" className="text-sm underline">{t("Log out")}</button>
+            <button type="submit" className="min-h-11 rounded-lg px-2 text-sm text-[#486339] underline">{t("Log out")}</button>
           </form>
         </div>
-      </header>
-      <nav aria-label={t("Dashboard")} className="mb-8 flex flex-wrap gap-x-4 gap-y-2 border-b border-neutral-300 pb-3 text-sm dark:border-neutral-700">
-        <Link href="/dashboard" className="underline-offset-4 hover:underline">{t("Overview")}</Link>
-        <Link href="/dashboard/calendar" className="underline-offset-4 hover:underline">{t("Schedule")}</Link>
-        <Link href="/dashboard/bookings" className="underline-offset-4 hover:underline">{t("Bookings")}</Link>
-        {role === "owner" ? (
-          <>
-            <Link href="/dashboard/services" className="underline-offset-4 hover:underline">{t("Services")}</Link>
-            <Link href="/dashboard/customers" className="underline-offset-4 hover:underline">{t("Customers")}</Link>
-            <Link href="/dashboard/staff" className="underline-offset-4 hover:underline">{t("Staff")}</Link>
-            <Link href="/dashboard/payments" className="underline-offset-4 hover:underline">{t("Payments")}</Link>
-            <Link href="/dashboard/billing" className="underline-offset-4 hover:underline">{t("Billing")}</Link>
-            <Link href="/dashboard/settings" className="underline-offset-4 hover:underline">{t("Settings")}</Link>
-          </>
-        ) : myStaffId ? (
-          <Link href={`/dashboard/staff/${myStaffId}`} className="underline-offset-4 hover:underline">{t("My hours")}</Link>
-        ) : null}
-        <Link href="/dashboard/support" className="underline-offset-4 hover:underline">{t("Support")}</Link>
-      </nav>
+      </aside>
+      <div className="min-w-0 lg:ml-[224px]">
+        <header className="flex min-h-[64px] flex-wrap items-center justify-between gap-3 border-b border-[#e4e8dc] bg-[#fcfdf9] px-5 py-2 md:px-8">
+          <Link href="/dashboard" className="text-sm font-semibold lg:hidden">{business.name}</Link>
+          <span className="hidden text-sm text-[#6a775f] lg:block">{business.name}</span>
+          <div className="flex items-center gap-3">
+            <LanguageSwitch />
+            <form action="/auth/signout" method="post" className="lg:hidden">
+              <button type="submit" className="min-h-11 text-sm underline">{t("Log out")}</button>
+            </form>
+          </div>
+        </header>
+        <DashboardNav items={items} label={t("Dashboard")} variant="top" />
+        <div className="mx-auto w-full max-w-[1100px] px-5 py-7 md:px-8">
       {billing && billingEnabled() && !bookingsOpen(billing, { now: new Date(), billingEnabled: true }) && (
-        <p role="alert" className="mb-6 rounded-md border border-amber-700 p-3 text-sm">
+        <p role="alert" className="mb-6 rounded-xl border border-[#e8dcb5] bg-[#fcf7e9] p-4 text-sm leading-6 text-[#735c2d]">
           {rich(t, "Your booking page is closed: customers can't book until you subscribe. {billing} or {contact}. You can still use everything here, including your bookings.", {
             billing: <Link href="/dashboard/billing" className="underline">{t("Open Billing")}</Link>,
             contact: <Link href="/dashboard/support" className="underline">{t("contact us")}</Link>,
@@ -64,7 +84,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </p>
       )}
       {billing?.status === "trialing" && bookingsOpen(billing, { now: new Date(), billingEnabled: billingEnabled() }) && (
-        <p role="status" className="mb-6 rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
+        <p role="status" className="mb-6 rounded-xl border border-[#dce5ca] bg-[#edf2e1] p-4 text-sm leading-6 text-[#4a6736]">
           {billingEnabled()
             ? rich(t, "Free trial: {left}. {addCard} to keep your booking page open afterwards.", {
               left: daysLeftLabel(trialDaysLeft(billing.trial_ends_at), t),
@@ -74,6 +94,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </p>
       )}
       {children}
+        </div>
+      </div>
     </div>
   );
 }
