@@ -50,6 +50,6 @@ export async function cancelMyBooking(_: FormState, formData: FormData): Promise
     await settleDeposit(db, String(id), "customer");
     await notifyBookingEvent(String(id), "cancellation");
   });
-  revalidatePath(`/b/${slug}/booking/${token}`);
+  revalidatePath(`/b/${slug}/booking/${token}`); // the page is cached under its /b/ route, also when it is served from the shop sub-domain
   return { message: "Your booking has been cancelled." };
 }

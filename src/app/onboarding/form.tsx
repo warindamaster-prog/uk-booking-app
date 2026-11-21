@@ -18,7 +18,7 @@ const STEP1_REQUIRED: Record<string, string> = {
   phone: "Enter a valid phone number, for example 07700 900123",
 };
 
-export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false, threeYearOn = false }: { siteHost: string; noTrial?: boolean; smsEnabled?: boolean; threeYearOn?: boolean }) {
+export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false, threeYearOn = false, subdomains = false }: { siteHost: string; noTrial?: boolean; smsEnabled?: boolean; threeYearOn?: boolean; subdomains?: boolean }) {
   const t = useT();
   const [state, action, pending] = useActionState<FormState, FormData>(createBusiness, {});
   const v = state.values ?? {};
@@ -72,7 +72,7 @@ export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false, 
         defaultValue={v.name} errors={err("name")} onChange={(ev) => setName(ev.target.value)} />
       <Field label="Web address" name="slug" required value={shownSlug}
         onChange={(ev) => setSlug(ev.target.value.toLowerCase())}
-        hint={t("Your booking page: {url}", { url: `${siteHost}/b/${shownSlug || "your-name"}` })}
+        hint={t("Your booking page: {url}", { url: subdomains ? `${shownSlug || "your-name"}.${siteHost}` : `${siteHost}/b/${shownSlug || "your-name"}` })}
         errors={err("slug")} autoCapitalize="none" spellCheck={false} />
       <Field label="Owner's name" name="ownerName" required maxLength={100} autoComplete="name"
         hint="Shown to customers if you take bookings yourself." defaultValue={v.ownerName} errors={err("ownerName")} />

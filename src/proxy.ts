@@ -1,10 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { routeShopHost, shopSubdomainsEnabled } from "@/lib/shop-host";
 
 const PROTECTED = ["/dashboard", "/onboarding"];
 
 /** Refreshes the Supabase session cookie and gates the dashboard routes. */
 export async function proxy(request: NextRequest) {
+  // Shop sub-domains (shop.getitbook.com): rewrite onto /b/<shop>, or redirect old and main-site addresses. Off by default.
+  const route = routeShopHost({
+    host: request.headers.get("host") ?? "", path: request.nextUrl.pathname, search: request.nextUrl.search,
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "", enabled: shopSubdomainsEnabled() && !!process.env.NEXT_PUBLIC_SITE_URL,
+  });
+  if (route.kind === "redirect") return NextResponse.redirect(route.url, 308);
+  if (route.kind === "rewrite") {
+    const url = request.nextUrl.clone();
+    url.pathname = route.path;
+    return NextResponse.rewrite(url); // public pages: no session needed
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

@@ -1,3 +1,4 @@
+import { shopUrl } from "@/lib/shop-host";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MonthSchedule } from "@/components/month-schedule";
@@ -29,7 +30,7 @@ export default async function DashboardPage({
   const { count: monthCount } = await supabase.from("bookings").select("id", { count: "exact", head: true })
     .eq("business_id", business.id).in("status", [...LIVE_STATUSES]).gte("starts_at", mb.from.toISOString()).lt("starts_at", mb.to.toISOString());
   const { count: customerCount } = await supabase.from("customers").select("id", { count: "exact", head: true }).eq("business_id", business.id);
-  const publicUrl = `${publicEnv().NEXT_PUBLIC_SITE_URL}/b/${business.slug}`;
+  const publicUrl = shopUrl({ siteUrl: publicEnv().NEXT_PUBLIC_SITE_URL, slug: business.slug });
 
   return (
     <main className="space-y-7">

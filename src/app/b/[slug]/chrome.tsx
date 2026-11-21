@@ -15,8 +15,8 @@ export type SummaryData = {
   depositPence?: number;
 };
 
-export function PublicShell({ slug, name, logo, privacyUrl, step, summary, children }: {
-  slug: string; name: string; logo: string | null; privacyUrl: string | null;
+export function PublicShell({ base, name, logo, privacyUrl, step, summary, children }: {
+  base: string; name: string; logo: string | null; privacyUrl: string | null;
   /** 1-3 shows the progress bar; omit on pages outside the booking flow. */
   step?: 1 | 2 | 3;
   /** Shows the "Your booking" box next to the content. */
@@ -27,7 +27,7 @@ export function PublicShell({ slug, name, logo, privacyUrl, step, summary, child
     <div className={`public-light ${sans.variable} flex min-h-screen flex-col overflow-x-hidden bg-[#f8f9f5] font-[family-name:var(--font-dm-sans)] text-[#243e32] selection:bg-[#d7eac2]`}>
       <header className="border-b border-[#e3e8de] bg-[#fffefa]">
         <div className="mx-auto flex min-h-20 max-w-[1100px] items-center justify-between gap-4 px-5 py-3 lg:px-8">
-          <Link href={`/b/${slug}`} className="flex min-h-11 items-center gap-3">
+          <Link href={base || "/"} className="flex min-h-11 items-center gap-3">
             {logo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logo} alt="" width={44} height={44} className="h-11 w-11 rounded-xl object-cover" />

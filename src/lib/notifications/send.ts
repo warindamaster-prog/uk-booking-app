@@ -1,3 +1,4 @@
+import { shopUrl } from "@/lib/shop-host";
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deriveCancelToken } from "@/lib/booking/token";
@@ -51,7 +52,7 @@ export async function sendNotification(
   if (row.attempts >= MAX_ATTEMPTS) return "gave_up";
 
   const startsAt = new Date(b.starts_at), endsAt = new Date(b.ends_at);
-  const manageUrl = `${cfg.siteUrl}/b/${biz.slug}/booking/${deriveCancelToken(cfg.tokenSecret, b.id).raw}`;
+  const manageUrl = shopUrl({ siteUrl: cfg.siteUrl, slug: biz.slug, path: `/booking/${deriveCancelToken(cfg.tokenSecret, b.id).raw}` });
   const deadline = new Date(startsAt.getTime() - biz.cancellation_window_hours * 3_600_000);
   const rendered = renderEmail(req.kind, req.recipient, {
     businessName: biz.name, serviceName: b.service_name, staffName: staff?.name ?? "your practitioner",

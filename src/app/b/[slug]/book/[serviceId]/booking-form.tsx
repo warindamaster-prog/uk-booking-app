@@ -6,8 +6,8 @@ import { createPublicBooking } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
 import type { FormState } from "@/lib/form";
 
-export function BookingForm({ slug, serviceId, staff, startsAt, privacyUrl, depositLabel }: {
-  slug: string; serviceId: string; staff: string; startsAt: string; privacyUrl: string | null; depositLabel: string | null;
+export function BookingForm({ slug, base, serviceId, staff, startsAt, privacyUrl, depositLabel }: {
+  slug: string; base: string; serviceId: string; staff: string; startsAt: string; privacyUrl: string | null; depositLabel: string | null;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(createPublicBooking, {});
   const v = state.values ?? {};
@@ -47,7 +47,7 @@ export function BookingForm({ slug, serviceId, staff, startsAt, privacyUrl, depo
               className="inline-flex min-h-11 items-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900">
               {pending ? "Please wait…" : "Book another"}
             </button>
-            <Link href={`/b/${slug}`} className="inline-flex min-h-11 items-center rounded-md border border-neutral-400 px-4 py-2 text-sm">No</Link>
+            <Link href={base || "/"} className="inline-flex min-h-11 items-center rounded-md border border-neutral-400 px-4 py-2 text-sm">No</Link>
           </div>
         </div>
       ) : (

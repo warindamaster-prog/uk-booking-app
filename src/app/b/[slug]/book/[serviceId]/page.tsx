@@ -9,6 +9,7 @@ import { formatPence } from "@/lib/money";
 import { formatTime, formatYmd, todayYmd } from "@/lib/time";
 import { bookPageParams } from "@/lib/validation/booking";
 import { uuid } from "@/lib/validation/catalog";
+import { shopBase } from "@/lib/shop-base";
 import { PublicShell } from "../../chrome";
 import { BookingForm } from "./booking-form";
 
@@ -29,7 +30,8 @@ export default async function BookPage({ params, searchParams }: Props) {
   if (!serviceId.success) notFound();
   const business = await getBusinessBySlug(slug);
   if (!business) notFound();
-  if (!acceptsBookings(business)) redirect(`/b/${business.slug}`);
+  const shop = await shopBase(business.slug);
+  if (!acceptsBookings(business)) redirect(shop || "/");
 
   const raw = await searchParams;
   const first = (k: string) => (Array.isArray(raw[k]) ? raw[k][0] : raw[k]);
@@ -40,10 +42,10 @@ export default async function BookPage({ params, searchParams }: Props) {
   const windowDays = Math.min(business.max_advance_days + 1, 28);
   const ctx = await loadBookingContext(business, serviceId.data, sp.staff, today, windowDays);
   if (!ctx) {
-    if (sp.staff !== "any") redirect(`/b/${business.slug}/book/${serviceId.data}`);
+    if (sp.staff !== "any") redirect(`${shop}/book/${serviceId.data}`);
     notFound();
   }
-  const base = `/b/${business.slug}/book/${serviceId.data}`;
+  const base = `${shop}/book/${serviceId.data}`;
   const href = (p: { staff?: string; date?: string; time?: string }) => {
     const q = new URLSearchParams();
     if ((p.staff ?? sp.staff) !== "any") q.set("staff", p.staff ?? sp.staff);
@@ -74,11 +76,11 @@ export default async function BookPage({ params, searchParams }: Props) {
   };
 
   return (
-    <PublicShell slug={business.slug} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={chosen ? 3 : 2} summary={summary}>
+    <PublicShell base={shop} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={chosen ? 3 : 2} summary={summary}>
       <div className="space-y-8">
         <div>
           <p>
-            <Link href={`/b/${business.slug}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[#f1f5ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]">
+            <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[#f1f5ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]">
               <svg className="h-4 w-4 shrink-0 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
               All services
             </Link>
@@ -175,7 +177,7 @@ export default async function BookPage({ params, searchParams }: Props) {
               <section aria-labelledby="details-h" className="space-y-4 rounded-2xl border border-[#e0e5df] bg-white p-6">
                 <h2 id="details-h" className="text-lg font-semibold tracking-tight">Your details</h2>
                 <p className="text-sm">{service.name}, {formatYmd(date!, tz)} at {formatTime(chosen.start, tz)} · {formatPence(price)}</p>
-                <BookingForm slug={business.slug} serviceId={service.id} staff={sp.staff} startsAt={chosen.start.toISOString()}
+                <BookingForm slug={business.slug} base={shop} serviceId={service.id} staff={sp.staff} startsAt={chosen.start.toISOString()}
                   privacyUrl={business.privacy_notice_url}
                   depositLabel={service.deposit_pence > 0 ? `Continue to pay ${formatPence(service.deposit_pence)} deposit` : null} />
               </section>

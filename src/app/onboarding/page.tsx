@@ -1,3 +1,4 @@
+import { shopSubdomainsEnabled } from "@/lib/shop-host";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "./form";
@@ -19,7 +20,7 @@ export default async function OnboardingPage() {
   const siteHost = new URL(publicEnv().NEXT_PUBLIC_SITE_URL).host;
   return (
     <Shell title="Set up your business">
-      <OnboardingForm siteHost={siteHost} noTrial={noTrialMode()} smsEnabled={smsPacksEnabled()} threeYearOn={threeYearEnabled()} />
+      <OnboardingForm siteHost={siteHost} noTrial={noTrialMode()} smsEnabled={smsPacksEnabled()} threeYearOn={threeYearEnabled()} subdomains={shopSubdomainsEnabled()} />
     </Shell>
   );
 }

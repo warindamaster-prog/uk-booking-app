@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { PRICING } from "@/lib/pricing";
-import { SLUG_RE } from "@/lib/slug";
+import { RESERVED_SLUGS, SLUG_RE } from "@/lib/slug";
 
-export const RESERVED_SLUGS = new Set(["admin", "api", "app", "login", "signup", "dashboard", "www"]);
 
 export const PHONE_RE = /^[0-9+()\-\s]{7,20}$/;
 

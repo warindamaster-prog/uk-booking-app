@@ -39,6 +39,8 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 
 ## Brand and domain
 
+- [ ] **Shop sub-domains** (`shop.getitbook.com`): code written and tested, switched off (`SHOP_SUBDOMAINS_ENABLED`). Needs the wildcard DNS and certificate first (see `docs/shop-subdomains.md`), then a test, then switch on.
+
 - [x] Domain `getitbook.com` bought at Namecheap (21 Nov 2026), DNS points to Vercel, `NEXT_PUBLIC_SITE_URL`, Supabase URLs, Stripe Connect redirect URI and both Live webhooks, and the GitHub `APP_URL` secret all moved to it.
 - [ ] Redirect the old `book.wpprecisionsystems.co.uk` to `getitbook.com` (keep the old domain for at least a year: customers hold old links). Do it only after a test sign-up on the new domain works.
 - [ ] **Domain renewal:** `getitbook.com` expires 21 Nov 2027. Check in early Oct 2027 that Auto-Renew is on (domain AND the privacy switch), the Namecheap card is valid and the notice email is read. A reminder was scheduled in the assistant session for 4 Oct 2027 (not in the owner's own calendar: add one there too).

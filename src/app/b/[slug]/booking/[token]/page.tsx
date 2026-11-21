@@ -7,6 +7,7 @@ import { byteaParam, hashToken, TOKEN_RE } from "@/lib/booking/token";
 import { formatPence } from "@/lib/money";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDateTime } from "@/lib/time";
+import { shopBase } from "@/lib/shop-base";
 import { PublicShell } from "../../chrome";
 import { AutoRefresh } from "./auto-refresh";
 import { CancelForm } from "./cancel-form";
@@ -29,6 +30,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
   if (!TOKEN_RE.test(token)) notFound();
   const business = await getBusinessBySlug(slug);
   if (!business) notFound();
+  const shop = await shopBase(business.slug);
 
   const db = createAdminClient();
   const { data: b } = await db.from("bookings")
@@ -48,7 +50,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
       : !canCancel ? <p className="text-sm">Online cancellation has closed. To change or cancel, please reply to your confirmation email or contact {business.name} directly.</p> : null;
 
   return (
-    <PublicShell slug={business.slug} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url}>
+    <PublicShell base={shop} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url}>
       <div className="space-y-4">
         <h1 className="text-[28px] font-semibold leading-tight tracking-[-1px]">{STATUS[b.status] ?? "Your booking"}</h1>
         {b.status === "pending_payment" && paid && (
@@ -82,7 +84,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
         )}
         <p className="text-sm">Keep this page&apos;s link to see your booking again.</p>
         <p>
-          <Link href={`/b/${business.slug}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[#f1f5ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]">
+          <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[#f1f5ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]">
             Book another appointment <span aria-hidden="true">→</span>
           </Link>
         </p>

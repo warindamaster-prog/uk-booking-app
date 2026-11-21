@@ -1,3 +1,4 @@
+import { shopUrl } from "@/lib/shop-host";
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildDepositCheckoutParams, depositDecision, type RefundChoice } from "./deposits";
@@ -12,7 +13,7 @@ export async function startDepositCheckout(db: Db, i: {
   business: { name: string; slug: string; stripe_account_id: string };
   siteUrl: string; token: string;
 }): Promise<string> {
-  const page = `${i.siteUrl}/b/${i.business.slug}/booking/${i.token}`;
+  const page = shopUrl({ siteUrl: i.siteUrl, slug: i.business.slug, path: `/booking/${i.token}` });
   const session = await getStripe().checkout.sessions.create(
     buildDepositCheckoutParams({
       bookingId: i.bookingId, serviceName: i.serviceName, depositPence: i.depositPence, customerEmail: i.customerEmail,

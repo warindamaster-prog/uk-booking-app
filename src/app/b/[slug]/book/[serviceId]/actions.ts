@@ -1,5 +1,6 @@
 "use server";
 
+import { shopBase } from "@/lib/shop-base";
 import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -75,7 +76,7 @@ export async function createPublicBooking(_: FormState, formData: FormData): Pro
     { business, base: ctx.base, depositPence: ctx.service.deposit_pence, input },
   );
   if (outcome.ok) {
-    const page = `/b/${business.slug}/booking/${outcome.token}`;
+    const page = `${await shopBase(business.slug)}/booking/${outcome.token}`;
     if (ctx.service.deposit_pence === 0) {
       // Confirmation emails go out after the response, so the customer never waits for the email provider.
       after(() => notifyBookingEvent(outcome.bookingId, "confirmation"));

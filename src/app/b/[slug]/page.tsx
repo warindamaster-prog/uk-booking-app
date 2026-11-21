@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { acceptsBookings, getBusinessBySlug, listBookableServices, logoUrl } from "@/lib/booking/data";
 import { formatPence } from "@/lib/money";
+import { shopBase } from "@/lib/shop-base";
 import { PublicShell } from "./chrome";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -15,10 +16,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BusinessPage({ params }: Props) {
   const business = await getBusinessBySlug((await params).slug);
   if (!business) notFound();
+  const base = await shopBase(business.slug);
   const services = acceptsBookings(business) ? await listBookableServices(business.id) : [];
 
   return (
-    <PublicShell slug={business.slug} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={1} summary={{}}>
+    <PublicShell base={base} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={1} summary={{}}>
       <p className="mb-2 text-xs font-semibold uppercase tracking-[1.5px] text-[#738064]">Let&apos;s get you booked</p>
       <h1 className="text-[28px] font-semibold leading-tight tracking-[-1px]">Choose your service</h1>
       <p className="mb-6 mt-2 text-sm text-[#6b756d]">Pick a service, then find a day and time that suits you.</p>
@@ -26,7 +28,7 @@ export default async function BusinessPage({ params }: Props) {
         <ul className="space-y-3">
           {services.map((s) => (
             <li key={s.id}>
-              <Link href={`/b/${business.slug}/book/${s.id}`}
+              <Link href={`${base}/book/${s.id}`}
                 className="group block rounded-xl border border-[#dfe5da] bg-white p-5 transition hover:border-[#789467] hover:shadow-[0_0_0_1px_#78946720] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451] sm:p-6">
                 <span className="flex items-start justify-between gap-4">
                   <span className="min-w-0">
