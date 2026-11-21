@@ -2,6 +2,7 @@
 
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand";
 import { LanguageSwitch } from "@/components/language-switch";
 import { sans, serif } from "@/lib/fonts";
 import type { InputHTMLAttributes, ReactNode } from "react";
@@ -57,12 +58,7 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
       style={{ fontFamily: "var(--font-dm-sans), Arial, Helvetica, var(--font-thai), sans-serif" }}
     >
       <header className="mx-auto flex h-20 w-full max-w-[1280px] items-center justify-between gap-5 px-6 lg:px-12">
-        <Link href="/" aria-label="WP Booking home" className="flex min-h-11 items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#34553e] text-white">
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M7 3v4m10-4v4M3 11h18m-12 4h2m3 0h2" /></svg>
-          </span>
-          <span className="text-xl font-semibold tracking-[-0.8px]">wp<span className="font-normal">booking</span><span className="text-[#6a815c]">.</span></span>
-        </Link>
+        <BrandLogo />
         <LanguageSwitch />
       </header>
       <main className="flex flex-1 items-start justify-center px-4 pb-16 pt-4 sm:pt-8">

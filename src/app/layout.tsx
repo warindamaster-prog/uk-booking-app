@@ -20,7 +20,7 @@ const notoThai = Noto_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Online booking for UK businesses", template: "%s | Booking" },
+  title: { default: "Get It Book: online booking for UK businesses", template: "%s | Get It Book" },
   description: "Online appointment booking for UK businesses. Flat monthly fee, no commission.",
 };
 

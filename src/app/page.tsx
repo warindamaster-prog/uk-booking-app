@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PRICING } from "@/lib/pricing";
+import { BrandLogo } from "@/components/brand";
 import { sans, serif } from "@/lib/fonts";
 import { BookingPreview } from "@/components/landing/booking-preview";
 import { Faq, HeaderNav } from "@/components/landing/interactive";
@@ -23,10 +24,7 @@ export default function Home() {
   return (
     <div className={`${sans.variable} ${serif.variable} min-h-screen overflow-x-hidden bg-[#fafbf7] font-[family-name:var(--font-dm-sans)] text-[#24392e] selection:bg-[#d5e4c7] [&_.font-serif]:font-[family-name:var(--font-dm-serif)]`}>
       <header className="relative z-20 mx-auto flex h-24 max-w-[1280px] items-center justify-between gap-5 px-6 lg:px-12">
-        <Link href="/" aria-label="WP Booking home" className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#34553e] text-white"><Icon name="calendar" className="!h-6 !w-6" /></span>
-          <span className="text-xl font-semibold tracking-[-0.8px]">wp<span className="font-normal">booking</span><span className="text-[#6a815c]">.</span></span>
-        </Link>
+        <BrandLogo />
         <HeaderNav />
       </header>
 

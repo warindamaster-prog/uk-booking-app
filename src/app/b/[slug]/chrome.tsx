@@ -51,7 +51,7 @@ export function PublicShell({ slug, name, logo, privacyUrl, step, summary, child
       </div>
       <footer className="border-t border-[#e2e7dc] bg-[#f1f3ed] px-5 py-5 lg:px-8">
         <div className="mx-auto flex max-w-[1100px] flex-col items-center justify-between gap-2 text-xs text-[#6b756d] sm:flex-row">
-          <p>Booking powered by WP Precision Systems</p>
+          <p>Booking powered by Get It Book</p>
           {privacyUrl ? (
             <a href={privacyUrl} className="flex min-h-11 items-center underline" rel="noopener noreferrer">Privacy notice</a>
           ) : (

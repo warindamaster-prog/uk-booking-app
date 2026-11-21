@@ -35,9 +35,13 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 - [ ] Optional: Thai for the customer booking pages and emails (only the owner side is Thai now).
 - [ ] Optional: skip the "choose a service" step when a shop has just one service; show-password toggle on login.
 - [ ] Decide whether to remove the Schedule page from the menu (kept for now: it has week view, staff filter and days off).
-- [ ] Landing page uses the working name "wpbooking.": replace once the brand and domain are decided.
+- [x] Brand name is now "Get It Book" (logo and page titles; done 21 Nov 2026).
 
 ## Brand and domain
+
+- [x] Domain `getitbook.com` bought at Namecheap (21 Nov 2026), DNS points to Vercel, `NEXT_PUBLIC_SITE_URL`, Supabase URLs, Stripe Connect redirect URI and both Live webhooks, and the GitHub `APP_URL` secret all moved to it.
+- [ ] Redirect the old `book.wpprecisionsystems.co.uk` to `getitbook.com` (keep the old domain for at least a year: customers hold old links). Do it only after a test sign-up on the new domain works.
+- [ ] Confirm the ICANN email verification for the domain at Namecheap (the yellow ALERT), keep Auto-Renew on and 2-step verification on the Namecheap account.
 
 - [ ] Choose the brand and domain (getitbook.com at Vercel was the recommendation). Then migrate: `NEXT_PUBLIC_SITE_URL`, Supabase redirect URLs, Stripe webhook and Connect redirect URIs, GitHub `APP_URL`, email sender. Per-shop subdomains later.
 - [ ] Selling outside the UK needs accountant input (VAT and tax).
