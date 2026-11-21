@@ -1,6 +1,6 @@
 # Shop colours
 
-Status (21 Nov 2026): code written and tested, **switched off** (`SHOP_COLORS_ENABLED` unset). Migration `0020_shop_colour.sql` is in the repository but **not yet applied** to the live database (the owner approved the scope: dashboard and booking pages, ready-made palettes; the owner has not yet approved running the migration).
+Status (21 Nov 2026): **ON** (`SHOP_COLORS_ENABLED=true` in Vercel). Migration `0020_shop_colour.sql` was applied to the live database on 21 Nov 2026 (owner approved): scope is the dashboard and the booking pages, ready-made palettes.
 
 ## What it does
 - The owner picks one of 8 palettes (green = default, blue, violet, rose, red, orange, teal, slate) in Settings, with a small preview.
