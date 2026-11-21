@@ -4,6 +4,8 @@ import { SettingsForm } from "./settings-form";
 import { getT } from "@/lib/i18n/server";
 import { isThemeName, shopColorsEnabled } from "@/lib/theme";
 import { ColorForm } from "./color-form";
+import Link from "next/link";
+import { shopPageEnabled } from "@/lib/shop-page-switch";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -16,6 +18,13 @@ export default async function SettingsPage() {
   return (
     <main className="space-y-6">
       <h1 className="text-2xl font-semibold">{t("Settings")}</h1>
+      {shopPageEnabled() && (
+        <section aria-labelledby="shoppage-h" className="space-y-2">
+          <h2 id="shoppage-h" className="text-xl font-semibold">{t("Shop page")}</h2>
+          <p className="text-sm">{t("Add photos, an about text, your address and extra information to the page customers see first.")}</p>
+          <Link href="/dashboard/settings/shop-page" className="inline-flex min-h-11 items-center underline">{t("Edit your shop page")}</Link>
+        </section>
+      )}
       {shopColorsEnabled() && (
         <section aria-labelledby="colour-h" className="space-y-3">
           <h2 id="colour-h" className="text-xl font-semibold">{t("Colour")}</h2>

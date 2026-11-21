@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    // Logo uploads go through a server action (max 2 MB file + form overhead).
-    serverActions: { bodySizeLimit: "3mb" },
+    // Logo and shop photo uploads go through server actions (max 4 MB file + form overhead).
+    serverActions: { bodySizeLimit: "5mb" },
   },
   turbopack: {
     rules: {

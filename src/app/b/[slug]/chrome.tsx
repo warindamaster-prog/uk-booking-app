@@ -16,12 +16,14 @@ export type SummaryData = {
   depositPence?: number;
 };
 
-export function PublicShell({ base, accent, name, logo, privacyUrl, step, summary, children }: {
+export function PublicShell({ base, accent, name, logo, privacyUrl, step, summary, wide, children }: {
   base: string; accent?: string | null; name: string; logo: string | null; privacyUrl: string | null;
   /** 1-3 shows the progress bar; omit on pages outside the booking flow. */
   step?: 1 | 2 | 3;
   /** Shows the "Your booking" box next to the content. */
   summary?: SummaryData;
+  /** The shop's front page uses the full width instead of the narrow column. */
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -42,13 +44,13 @@ export function PublicShell({ base, accent, name, logo, privacyUrl, step, summar
       </header>
       <div className="mx-auto w-full max-w-[1100px] flex-1 px-5 pb-14 pt-7 lg:px-8 lg:pt-9">
         {step && <Progress step={step} />}
-        <div className={summary ? "grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10" : "mx-auto max-w-2xl"}>
+        <div className={summary ? "grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10" : wide ? "" : "mx-auto max-w-2xl"}>
           <main className="min-w-0">{children}</main>
           {summary && <Summary name={name} data={summary} />}
         </div>
-        <p className="mt-12 border-t border-[color:var(--brand-line,#e0e6da)] pt-6 text-center text-sm text-[color:var(--brand-muted,#6b756d)]">
+        {!wide && <p className="mt-12 border-t border-[color:var(--brand-line,#e0e6da)] pt-6 text-center text-sm text-[color:var(--brand-muted,#6b756d)]">
           You&apos;re booking directly with <span className="font-semibold text-[color:var(--brand-text,#36543c)]">{name}</span>
-        </p>
+        </p>}
       </div>
       <footer className="border-t border-[color:var(--brand-line,#e2e7dc)] bg-[color:var(--brand-bg,#f1f3ed)] px-5 py-5 lg:px-8">
         <div className="mx-auto flex max-w-[1100px] flex-col items-center justify-between gap-2 text-xs text-[color:var(--brand-muted,#6b756d)] sm:flex-row">

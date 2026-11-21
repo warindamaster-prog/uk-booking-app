@@ -121,6 +121,23 @@ describe("RLS", () => {
   });
 });
 
+describe("shop page (0021)", () => {
+  it("lets the owner keep photos in their own business only", async () => {
+    await as(A, "a@x.com", () => db.query(`insert into shop_photos(business_id,path) values($1,$2)`, [bizA, `${bizA}/photo-1.jpg`]));
+    await expect(as(B, "b@x.com", () => db.query(`insert into shop_photos(business_id,path) values($1,$2)`, [bizA, `${bizA}/photo-2.jpg`]))).rejects.toThrow(/row-level security/);
+    const seen = await as(B, "b@x.com", () => db.query(`select * from shop_photos`));
+    expect(seen.rows).toHaveLength(0);
+  });
+  it("scopes photo uploads to the owner's folder", async () => {
+    await as(A, "a@x.com", () => db.query(`insert into storage.objects(bucket_id,name) values('shop-photos',$1)`, [`${bizA}/p.jpg`]));
+    await expect(as(B, "b@x.com", () => db.query(`insert into storage.objects(bucket_id,name) values('shop-photos',$1)`, [`${bizA}/q.jpg`]))).rejects.toThrow(/row-level security/);
+  });
+  it("lets the owner edit the texts and limits their length", async () => {
+    await as(A, "a@x.com", () => db.query(`update businesses set about='Hello', address='1 High St', additional_info='Parking at the back' where id=$1`, [bizA]));
+    await expect(as(A, "a@x.com", () => db.query(`update businesses set about=$2 where id=$1`, [bizA, "x".repeat(1501)]))).rejects.toThrow(/check constraint/);
+  });
+});
+
 describe("set_working_hours / set_staff_services", () => {
   const S = "00000000-0000-0000-0000-00000000000c";
   let staffS: string;

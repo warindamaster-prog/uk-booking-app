@@ -1,4 +1,6 @@
 import { shopColorsEnabled } from "@/lib/theme";
+import { shopPageEnabled } from "@/lib/shop-page-switch";
+import { openingTimes, type OpeningDay } from "@/lib/opening-hours";
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dayBounds, type AvailabilityQuery, type StaffDay } from "@/lib/availability";
@@ -18,6 +20,8 @@ export type PublicBusiness = {
   deposit_policy: string | null; deposit_refundable: boolean;
   /** The shop's colour name (only read while SHOP_COLORS_ENABLED). */
   accent_color?: string | null;
+  /** The shop's front page texts (only read while SHOP_PAGE_ENABLED). */
+  about?: string | null; address?: string | null; additional_info?: string | null;
   billing_status: string; trial_ends_at: string;
   /** Only set when the owner allows customers to see them (Settings). */
   contact: { email: string | null; phone: string | null } | null;
@@ -36,7 +40,7 @@ export const acceptsBookings = (b: Pick<PublicBusiness, "billing_status" | "tria
 
 export async function getBusinessBySlug(slug: string): Promise<PublicBusiness | null> {
   const db = createAdminClient();
-  const cols: string = `id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, stripe_charges_enabled, stripe_account_id, cancellation_window_hours, deposit_policy, deposit_refundable, email, phone, show_contact_to_customers${shopColorsEnabled() ? ", accent_color" : ""}`;
+  const cols: string = `id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, stripe_charges_enabled, stripe_account_id, cancellation_window_hours, deposit_policy, deposit_refundable, email, phone, show_contact_to_customers${shopColorsEnabled() ? ", accent_color" : ""}${shopPageEnabled() ? ", about, address, additional_info" : ""}`;
   // The column list is built at run time (accent_color only once its migration is live), so supabase-js cannot type it: describe the row here.
   type Row = Omit<PublicBusiness, "billing_status" | "trial_ends_at" | "contact"> & { email: string | null; phone: string | null; show_contact_to_customers: boolean };
   const { data } = (await db.from("businesses").select(cols).eq("slug", slug).maybeSingle()) as unknown as { data: Row | null };
@@ -54,6 +58,28 @@ export async function getBusinessBySlug(slug: string): Promise<PublicBusiness | 
 export function logoUrl(path: string | null): string | null {
   if (!path) return null;
   return createAdminClient().storage.from("logos").getPublicUrl(path).data.publicUrl;
+}
+
+export type ShopPhoto = { id: string; url: string };
+
+export function shopPhotoUrl(path: string): string {
+  return createAdminClient().storage.from("shop-photos").getPublicUrl(path).data.publicUrl;
+}
+
+/** The shop's photos in order; the first is the cover. */
+export async function listShopPhotos(businessId: string): Promise<ShopPhoto[]> {
+  const { data } = await createAdminClient().from("shop_photos").select("id, path").eq("business_id", businessId).order("sort_order").order("created_at");
+  return (data ?? []).map((p) => ({ id: p.id as string, url: shopPhotoUrl(p.path as string) }));
+}
+
+/** Opening times, worked out from the working hours of the active team. */
+export async function listOpeningTimes(businessId: string): Promise<OpeningDay[]> {
+  const db = createAdminClient();
+  const { data: staff } = await db.from("staff").select("id").eq("business_id", businessId).eq("active", true);
+  const ids = (staff ?? []).map((s) => s.id as string);
+  if (!ids.length) return openingTimes([]);
+  const { data } = await db.from("working_hours").select("weekday, start_minute, end_minute").eq("business_id", businessId).in("staff_id", ids);
+  return openingTimes((data ?? []) as { weekday: number; start_minute: number; end_minute: number }[]);
 }
 
 /** Active services that at least one active staff member offers, with the lowest price on offer. */

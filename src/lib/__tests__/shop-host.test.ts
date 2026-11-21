@@ -23,6 +23,7 @@ describe("routing by host", () => {
 
   it("shows a shop on its sub-domain by rewriting onto /b/<shop>", () => {
     expect(r("klean-me.getitbook.com", "/")).toEqual({ kind: "rewrite", slug: "klean-me", path: "/b/klean-me" });
+    expect(r("klean-me.getitbook.com", "/services")).toEqual({ kind: "rewrite", slug: "klean-me", path: "/b/klean-me/services" });
     expect(r("klean-me.getitbook.com", "/book/abc")).toEqual({ kind: "rewrite", slug: "klean-me", path: "/b/klean-me/book/abc" });
     expect(r("klean-me.getitbook.com", "/booking/tok")).toEqual({ kind: "rewrite", slug: "klean-me", path: "/b/klean-me/booking/tok" });
     expect(r("KLEAN-ME.getitbook.com:443", "/")).toMatchObject({ kind: "rewrite", slug: "klean-me" });

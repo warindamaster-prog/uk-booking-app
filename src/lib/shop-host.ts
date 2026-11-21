@@ -36,7 +36,7 @@ const SHOP_PATH = /^\/b\/([a-z0-9-]+)(\/.*)?$/;
 /**
  * What the proxy does with a request, given its host and path. Pure, so it can be tested.
  * - Main site (getitbook.com): an old /b/<shop>/... address is sent on to <shop>.getitbook.com/... (308).
- * - A shop's sub-domain: / and /book/..., /booking/... show that shop (rewrite onto /b/<shop>/...);
+ * - A shop's sub-domain: /, /services and /book/..., /booking/... show that shop (rewrite onto /b/<shop>/...);
  *   /b/<this shop>/... is sent to the clean address; the account pages are sent to the main site.
  * - Any other host (previews, localhost, the old domain) and anything else: untouched.
  */
@@ -63,7 +63,7 @@ export function routeShopHost(i: { host: string; path: string; search?: string; 
   const own = SHOP_PATH.exec(i.path);
   if (own && own[1] === label) return { kind: "redirect", url: `${proto}//${host}${own[2] && own[2] !== "/" ? own[2] : ""}${search}` };
   if (MAIN_SITE.test(i.path)) return { kind: "redirect", url: `${proto}//${site.host}${i.path}${search}` };
-  if (i.path === "/" || i.path.startsWith("/book/") || i.path.startsWith("/booking/")) {
+  if (i.path === "/" || i.path === "/services" || i.path.startsWith("/book/") || i.path.startsWith("/booking/")) {
     return { kind: "rewrite", slug: label, path: `/b/${label}${i.path === "/" ? "" : i.path}` };
   }
   return { kind: "none" };
