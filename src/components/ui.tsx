@@ -21,7 +21,7 @@ export function Field({
         name={name}
         aria-invalid={errId ? true : undefined}
         aria-describedby={[hintId, errId].filter(Boolean).join(" ") || undefined}
-        className="block min-h-12 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-base text-[#24392e] outline-none transition placeholder:text-stone-400 focus:border-[#34553e] focus:ring-2 focus:ring-[#397451]/40 aria-[invalid=true]:border-red-600"
+        className="block min-h-12 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-base text-[#24392e] outline-none transition placeholder:text-stone-400 focus:border-[#34553e] focus:ring-2 focus:ring-[#397451]/40 aria-[invalid=true]:border-red-600 file:mr-3 file:rounded-md file:border-0 file:bg-[#eef3e9] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#34553e]"
         {...props}
       />
       {hint && <p id={hintId} className="text-sm text-[#6b756d]">{t(hint)}</p>}

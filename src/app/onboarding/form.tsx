@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { createBusiness } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
 import type { FormState } from "@/lib/form";
@@ -8,6 +8,15 @@ import { formatPence } from "@/lib/money";
 import { grossPence, isValidSeats, isValidSmsPacks, PRICING, pricePence, smsPackPricePence, vatPence, yearlySavingPence, type BillingInterval } from "@/lib/pricing";
 import { slugify } from "@/lib/slug";
 import { useT } from "@/lib/i18n/client";
+
+const STEP1_FIELDS = ["name", "slug", "ownerName", "email", "phone", "logo"];
+const STEP1_REQUIRED: Record<string, string> = {
+  name: "Enter your business name",
+  slug: "Use 3-40 letters, numbers or hyphens, starting with a letter or number",
+  ownerName: "Enter the owner's name",
+  email: "Enter a valid email address",
+  phone: "Enter a valid phone number, for example 07700 900123",
+};
 
 export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false }: { siteHost: string; noTrial?: boolean; smsEnabled?: boolean }) {
   const t = useT();
@@ -27,45 +36,71 @@ export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false }
   const packs = smsEnabled && smsOn && isValidSmsPacks(packsN) ? packsN : 0;
   const e = state.fieldErrors ?? {};
 
+  // Two steps in one form: your business, then your plan. Nothing is saved until the last button.
+  const [step, setStep] = useState<1 | 2>(1);
+  const [local, setLocal] = useState<Record<string, string[]>>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const [seen, setSeen] = useState(state);
+  if (state !== seen) { // a reply from the server: go to the step that has the problem
+    setSeen(state);
+    if (Object.keys(state.fieldErrors ?? {}).some((k) => STEP1_FIELDS.includes(k))) setStep(1);
+    else if (state.fieldErrors || state.error) setStep(2);
+  }
+  const err = (k: string) => e[k] ?? local[k];
+
+  function next() {
+    const data = new FormData(formRef.current!);
+    const missing: Record<string, string[]> = {};
+    for (const [k, msg] of Object.entries(STEP1_REQUIRED)) if (!String(data.get(k) ?? "").trim()) missing[k] = [msg];
+    setLocal(missing);
+    if (Object.keys(missing).length) return;
+    setStep(2);
+    window.scrollTo({ top: 0 });
+  }
+
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form ref={formRef} action={action} className="space-y-5" noValidate>
       <FormError message={state.error} />
+      <p className="text-sm text-[#6b756d]" aria-live="polite">{t("Step {n} of 2", { n: step })}: {t(step === 1 ? "Your business" : "Choose your plan")}</p>
+
+      <div hidden={step !== 1} className="space-y-5" onKeyDown={(ev) => { if (ev.key === "Enter" && (ev.target as HTMLElement).tagName === "INPUT") { ev.preventDefault(); next(); } }}>
 
       <Field label="Business name" name="name" required maxLength={100} autoComplete="organization"
-        defaultValue={v.name} errors={e.name} onChange={(ev) => setName(ev.target.value)} />
+        defaultValue={v.name} errors={err("name")} onChange={(ev) => setName(ev.target.value)} />
       <Field label="Web address" name="slug" required value={shownSlug}
         onChange={(ev) => setSlug(ev.target.value.toLowerCase())}
         hint={t("Your booking page: {url}", { url: `${siteHost}/b/${shownSlug || "your-name"}` })}
-        errors={e.slug} autoCapitalize="none" spellCheck={false} />
+        errors={err("slug")} autoCapitalize="none" spellCheck={false} />
       <Field label="Owner's name" name="ownerName" required maxLength={100} autoComplete="name"
-        hint="Shown to customers if you take bookings yourself." defaultValue={v.ownerName} errors={e.ownerName} />
+        hint="Shown to customers if you take bookings yourself." defaultValue={v.ownerName} errors={err("ownerName")} />
       <Field label="Contact email" name="email" type="email" required autoComplete="email" inputMode="email"
-        hint="Booking notifications are sent here. Customers also see it, and your phone number, in their booking emails; you can turn that off later in Settings." defaultValue={v.email} errors={e.email} />
+        hint="Booking notifications are sent here. Customers also see it, and your phone number, in their booking emails; you can turn that off later in Settings." defaultValue={v.email} errors={err("email")} />
       <Field label="Phone number" name="phone" type="tel" required autoComplete="tel" inputMode="tel"
-        defaultValue={v.phone} errors={e.phone} />
+        defaultValue={v.phone} errors={err("phone")} />
       <div className="space-y-1">
         <span className="block text-sm font-medium">{t("Time zone")}</span>
-        <p className="rounded-md border border-neutral-400 px-3 py-2">{t("Europe/London (UK time)")}</p>
+        <p className="rounded-lg border border-stone-200 bg-[#f7f8f4] px-3 py-3">{t("Europe/London (UK time)")}</p>
       </div>
       <Field label="Logo (optional)" name="logo" type="file" accept="image/png,image/jpeg,image/webp"
         hint="PNG, JPEG or WebP, up to 2 MB." errors={e.logo} />
+        <button type="button" onClick={next} className="min-h-12 w-full rounded-lg bg-[#34553e] px-4 py-3 text-base font-semibold text-white transition hover:bg-[#25422e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451] focus-visible:ring-offset-2">{t("Continue")} →</button>
+      </div>
 
-      <fieldset className="space-y-4 rounded-md border border-neutral-300 p-4 dark:border-neutral-700">
-        <legend className="px-1 text-base font-semibold">{t("Your plan")}</legend>
-        <Field label="How many people will take bookings?" name="seats" inputMode="numeric" required
+      <div hidden={step !== 2} className="space-y-5">
+        <Field label="How many staff will take bookings? (include yourself)" name="seats" inputMode="numeric" required
           value={seatsText} onChange={(ev) => setSeatsText(ev.target.value)}
           hint={t("Include yourself if you take bookings. {base} a month for one person, then {extra} a month for each extra person. You can change this later.", { base: formatPence(PRICING.baseMonthlyPence), extra: formatPence(PRICING.extraSeatMonthlyPence) })}
           errors={e.seats} />
 
         <fieldset>
-          <legend className="mb-2 text-sm font-medium">{t("Billing")}</legend>
+          <legend className="mb-2 text-sm font-medium text-[#2d4a38]">{t("Billing")}</legend>
           <div className="space-y-2">
             {(["month", "year"] as const).map((i) => {
               const price = seatsOk ? pricePence(seats, i, packs) : null;
               return (
-                <label key={i} className="flex items-start gap-3 rounded-md border border-neutral-300 p-3 dark:border-neutral-700">
+                <label key={i} className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-4 transition has-[:checked]:border-[#34553e] has-[:checked]:bg-[#eef3e9]">
                   <input type="radio" name="interval" value={i} checked={interval === i}
-                    onChange={() => setInterval(i)} className="mt-1 h-5 w-5" />
+                    onChange={() => setInterval(i)} className="mt-1 h-5 w-5 accent-[#34553e]" />
                   <span>
                     <span className="block font-medium">{t(i === "month" ? "Monthly" : "Yearly (12 months for the price of 10)")}</span>
                     <span className="block text-sm">
@@ -84,7 +119,7 @@ export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false }
         {smsEnabled && (
         <div className="space-y-2">
           <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" name="smsOn" checked={smsOn} onChange={(ev) => setSmsOn(ev.target.checked)} className="mt-1 h-5 w-5" />
+            <input type="checkbox" name="smsOn" checked={smsOn} onChange={(ev) => setSmsOn(ev.target.checked)} className="mt-1 h-5 w-5 accent-[#34553e]" />
             <span>
               <span className="block font-medium">Send SMS booking confirmations (optional)</span>
               <span className="block text-neutral-600 dark:text-neutral-400">
@@ -101,16 +136,16 @@ export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false }
         </div>
         )}
 
-        <div role="status" aria-live="polite" className="rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
+        <div role="status" aria-live="polite" className="rounded-xl bg-[#edf2e1] p-4 text-sm text-[#2d4a38]">
           <p className="font-medium">{noTrial ? t("No free trial. You subscribe after setting up, and your booking page opens once you have.") : t("Free for {days} days. No card needed.", { days: PRICING.trialDays })}</p>
           {seatsOk && (() => {
             const net = pricePence(seats, interval, packs);
             return <p>{t(noTrial ? "Your plan" : "After the trial")}: {t("{net} + {vat} VAT = {gross} per {interval}.", { net: formatPence(net), vat: formatPence(vatPence(net)), gross: formatPence(grossPence(net)), interval: t(interval) })}</p>;
           })()}
         </div>
-      </fieldset>
-
-      <SubmitButton pending={pending}>{t(noTrial ? "Set up my business" : "Start my free trial")}</SubmitButton>
+        <SubmitButton pending={pending}>{t(noTrial ? "Set up my business" : "Start my free trial")}</SubmitButton>
+        <button type="button" onClick={() => { setStep(1); window.scrollTo({ top: 0 }); }} className="flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-medium text-[#415044] hover:bg-[#f1f5ed]">← {t("Back")}</button>
+      </div>
     </form>
   );
 }
