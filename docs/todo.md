@@ -25,8 +25,8 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 
 ## 3-year prepaid package
 
-- [x] Code written and tested, switched off (`THREE_YEAR_ENABLED=false`). Migration 0019 is in the repo but NOT applied to the live database. See `docs/three-year-plan.md` ("Going live").
-- [ ] Owner approves and applies migration 0019; test the Stripe payment in Sandbox; legal and accounting check; then switch on after the brand and domain are final.
+- [x] Code written and tested. Migration 0019 applied to the live database and the plan switched ON on 21 Nov 2026 (owner approved). See `docs/three-year-plan.md`.
+- [ ] Still to do: test a real payment (3 staff = £533.52 incl. VAT, then refund), legal and accounting check of the terms, show the 3-year price on the landing page.
 - [ ] Phase 2: top-up when adding staff during the term; let existing monthly or yearly shops switch to it.
 
 ## Product and design

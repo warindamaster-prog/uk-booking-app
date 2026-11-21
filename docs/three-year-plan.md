@@ -1,6 +1,6 @@
 # 3-year prepaid package: proposal (awaiting approval)
 
-Status (21 Nov 2026): **the code is written and tested, switched OFF. Migration 0019 is in the repository but has NOT been applied to the live database.**
+Status (21 Nov 2026): **migration 0019 was applied to the live database on 21 Nov 2026 (owner approved) and the plan is switched ON (`THREE_YEAR_ENABLED=true`). The Stripe payment itself has NOT been tested with a real card yet.**
 The owner accepted all the recommendations below ("ตามที่แนะนำ"). Switching on needs the steps under "Going live" at the end of this file.
 
 Decisions from the owner:

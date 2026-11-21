@@ -1,6 +1,6 @@
 -- 3-year prepaid package (one-time payment, 35% off 36 months, at least 3 staff).
 -- Existing rows are untouched: every current row is 'month' or 'year'.
--- Proposal and reasoning: docs/three-year-plan.md. NOT yet applied to the live database.
+-- Proposal and reasoning: docs/three-year-plan.md. Applied to the live database on 21 Nov 2026.
 
 -- 1) The interval may now be 'three_year'. That plan needs at least 3 staff (also for any planned reduction).
 alter table public.business_billing drop constraint business_billing_billing_interval_check;
