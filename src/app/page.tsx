@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { PRICING } from "@/lib/pricing";
+import { PRICING, pricePence } from "@/lib/pricing";
+import { formatPence } from "@/lib/money";
+import { threeYearEnabled } from "@/lib/three-year-switch";
 import { BrandLogo } from "@/components/brand";
 import { sans, serif } from "@/lib/fonts";
 import { BookingPreview } from "@/components/landing/booking-preview";
@@ -19,6 +21,23 @@ const faqs: [string, string][] = [
 ];
 
 const pounds = (pence: number) => `£${pence / 100}`;
+
+/** The plans on the pricing section, all from the real price formula. The 3-year plan only shows while it is on sale. */
+function plans() {
+  const extra = PRICING.extraSeatMonthlyPence;
+  const list = [
+    { name: "Monthly", badge: null as string | null, price: formatPence(pricePence(1, "month")), unit: "a month", note: `For the first person taking bookings, then ${pounds(extra)} a month for each extra person.` },
+    { name: "Yearly", badge: "2 months free", price: formatPence(pricePence(1, "year")), unit: "a year", note: `12 months for the price of 10. Each extra person is ${pounds(extra * PRICING.yearlyMonthsCharged)} a year.` },
+  ];
+  if (threeYearEnabled()) {
+    const total = pricePence(PRICING.threeYearMinSeats, "three_year");
+    list.push({
+      name: "3 years, paid once", badge: "35% off", price: formatPence(total), unit: `for ${PRICING.threeYearMinSeats} staff`,
+      note: `That is ${formatPence(Math.round(total / PRICING.threeYearMonths))} a month over 3 years. From ${PRICING.threeYearMinSeats} staff. Pay once; it does not renew by itself.`,
+    });
+  }
+  return list;
+}
 
 export default function Home() {
   return (
@@ -75,9 +94,21 @@ export default function Home() {
             <div>
               <p className="text-xs font-medium uppercase tracking-[2px] text-[#d6e3cc]">Your business. Your bookings.</p>
               <h2 className="font-serif mt-4 text-4xl tracking-tight">A flat fee. Not a slice of your success.</h2>
-              <p className="mt-4 text-sm leading-7 text-[#dce5d7]">{pounds(PRICING.baseMonthlyPence)} a month for the first person taking bookings, then {pounds(PRICING.extraSeatMonthlyPence)} a month for each extra person. Pay yearly and get 2 months free. Prices exclude VAT. No commission on your bookings.</p>
+              <p className="mt-4 text-sm leading-7 text-[#dce5d7]">No commission on your bookings. Free for {PRICING.trialDays} days, no card needed. All prices exclude VAT.</p>
             </div>
             <Link href="/signup" className={`${buttonClass} shrink-0 bg-[#e9efdd] text-[#2e4937] hover:bg-white`}>Start your free trial<Icon name="arrow" /></Link>
+          </div>
+          <div className={`mt-10 grid gap-4 ${plans().length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+            {plans().map((p) => (
+              <article key={p.name} className={`rounded-xl border p-6 ${p.badge === "35% off" ? "border-[#cfe3bd] bg-white/10" : "border-white/15 bg-white/5"}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold">{p.name}</h3>
+                  {p.badge && <span className="rounded-full bg-[#e9efdd] px-2.5 py-1 text-xs font-semibold text-[#2e4937]">{p.badge}</span>}
+                </div>
+                <p className="mt-4 flex items-baseline gap-2"><span className="font-serif text-4xl tracking-tight">{p.price}</span><span className="text-sm text-[#dce5d7]">{p.unit}</span></p>
+                <p className="mt-3 text-sm leading-6 text-[#dce5d7]">{p.note}</p>
+              </article>
+            ))}
           </div>
         </section>
 
