@@ -104,8 +104,6 @@ export default async function BookPage({ params, searchParams }: Props) {
 
         {depositBlocked ? (
           <p role="status">This service needs a deposit, which can&apos;t be taken online yet. Please contact {business.name} to book.</p>
-        ) : !dates.length ? (
-          <p role="status">There are no free times in the next {windowDays - 1} days. Please check back soon or contact {business.name}.</p>
         ) : (
           <>
             {showChoices && (
@@ -140,6 +138,10 @@ export default async function BookPage({ params, searchParams }: Props) {
               </section>
             )}
 
+            {!dates.length ? (
+            <p role="status">There are no free times in the next {windowDays - 1} days. Please check back soon or contact {business.name}.</p>
+            ) : (
+              <>
             <section aria-labelledby="date-h">
               <h2 id="date-h" className="mb-3 text-lg font-semibold tracking-tight">Pick a day</h2>
               <ul className="flex gap-2 overflow-x-auto pb-2">
@@ -177,6 +179,8 @@ export default async function BookPage({ params, searchParams }: Props) {
                   privacyUrl={business.privacy_notice_url}
                   depositLabel={service.deposit_pence > 0 ? `Continue to pay ${formatPence(service.deposit_pence)} deposit` : null} />
               </section>
+            )}
+              </>
             )}
           </>
         )}
