@@ -41,6 +41,8 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 
 ## Brand and domain
 
+- [ ] **Google:** site basics done (robots, sitemap, share card, JSON-LD) and Search Console verified. Owner: submit `sitemap.xml` and request indexing for the home page. Later: allow shop booking pages once real shops want to be found; add more pages (business-type pages, FAQ, blog). See `docs/seo.md`.
+
 - [x] **Shop sub-domains** (`shop.getitbook.com`) are live and tested (21 Nov 2026). DNS is now managed at Vercel (nameservers `ns1/ns2.vercel-dns.com`); the domain is still registered and renewed at Namecheap. See `docs/shop-subdomains.md`.
 
 - [x] Domain `getitbook.com` bought at Namecheap (21 Nov 2026), DNS points to Vercel, `NEXT_PUBLIC_SITE_URL`, Supabase URLs, Stripe Connect redirect URI and both Live webhooks, and the GitHub `APP_URL` secret all moved to it.

@@ -19,9 +19,17 @@ const notoThai = Noto_Sans_Thai({
   subsets: ["thai"],
 });
 
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://getitbook.com";
+const DESCRIPTION = "Online booking software for UK small businesses. Your own booking page, deposits paid straight to your Stripe account, automatic reminders. From £15 a month, no commission, free for 60 days.";
+
 export const metadata: Metadata = {
-  title: { default: "Get It Book: online booking for UK businesses", template: "%s | Get It Book" },
-  description: "Online appointment booking for UK businesses. Flat monthly fee, no commission.",
+  metadataBase: new URL(SITE),
+  title: { default: "Get It Book: online booking software for UK businesses", template: "%s | Get It Book" },
+  description: DESCRIPTION,
+  applicationName: "Get It Book",
+  alternates: { canonical: "/" },
+  openGraph: { type: "website", siteName: "Get It Book", locale: "en_GB", title: "Get It Book: online booking for UK businesses", description: DESCRIPTION, url: "/" },
+  twitter: { card: "summary_large_image", title: "Get It Book: online booking for UK businesses", description: DESCRIPTION },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

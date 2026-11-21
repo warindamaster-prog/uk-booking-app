@@ -39,9 +39,26 @@ function plans() {
   return list;
 }
 
+/** What search engines read about the product (JSON-LD). Prices come from the real price formula. */
+function structuredData() {
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://getitbook.com";
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Get It Book",
+    url: site,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    description: "Online booking software for UK small businesses: your own booking page, deposits paid straight to your Stripe account, automatic reminders. No commission.",
+    publisher: { "@type": "Organization", name: "WP Precision Systems Ltd", url: site },
+    offers: { "@type": "Offer", price: (pricePence(1, "month") / 100).toFixed(2), priceCurrency: "GBP", description: "Per month for the first person taking bookings, excluding VAT. Free for 60 days." },
+  }).replace(/</g, "\\u003c");
+}
+
 export default function Home() {
   return (
     <div className={`${sans.variable} ${serif.variable} min-h-screen overflow-x-hidden bg-[#fafbf7] font-[family-name:var(--font-dm-sans)] text-[#24392e] selection:bg-[#d5e4c7] [&_.font-serif]:font-[family-name:var(--font-dm-serif)]`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData() }} />
       <header className="relative z-20 mx-auto flex h-24 max-w-[1280px] items-center justify-between gap-5 px-6 lg:px-12">
         <BrandLogo />
         <HeaderNav />

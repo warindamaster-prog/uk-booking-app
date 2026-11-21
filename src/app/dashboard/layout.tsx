@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { themeStyle } from "@/lib/theme";
 import Link from "next/link";
 import { requireBusiness } from "@/lib/auth";
@@ -6,6 +7,9 @@ import { LanguageSwitch } from "@/components/language-switch";
 import { getT } from "@/lib/i18n/server";
 import { rich } from "@/lib/i18n/rich";
 import { DashboardNav, type NavItem } from "@/components/dashboard-nav";
+
+// Not for search engines.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { supabase, business, role, user } = await requireBusiness();
