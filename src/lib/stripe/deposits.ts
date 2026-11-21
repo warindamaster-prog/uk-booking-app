@@ -45,9 +45,10 @@ export type RefundChoice = "refund" | "keep";
 /**
  * What happens to a paid deposit when a booking is cancelled.
  * The business cancelling always refunds unless the owner chooses to keep it.
- * A customer can only cancel online before the cancellation window, so they always get it back.
+ * A customer who cancels online (only possible before the cancellation window) gets it back,
+ * unless the shop has chosen to keep deposits when customers cancel (`refundable` false).
  */
-export function depositDecision(cancelledBy: "customer" | "business", ownerChoice: RefundChoice | null): RefundChoice {
-  if (cancelledBy === "customer") return "refund";
+export function depositDecision(cancelledBy: "customer" | "business", ownerChoice: RefundChoice | null, refundable = true): RefundChoice {
+  if (cancelledBy === "customer") return refundable ? "refund" : "keep";
   return ownerChoice ?? "refund";
 }

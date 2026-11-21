@@ -104,3 +104,16 @@ describe("email templates", () => {
     expect(oneLine("a\r\nb")).toBe("a b");
   });
 });
+
+describe("deposit policy in customer emails", () => {
+  const withPolicy = { ...data, depositPolicy: "Cancel 24 hours ahead for a refund." };
+  it("confirmation and reminder carry the policy when there is a deposit", () => {
+    expect(renderEmail("confirmation", "customer", withPolicy).text).toContain("Deposit policy: Cancel 24 hours ahead for a refund.");
+    expect(renderEmail("reminder", "customer", withPolicy).text).toContain("Deposit policy: Cancel 24 hours ahead for a refund.");
+  });
+  it("not when there is no deposit, and not in the shop's own alert", () => {
+    expect(renderEmail("confirmation", "customer", { ...withPolicy, depositPence: 0 }).text).not.toContain("Deposit policy");
+    expect(renderEmail("confirmation", "business", withPolicy).text).not.toContain("Deposit policy");
+  });
+});
+

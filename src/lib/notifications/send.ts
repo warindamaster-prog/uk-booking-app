@@ -4,6 +4,7 @@ import { deriveCancelToken } from "@/lib/booking/token";
 import type { Mailers } from "./provider";
 import { buildIcs } from "./ics";
 import { MAX_ATTEMPTS, safeDisplayName } from "./rules";
+import { depositPolicyText } from "@/lib/deposit-policy";
 import { loadShopMailbox, recordShopMailboxError } from "./shop-mailbox";
 import { renderEmail, type EmailKind, type Recipient } from "./templates";
 
@@ -33,7 +34,7 @@ export async function sendNotification(
   if (!b || !STATUS_OK[req.kind].includes(b.status)) return "skipped"; // e.g. an unpaid hold, or already cancelled
 
   const [{ data: biz }, { data: cust }, { data: staff }] = await Promise.all([
-    db.from("businesses").select("id, name, slug, timezone, email, phone, show_contact_to_customers, cancellation_window_hours, confirmation_message").eq("id", b.business_id).single(),
+    db.from("businesses").select("id, name, slug, timezone, email, phone, show_contact_to_customers, cancellation_window_hours, confirmation_message, deposit_policy, deposit_refundable").eq("id", b.business_id).single(),
     db.from("customers").select("name, email, phone").eq("id", b.customer_id).eq("business_id", b.business_id).single(),
     db.from("staff").select("name").eq("id", b.staff_id).eq("business_id", b.business_id).single(),
   ]);
@@ -59,6 +60,7 @@ export async function sendNotification(
     manageUrl, dashboardUrl: `${cfg.siteUrl}/dashboard/bookings/${b.id}`,
     cancelDeadline: b.status === "confirmed" && deadline > new Date() ? deadline : null,
     cancelledBy: b.cancelled_by, shopMessage: biz.confirmation_message,
+    depositPolicy: b.deposit_pence > 0 ? depositPolicyText({ policy: biz.deposit_policy, refundable: biz.deposit_refundable, windowHours: biz.cancellation_window_hours, businessName: biz.name }) : null,
     contact: biz.show_contact_to_customers ? { email: biz.email, phone: biz.phone } : null,
   });
 

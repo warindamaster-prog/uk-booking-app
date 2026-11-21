@@ -1,3 +1,4 @@
+import { cancelDepositNote, depositPolicyText } from "@/lib/deposit-policy";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -67,8 +68,11 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
           <div><dt className="text-sm text-neutral-600 dark:text-neutral-400">Price</dt>
             <dd>{formatPence(b.price_pence)}{b.deposit_pence > 0 && ` (deposit ${formatPence(b.deposit_pence)}${b.deposit_status === "paid" ? ", paid" : ""})`}</dd></div>
         </dl>
+        {b.deposit_pence > 0 && ["confirmed", "pending_payment"].includes(b.status) && (
+          <p className="whitespace-pre-wrap text-sm">{depositPolicyText({ policy: business.deposit_policy, refundable: business.deposit_refundable, windowHours: business.cancellation_window_hours, businessName: business.name })}</p>
+        )}
         {cancelNote}
-        {canCancel && <CancelForm slug={business.slug} token={token} />}
+        {canCancel && <CancelForm slug={business.slug} token={token} depositNote={cancelDepositNote({ refundable: business.deposit_refundable, depositPaid: b.deposit_status === "paid", businessName: business.name })} />}
         {business.contact && (business.contact.email || business.contact.phone) && (
           <p className="text-sm">
             Questions? Contact {business.name}:{" "}

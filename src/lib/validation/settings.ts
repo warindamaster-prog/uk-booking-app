@@ -13,6 +13,8 @@ export function cancellationLabel(hours: number): string {
 export const settingsSchema = z.object({
   confirmationMessage: z.string().max(1000, "Keep your message under 1,000 characters").default("").transform((s) => s.replace(/\r\n?/g, "\n").trim() || null),
   showContact: z.boolean(),
+  depositPolicy: z.string().max(600, "Keep your policy under 600 characters").default("").transform((s) => s.replace(/\r\n?/g, "\n").trim() || null),
+  depositRefundable: z.enum(["yes", "no"]).default("yes").transform((v) => v === "yes"),
   ownerName: z.string().trim().min(1, "Enter the owner's name").max(100),
   email: z.email("Enter a valid email address").max(254).transform((s) => s.trim().toLowerCase()),
   phone: z.string().trim().regex(PHONE_RE, "Enter a valid phone number, for example 07700 900123"),

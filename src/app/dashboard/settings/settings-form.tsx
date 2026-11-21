@@ -7,10 +7,11 @@ import { saveSettings } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
 import type { FormState } from "@/lib/form";
 import { CANCELLATION_PRESETS, cancellationLabel } from "@/lib/validation/settings";
+import { depositPolicyText } from "@/lib/deposit-policy";
 
 export function SettingsForm({ defaults, shopName }: {
   shopName: string;
-  defaults: { confirmationMessage: string; ownerName: string; email: string; phone: string; cancellationHours: number; privacyUrl: string; showContact: boolean };
+  defaults: { confirmationMessage: string; ownerName: string; email: string; phone: string; cancellationHours: number; privacyUrl: string; showContact: boolean; depositPolicy: string; depositRefundable: boolean };
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveSettings, {});
   const v = state.values ?? {};
@@ -19,6 +20,8 @@ export function SettingsForm({ defaults, shopName }: {
   const preview = fillMessage(message, {
     customerName: "Sam Taylor", serviceName: "Gel manicure", staffName: "Alex", businessName: shopName,
     startsAt: new Date("2027-03-12T14:30:00Z"), tz: "Europe/London" });
+  const [policy, setPolicy] = useState(v.depositPolicy ?? defaults.depositPolicy);
+  const [refundable, setRefundable] = useState((v.depositRefundable ?? (defaults.depositRefundable ? "yes" : "no")) === "yes");
   const current = Number(v.cancellationHours ?? defaults.cancellationHours);
   const options = [...new Set([...CANCELLATION_PRESETS, defaults.cancellationHours])].sort((a, b) => a - b);
 
@@ -68,6 +71,33 @@ export function SettingsForm({ defaults, shopName }: {
           After this point the cancel button disappears and customers are asked to contact you. You can always cancel or move a booking yourself.
         </p>
         {e.cancellationHours && <p className="text-sm text-red-700 dark:text-red-400">{e.cancellationHours[0]}</p>}
+      </div>
+
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Deposits when a customer cancels online</legend>
+        <label className="flex items-start gap-3 text-sm">
+          <input type="radio" name="depositRefundable" value="yes" checked={refundable} onChange={() => setRefundable(true)} className="mt-1 h-5 w-5" />
+          <span>Refund the deposit automatically (if they cancel in time, as set above).</span>
+        </label>
+        <label className="flex items-start gap-3 text-sm">
+          <input type="radio" name="depositRefundable" value="no" checked={!refundable} onChange={() => setRefundable(false)} className="mt-1 h-5 w-5" />
+          <span>Keep the deposit whenever a customer cancels. You can still refund a deposit yourself from the booking.</span>
+        </label>
+      </fieldset>
+
+      <div className="space-y-1">
+        <label htmlFor="depositPolicy" className="block text-sm font-medium">Deposit and cancellation policy (optional)</label>
+        <textarea id="depositPolicy" name="depositPolicy" rows={4} maxLength={600} value={policy}
+          onChange={(ev) => setPolicy(ev.target.value)} aria-describedby="policy-hint"
+          className="block w-full rounded-md border border-neutral-400 bg-transparent px-3 py-2 text-base" />
+        <p id="policy-hint" className="text-sm text-neutral-600 dark:text-neutral-400">
+          Shown to customers before they pay a deposit, and in their confirmation and reminder emails. Leave it empty to use the standard sentence below. Make sure it matches the choice above.
+        </p>
+        {e.depositPolicy && <p className="text-sm text-red-700 dark:text-red-400">{e.depositPolicy[0]}</p>}
+        <div className="rounded-md border border-neutral-300 p-3 text-sm dark:border-neutral-700" aria-live="polite">
+          <p className="mb-1 font-medium">What customers will see</p>
+          <p className="whitespace-pre-wrap">{depositPolicyText({ policy, refundable, windowHours: current, businessName: shopName })}</p>
+        </div>
       </div>
 
       <Field label="Privacy notice address (optional)" name="privacyUrl" type="url" inputMode="url" autoCapitalize="none"

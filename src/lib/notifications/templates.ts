@@ -29,6 +29,8 @@ export type EmailData = {
   contact: { email: string | null; phone: string | null } | null;
   /** The shop's own message (with {{placeholders}}), shown in confirmation and reminder emails. */
   shopMessage?: string | null;
+  /** What the customer was told about their deposit (policy text), shown in confirmation and reminder emails when there is a deposit. */
+  depositPolicy?: string | null;
 };
 
 export type Rendered = { subject: string; text: string; html: string };
@@ -114,6 +116,7 @@ export function renderEmail(kind: EmailKind, recipient: Recipient, d: EmailData)
     customerName: d.customerName, serviceName: d.serviceName, staffName: d.staffName,
     businessName: d.businessName, startsAt: d.startsAt, tz: d.tz }) : "";
   const manage: Row[] = [["View or cancel your booking", d.manageUrl]];
+  const policyRow: Row[] = d.depositPolicy && d.depositPence > 0 ? [["Deposit policy", d.depositPolicy]] : [];
   const deadline = d.cancelDeadline
     ? `You can cancel online until ${formatDateTime(d.cancelDeadline, d.tz)}. After that, please contact ${d.businessName} directly.`
     : `To cancel, please contact ${d.businessName} directly.`;
@@ -121,10 +124,10 @@ export function renderEmail(kind: EmailKind, recipient: Recipient, d: EmailData)
   switch (kind) {
     case "confirmation":
       return { subject: oneLine(`Booking confirmed: ${d.serviceName} on ${when}`),
-        ...layout("Your booking is confirmed", `Hi ${d.customerName}, your booking with ${d.businessName} is confirmed. ${deadline}`, rows, manage, foot, note) };
+        ...layout("Your booking is confirmed", `Hi ${d.customerName}, your booking with ${d.businessName} is confirmed. ${deadline}`, [...rows, ...policyRow], manage, foot, note) };
     case "reminder":
       return { subject: oneLine(`Reminder: ${d.serviceName} at ${formatTime(d.startsAt, d.tz)} (${when})`),
-        ...layout("Appointment reminder", `Hi ${d.customerName}, this is a reminder of your booking with ${d.businessName}. ${deadline}`, rows, manage, foot, note) };
+        ...layout("Appointment reminder", `Hi ${d.customerName}, this is a reminder of your booking with ${d.businessName}. ${deadline}`, [...rows, ...policyRow], manage, foot, note) };
     case "reschedule":
       return { subject: oneLine(`Your booking has moved: ${d.serviceName} on ${when}`),
         ...layout("Your booking has moved", `Hi ${d.customerName}, ${d.businessName} has moved your booking to a new time. The new details are below.`, rows, manage, foot) };

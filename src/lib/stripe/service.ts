@@ -33,11 +33,14 @@ export type SettleResult = "refunded" | "retained" | "none" | "failed";
  * "none": there was no paid deposit. "failed": the refund could not be made (the cron job retries it).
  */
 export async function settleDeposit(db: Db, bookingId: string, cancelledBy: "customer" | "business", choice: RefundChoice | null = null): Promise<SettleResult> {
-  const { data: b } = await db.from("bookings").select("business_id, deposit_status, stripe_payment_intent_id").eq("id", bookingId).maybeSingle();
+  const { data: b } = await db.from("bookings").select("business_id, status, deposit_status, stripe_payment_intent_id").eq("id", bookingId).maybeSingle();
   if (!b || b.deposit_status !== "paid") return "none";
 
   const store = createPaymentStore(db);
-  if (depositDecision(cancelledBy, choice) === "keep") {
+  const { data: policy } = await db.from("businesses").select("deposit_refundable").eq("id", b.business_id).single();
+  // A hold that expired before the customer paid is not a cancellation: that money always goes back.
+  const decision = b.status === "expired" ? "refund" : depositDecision(cancelledBy, choice, policy?.deposit_refundable !== false);
+  if (decision === "keep") {
     await store.recordDepositOutcome(bookingId, "retained");
     return "retained";
   }

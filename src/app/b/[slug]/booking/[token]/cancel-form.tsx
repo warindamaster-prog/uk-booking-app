@@ -5,7 +5,7 @@ import { cancelMyBooking } from "./actions";
 import { FormError } from "@/components/ui";
 import type { FormState } from "@/lib/form";
 
-export function CancelForm({ slug, token }: { slug: string; token: string }) {
+export function CancelForm({ slug, token, depositNote }: { slug: string; token: string; depositNote?: string | null }) {
   const [state, action, pending] = useActionState<FormState, FormData>(cancelMyBooking, {});
   return (
     <div className="space-y-3">
@@ -16,7 +16,7 @@ export function CancelForm({ slug, token }: { slug: string; token: string }) {
         <form action={action} className="mt-3 space-y-3">
           <input type="hidden" name="slug" value={slug} />
           <input type="hidden" name="token" value={token} />
-          <p className="text-sm">The time will be released for other customers.</p>
+          <p className="text-sm">The time will be released for other customers.{depositNote ? ` ${depositNote}` : ""}</p>
           <button type="submit" disabled={pending}
             className="inline-flex min-h-11 items-center rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
             {pending ? "Please wait…" : "Yes, cancel my booking"}

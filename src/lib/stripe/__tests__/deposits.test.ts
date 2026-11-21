@@ -30,9 +30,18 @@ describe("deposit checkout parameters", () => {
   });
 });
 
+describe("depositDecision when the shop keeps deposits", () => {
+  it("a customer who cancels does not get it back, but the shop cancelling still refunds by default", () => {
+    expect(depositDecision("customer", null, false)).toBe("keep");
+    expect(depositDecision("business", null, false)).toBe("refund");
+    expect(depositDecision("business", "keep", false)).toBe("keep");
+  });
+});
+
 describe("depositDecision", () => {
   it("customers are always refunded; the business can choose to keep the deposit", () => {
     expect(depositDecision("customer", "keep")).toBe("refund");
+    expect(depositDecision("customer", null, true)).toBe("refund");
     expect(depositDecision("business", null)).toBe("refund");
     expect(depositDecision("business", "refund")).toBe("refund");
     expect(depositDecision("business", "keep")).toBe("keep");

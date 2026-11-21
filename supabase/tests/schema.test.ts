@@ -1102,3 +1102,17 @@ describe("trial emails: sent once per shop", () => {
     expect((await claim()).rows).toHaveLength(0); // a second run finds it already claimed
   });
 });
+
+describe("deposit policy columns", () => {
+  it("default to refunding with no policy text; the owner can change them, a policy over 600 characters is refused", async () => {
+    const o = await db.query<{ id: string; uid: string }>(`select b.id, m.user_id as uid from businesses b join business_members m on m.business_id=b.id and m.role='owner' limit 1`);
+    const { id, uid } = o.rows[0];
+    const email = (await db.query<{ email: string }>(`select email from auth.users where id=$1`, [uid])).rows[0].email;
+    const before = (await db.query<Record<string, unknown>>(`select deposit_policy, deposit_refundable from businesses where id=$1`, [id])).rows[0];
+    expect(before).toEqual({ deposit_policy: null, deposit_refundable: true });
+    await as(uid, email, () => db.query(`update businesses set deposit_policy='No refunds', deposit_refundable=false where id=$1`, [id]));
+    expect((await db.query<Record<string, unknown>>(`select deposit_policy, deposit_refundable from businesses where id=$1`, [id])).rows[0]).toEqual({ deposit_policy: "No refunds", deposit_refundable: false });
+    await expect(as(uid, email, () => db.query(`update businesses set deposit_policy=$2 where id=$1`, [id, "x".repeat(601)]))).rejects.toThrow(/check/i);
+  });
+});
+

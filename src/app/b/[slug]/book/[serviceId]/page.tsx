@@ -1,3 +1,4 @@
+import { depositPolicyText } from "@/lib/deposit-policy";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -79,6 +80,9 @@ export default async function BookPage({ params, searchParams }: Props) {
             <p className="mt-2 rounded-md border border-neutral-300 p-3 text-sm dark:border-neutral-700">
               Deposit to pay now by card: <strong>{formatPence(service.deposit_pence)}</strong>
               {price > service.deposit_pence && <> · Rest to pay at the appointment: {formatPence(price - service.deposit_pence)}</>}
+              <span className="mt-1 block whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">
+                {depositPolicyText({ policy: business.deposit_policy, refundable: business.deposit_refundable, windowHours: business.cancellation_window_hours, businessName: business.name })}
+              </span>
             </p>
           )}
         </div>

@@ -150,3 +150,17 @@ describe("password reset forms", () => {
     expect(resetSchema.safeParse({ password: "x".repeat(73), confirm: "x".repeat(73) }).success).toBe(false);
   });
 });
+
+describe("settingsSchema: deposit policy", () => {
+  const ok = { ownerName: "Lily", email: "lily@example.com", phone: "07700 900123", cancellationHours: "24", privacyUrl: "", showContact: true };
+  it("defaults to refunding, with no policy text", () => {
+    expect(settingsSchema.parse(ok)).toMatchObject({ depositRefundable: true, depositPolicy: null });
+  });
+  it("accepts a shop that keeps deposits and trims its text", () => {
+    expect(settingsSchema.parse({ ...ok, depositRefundable: "no", depositPolicy: "  Non-refundable.\r\n " })).toMatchObject({ depositRefundable: false, depositPolicy: "Non-refundable." });
+  });
+  it("rejects a policy over 600 characters and an unknown choice", () => {
+    expect(settingsSchema.safeParse({ ...ok, depositPolicy: "x".repeat(601) }).success).toBe(false);
+    expect(settingsSchema.safeParse({ ...ok, depositRefundable: "maybe" }).success).toBe(false);
+  });
+});
