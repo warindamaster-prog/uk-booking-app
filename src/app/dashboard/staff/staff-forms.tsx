@@ -5,6 +5,7 @@ import { addTimeOff, saveHours, saveStaff, saveStaffServices } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
 import type { FormState } from "@/lib/form";
 import { WEEKDAYS, RANGES_PER_DAY } from "@/lib/hours";
+import { TimeSelect } from "@/components/time-select";
 import { useT } from "@/lib/i18n/client";
 
 function Message({ text }: { text?: string }) {
@@ -90,7 +91,7 @@ export function HoursForm({ staffId, initial }: {
       <Message text={state.message} />
       <input type="hidden" name="staffId" value={staffId} />
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        {t("Times are UK time. Leave a day blank if closed. Use the second row for a split day, such as after a lunch break.")}
+        {t("Times are UK time, 24-hour clock. Leave a day blank if closed. Use the second row for a split day, such as after a lunch break.")}
       </p>
       {WEEKDAYS.map((day, i) => {
         const wd = i + 1;
@@ -100,14 +101,11 @@ export function HoursForm({ staffId, initial }: {
             <legend className="px-1 text-sm font-medium">{t(day)}</legend>
             {Array.from({ length: RANGES_PER_DAY }, (_, n) => (
               <div key={n} className="mb-2 flex items-center gap-2 last:mb-0">
-                <label className="sr-only" htmlFor={`h-${wd}-${n}-start`}>{t("{day} range {n} start", { day: t(day), n: n + 1 })}</label>
-                <input id={`h-${wd}-${n}-start`} name={`h-${wd}-${n}-start`} type="time" defaultValue={initial[`h-${wd}-${n}-start`] ?? ""}
-                  aria-invalid={err ? true : undefined} aria-describedby={err ? `day-${wd}-error` : undefined}
-                  className="rounded-md border border-neutral-400 bg-transparent px-2 py-1" />
+                <TimeSelect id={`h-${wd}-${n}-start`} name={`h-${wd}-${n}-start`} label={t("{day} range {n} start", { day: t(day), n: n + 1 })}
+                  defaultValue={initial[`h-${wd}-${n}-start`] ?? ""} invalid={!!err} describedBy={err ? `day-${wd}-error` : undefined} />
                 <span aria-hidden="true">{t("to")}</span>
-                <label className="sr-only" htmlFor={`h-${wd}-${n}-end`}>{t("{day} range {n} end", { day: t(day), n: n + 1 })}</label>
-                <input id={`h-${wd}-${n}-end`} name={`h-${wd}-${n}-end`} type="time" defaultValue={initial[`h-${wd}-${n}-end`] ?? ""}
-                  className="rounded-md border border-neutral-400 bg-transparent px-2 py-1" />
+                <TimeSelect id={`h-${wd}-${n}-end`} name={`h-${wd}-${n}-end`} label={t("{day} range {n} end", { day: t(day), n: n + 1 })}
+                  defaultValue={initial[`h-${wd}-${n}-end`] ?? ""} />
               </div>
             ))}
             {err && <p id={`day-${wd}-error`} className="mt-1 text-sm text-red-700 dark:text-red-400">{t(err)}</p>}

@@ -261,7 +261,7 @@ export const TH: Record<string, string> = {
  "Add a service first, then choose which ones this person offers.": "เพิ่มบริการก่อน แล้วเลือกว่าคนนี้ให้บริการอะไรบ้าง",
  "Services offered": "บริการที่ให้",
  "Save services": "บันทึกบริการ",
- "Times are UK time. Leave a day blank if closed. Use the second row for a split day, such as after a lunch break.": "เวลาเป็นเวลาอังกฤษ (UK) เว้นวันที่ปิดไว้ว่าง ใช้แถวที่สองสำหรับวันที่แบ่งช่วง เช่น หลังพักเที่ยง",
+ "Times are UK time, 24-hour clock. Leave a day blank if closed. Use the second row for a split day, such as after a lunch break.": "เวลาเป็นเวลาอังกฤษ (UK) แบบ 24 ชั่วโมง เว้นวันที่ปิดไว้ว่าง ใช้แถวที่สองสำหรับวันที่แบ่งช่วง เช่น หลังพักเที่ยง",
  "{day} range {n} start": "{day} ช่วงที่ {n} เริ่ม",
  "{day} range {n} end": "{day} ช่วงที่ {n} สิ้นสุด",
  "Save working hours": "บันทึกเวลาทำงาน",
