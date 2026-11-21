@@ -1,12 +1,9 @@
 import Link from "next/link";
-import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import { PRICING } from "@/lib/pricing";
+import { sans, serif } from "@/lib/fonts";
 import { BookingPreview } from "@/components/landing/booking-preview";
 import { Faq, HeaderNav } from "@/components/landing/interactive";
 import { Icon, buttonClass } from "@/components/landing/icon";
-
-const sans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
-const serif = DM_Serif_Display({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-dm-serif" });
 
 const features = [
   { icon: "calendar", title: "Your calendar, under control.", copy: "Set your hours, manage your availability, and keep every appointment in one place." },
