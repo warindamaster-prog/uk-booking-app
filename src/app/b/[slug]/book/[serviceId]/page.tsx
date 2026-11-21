@@ -77,7 +77,12 @@ export default async function BookPage({ params, searchParams }: Props) {
     <PublicShell slug={business.slug} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={chosen ? 3 : 2} summary={summary}>
       <div className="space-y-8">
         <div>
-          <p><Link href={`/b/${business.slug}`} className="text-sm text-[#215b48] underline">← All services</Link></p>
+          <p>
+            <Link href={`/b/${business.slug}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[#f1f5ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]">
+              <svg className="h-4 w-4 shrink-0 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+              All services
+            </Link>
+          </p>
           <h1 className="mt-3 text-[28px] font-semibold leading-tight tracking-[-1px]">{service.name}</h1>
           <p className="mt-1 text-sm text-[#6b756d]">
             {service.duration_minutes} min · {formatPence(price)}

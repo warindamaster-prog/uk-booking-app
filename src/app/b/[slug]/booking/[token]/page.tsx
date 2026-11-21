@@ -81,7 +81,11 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
           </p>
         )}
         <p className="text-sm">Keep this page&apos;s link to see your booking again.</p>
-        <p><Link href={`/b/${business.slug}`} className="text-sm underline">Book another appointment</Link></p>
+        <p>
+          <Link href={`/b/${business.slug}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[#f1f5ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]">
+            Book another appointment <span aria-hidden="true">→</span>
+          </Link>
+        </p>
       </div>
     </PublicShell>
   );
