@@ -1,5 +1,5 @@
+import { BackLink } from "@/components/back-link";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
 import { EmailSettingsForm } from "./email-form";
 import { getT } from "@/lib/i18n/server";
@@ -13,7 +13,7 @@ export default async function EmailSettingsPage() {
     .select("smtp_host, smtp_port, smtp_user, from_name, verified_at, last_error, last_error_at").eq("business_id", business.id).maybeSingle();
   return (
     <main className="space-y-6">
-      <p><Link href="/dashboard/settings" className="text-sm underline">{t("← Settings")}</Link></p>
+      <BackLink href="/dashboard/settings" label={t("← Settings")} />
       <h1 className="text-2xl font-semibold">{t("Email sending")}</h1>
       <p className="text-sm">
         {t("Send your customers' booking emails from your own email address, so they come from a name they know. Without this, they come from our standard sender and customers' replies still reach you.")}

@@ -1,5 +1,5 @@
+import { BackLink } from "@/components/back-link";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOwner } from "@/lib/auth";
 import { penceToInput } from "@/lib/money";
@@ -30,7 +30,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
 
   return (
     <main className="space-y-6">
-      <p><Link href="/dashboard/services" className="text-sm underline">{t("← All services")}</Link></p>
+      <BackLink href="/dashboard/services" label={t("← All services")} />
       <h1 className="text-2xl font-semibold">{t("Edit service")}</h1>
       <ServiceForm defaults={{
         id: s.id, name: s.name, description: s.description ?? "", duration: String(s.duration_minutes),

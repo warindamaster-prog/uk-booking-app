@@ -1,5 +1,5 @@
+import { BackLink } from "@/components/back-link";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireBusiness } from "@/lib/auth";
 import { formatDate, minutesToHhmm } from "@/lib/time";
@@ -50,7 +50,7 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
 
   return (
     <main className="space-y-10">
-      {isOwner && <p><Link href="/dashboard/staff" className="text-sm underline">{t("← All staff")}</Link></p>}
+      {isOwner && <BackLink href="/dashboard/staff" label={t("← All staff")} />}
       <h1 className="text-2xl font-semibold">{member.name}</h1>
 
       {isOwner && (

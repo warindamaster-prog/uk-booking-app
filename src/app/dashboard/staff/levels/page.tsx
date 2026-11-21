@@ -1,5 +1,5 @@
+import { BackLink } from "@/components/back-link";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
 import { AddLevelForm, LevelRow } from "./level-forms";
 import { getT } from "@/lib/i18n/server";
@@ -17,7 +17,7 @@ export default async function LevelsPage() {
 
   return (
     <main className="space-y-8">
-      <p><Link href="/dashboard/staff" className="text-sm underline">{t("← Staff")}</Link></p>
+      <BackLink href="/dashboard/staff" label={t("← Staff")} />
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">{t("Team levels")}</h1>
         <p>

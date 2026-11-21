@@ -1,5 +1,5 @@
+import { BackLink } from "@/components/back-link";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireBusiness } from "@/lib/auth";
 import { allowedActions, displayStatus, STATUS_LABEL } from "@/lib/calendar";
@@ -31,7 +31,7 @@ export default async function BookingPage({ params, searchParams }: {
 
   return (
     <main className="space-y-8">
-      <p><Link href="/dashboard/bookings" className="text-sm underline">{t("← All bookings")}</Link></p>
+      <BackLink href="/dashboard/bookings" label={t("← All bookings")} />
       <div>
         <h1 className="text-2xl font-semibold">{b.service_name}</h1>
         <p className="mt-1"><span className="rounded border border-neutral-400 px-2 py-0.5 text-sm">{t(STATUS_LABEL[displayStatus(b)] ?? displayStatus(b))}</span></p>

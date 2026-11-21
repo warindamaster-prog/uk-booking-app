@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/back-link";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -33,7 +34,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
 
   return (
     <main className="space-y-8">
-      <p><Link href="/dashboard/customers" className="text-sm underline">{t("← All customers")}</Link></p>
+      <BackLink href="/dashboard/customers" label={t("← All customers")} />
       <h1 className="text-2xl font-semibold">{c.name}</h1>
 
       <dl className="divide-y divide-neutral-300 rounded-md border border-neutral-300 px-3 dark:divide-neutral-700 dark:border-neutral-700">

@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/back-link";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -75,7 +76,7 @@ export default async function ReschedulePage({ params: routeParams, searchParams
 
   return (
     <main className="space-y-8">
-      <p><Link href={`/dashboard/bookings/${booking.id}`} className="text-sm underline">{t("← Back to the booking")}</Link></p>
+      <BackLink href={`/dashboard/bookings/${booking.id}`} label={t("← Back to the booking")} />
       <div>
         <h1 className="text-2xl font-semibold">{t("Reschedule")}</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
