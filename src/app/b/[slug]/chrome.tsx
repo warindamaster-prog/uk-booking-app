@@ -1,23 +1,139 @@
 import Link from "next/link";
+import { DM_Sans } from "next/font/google";
+import { formatPence } from "@/lib/money";
 
-export function PublicHeader({ name, logo }: { name: string; logo: string | null }) {
+const sans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
+
+const STEPS = ["Choose a service", "Date & time", "Your details"];
+
+export type SummaryData = {
+  serviceName?: string;
+  minutes?: number;
+  with?: string;
+  when?: string;
+  pricePence?: number;
+  depositPence?: number;
+};
+
+export function PublicShell({ slug, name, logo, privacyUrl, step, summary, children }: {
+  slug: string; name: string; logo: string | null; privacyUrl: string | null;
+  /** 1-3 shows the progress bar; omit on pages outside the booking flow. */
+  step?: 1 | 2 | 3;
+  /** Shows the "Your booking" box next to the content. */
+  summary?: SummaryData;
+  children: React.ReactNode;
+}) {
   return (
-    <header className="mb-6 flex items-center gap-3">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {logo && <img src={logo} alt="" width={48} height={48} className="h-12 w-12 rounded-md object-cover" />}
-      <p className="text-lg font-semibold">{name}</p>
-    </header>
+    <div className={`public-light ${sans.variable} flex min-h-screen flex-col overflow-x-hidden bg-[#f8f9f5] font-[family-name:var(--font-dm-sans)] text-[#243e32] selection:bg-[#d7eac2]`}>
+      <header className="border-b border-[#e3e8de] bg-[#fffefa]">
+        <div className="mx-auto flex min-h-20 max-w-[1100px] items-center justify-between gap-4 px-5 py-3 lg:px-8">
+          <Link href={`/b/${slug}`} className="flex min-h-11 items-center gap-3">
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo} alt="" width={44} height={44} className="h-11 w-11 rounded-xl object-cover" />
+            ) : (
+              <span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#215b48] text-lg font-semibold text-[#d6efbe]">{name.trim().charAt(0).toUpperCase()}</span>
+            )}
+            <span className="text-xl font-bold tracking-tight text-[#193e36]">{name}</span>
+          </Link>
+          <p className="hidden items-center gap-2 text-xs text-[#68766b] sm:flex"><ShieldIcon />Simple. Secure. Booked.</p>
+        </div>
+      </header>
+      <div className="mx-auto w-full max-w-[1100px] flex-1 px-5 pb-14 pt-7 lg:px-8 lg:pt-9">
+        {step && <Progress step={step} />}
+        <div className={summary ? "grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10" : "mx-auto max-w-2xl"}>
+          <main className="min-w-0">{children}</main>
+          {summary && <Summary name={name} data={summary} />}
+        </div>
+        <p className="mt-12 border-t border-[#e0e6da] pt-6 text-center text-sm text-[#6b756d]">
+          You&apos;re booking directly with <span className="font-semibold text-[#36543c]">{name}</span>
+        </p>
+      </div>
+      <footer className="border-t border-[#e2e7dc] bg-[#f1f3ed] px-5 py-5 lg:px-8">
+        <div className="mx-auto flex max-w-[1100px] flex-col items-center justify-between gap-2 text-xs text-[#6b756d] sm:flex-row">
+          <p>Booking powered by WP Precision Systems</p>
+          {privacyUrl ? (
+            <a href={privacyUrl} className="flex min-h-11 items-center underline" rel="noopener noreferrer">Privacy notice</a>
+          ) : (
+            <Link href="/privacy" className="flex min-h-11 items-center underline">Privacy notice</Link>
+          )}
+        </div>
+      </footer>
+    </div>
   );
 }
 
-export function PublicFooter({ privacyUrl }: { privacyUrl: string | null }) {
+function ShieldIcon() {
   return (
-    <footer className="mt-10 border-t border-neutral-300 pt-4 text-sm dark:border-neutral-700">
-      {privacyUrl ? (
-        <a href={privacyUrl} className="underline" rel="noopener noreferrer">Privacy notice</a>
-      ) : (
-        <Link href="/privacy" className="underline">Privacy notice</Link>
-      )}
-    </footer>
+    <svg className="h-4 w-4 shrink-0 text-[#577e59]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z" /><path d="m8 12 3 3 5-5" />
+    </svg>
+  );
+}
+
+function Progress({ step }: { step: 1 | 2 | 3 }) {
+  return (
+    <nav aria-label="Booking progress" className="mb-8">
+      <ol className="flex flex-wrap items-center gap-x-4 gap-y-3 text-sm md:gap-x-6">
+        {STEPS.map((label, i) => {
+          const n = i + 1;
+          const current = n === step;
+          const done = n < step;
+          return (
+            <li key={label} className="flex items-center gap-3" aria-current={current ? "step" : undefined}>
+              {i > 0 && <span aria-hidden="true" className="mr-1 h-px w-5 bg-[#d5ddcf] md:w-10" />}
+              <span className={`flex items-center gap-2 ${current ? "font-semibold text-[#2d5941]" : done ? "text-[#2d5941]" : "text-[#6b756d]"}`}>
+                <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${current || done ? "bg-[#275d46] text-white" : "border border-[#d9dfd4] bg-white"}`}>{done ? "✓" : n}</span>
+                {label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+function Summary({ name, data }: { name: string; data: SummaryData }) {
+  const has = Boolean(data.serviceName);
+  return (
+    <aside className="min-w-0 lg:sticky lg:top-8" aria-label="Your booking">
+      <div className="overflow-hidden rounded-2xl border border-[#e0e5df] bg-white shadow-[0_8px_35px_-20px_#23463430]">
+        <div className="border-b border-[#edf0e9] px-6 py-5">
+          <h2 className="text-lg font-semibold tracking-tight">Your booking</h2>
+          <p className="mt-1 text-sm text-[#6b756d]">With {name}</p>
+        </div>
+        <div className="p-6">
+          {has ? (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">{data.serviceName}</p>
+                  {data.minutes != null && <p className="mt-1.5 text-xs text-[#6b756d]">{data.minutes} minutes</p>}
+                  {data.with && <p className="mt-1 text-xs text-[#6b756d]">With {data.with}</p>}
+                  {data.when && <p className="mt-1 text-xs font-medium text-[#2d5941]">{data.when}</p>}
+                </div>
+                {data.pricePence != null && <p className="text-sm font-semibold">{formatPence(data.pricePence)}</p>}
+              </div>
+              <div className="my-5 border-t border-dashed border-[#dce2d8]" />
+              {data.pricePence != null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="text-2xl font-semibold tracking-tight">{formatPence(data.pricePence)}</span>
+                </div>
+              )}
+              {data.depositPence != null && data.depositPence > 0 && data.pricePence != null && (
+                <p className="mt-2 text-right text-xs text-[#6b756d]">
+                  Pay {formatPence(data.depositPence)} deposit now
+                  {data.pricePence > data.depositPence && <>, {formatPence(data.pricePence - data.depositPence)} at the appointment</>}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="rounded-lg bg-[#f7f8f4] p-4 text-sm leading-6 text-[#69756c]">Select a service to start your booking.</p>
+          )}
+        </div>
+      </div>
+    </aside>
   );
 }

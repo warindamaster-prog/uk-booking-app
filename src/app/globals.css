@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Dark mode follows the visitor's system, except inside .public-light (customer booking pages are always light). */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:not(:where(.public-light, .public-light *)) {
+      @slot;
+    }
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

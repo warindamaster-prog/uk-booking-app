@@ -9,7 +9,7 @@ import { formatPence } from "@/lib/money";
 import { formatTime, formatYmd, todayYmd } from "@/lib/time";
 import { bookPageParams } from "@/lib/validation/booking";
 import { uuid } from "@/lib/validation/catalog";
-import { PublicFooter, PublicHeader } from "../../chrome";
+import { PublicShell } from "../../chrome";
 import { BookingForm } from "./booking-form";
 
 export const metadata: Metadata = { title: "Choose a time" };
@@ -19,9 +19,9 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const pill = "inline-flex min-h-11 items-center justify-center rounded-md border px-3 py-2 text-sm";
-const idle = "border-neutral-400";
-const active = "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900";
+const pill = "inline-flex min-h-11 items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451]";
+const idle = "border-stone-200 bg-white text-stone-700 hover:bg-stone-50";
+const active = "border-[#496746] bg-[#eef3e9] text-[#34553e]";
 
 export default async function BookPage({ params, searchParams }: Props) {
   const { slug, serviceId: sid } = await params;
@@ -66,21 +66,27 @@ export default async function BookPage({ params, searchParams }: Props) {
   const slots = date ? computeSlots({ ...ctx.base, date }) : [];
   const chosen = sp.time ? slots.find((s) => s.start.toISOString() === new Date(sp.time!).toISOString()) : undefined;
 
+  const withName = choices.people.length === 1 ? choices.people[0].label : choices.people.find((c) => c.value === sp.staff)?.label;
+  const summary = {
+    serviceName: service.name, minutes: service.duration_minutes, pricePence: price, depositPence: service.deposit_pence,
+    with: withName,
+    when: chosen && date ? `${formatYmd(date, tz)} at ${formatTime(chosen.start, tz)}` : undefined,
+  };
+
   return (
-    <div className="mx-auto w-full max-w-lg px-4 py-6">
-      <PublicHeader name={business.name} logo={logoUrl(business.logo_path)} />
-      <main className="space-y-8">
+    <PublicShell slug={business.slug} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={chosen ? 3 : 2} summary={summary}>
+      <div className="space-y-8">
         <div>
-          <p><Link href={`/b/${business.slug}`} className="text-sm underline">← All services</Link></p>
-          <h1 className="mt-3 text-xl font-semibold">{service.name}</h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p><Link href={`/b/${business.slug}`} className="text-sm text-[#215b48] underline">← All services</Link></p>
+          <h1 className="mt-3 text-[28px] font-semibold leading-tight tracking-[-1px]">{service.name}</h1>
+          <p className="mt-1 text-sm text-[#6b756d]">
             {service.duration_minutes} min · {formatPence(price)}
           </p>
           {service.deposit_pence > 0 && (
-            <p className="mt-2 rounded-md border border-neutral-300 p-3 text-sm dark:border-neutral-700">
+            <p className="mt-3 rounded-xl border border-[#e0e5df] bg-white p-4 text-sm">
               Deposit to pay now by card: <strong>{formatPence(service.deposit_pence)}</strong>
               {price > service.deposit_pence && <> · Rest to pay at the appointment: {formatPence(price - service.deposit_pence)}</>}
-              <span className="mt-1 block whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">
+              <span className="mt-1 block whitespace-pre-wrap text-[#4f5d52]">
                 {depositPolicyText({ policy: business.deposit_policy, refundable: business.deposit_refundable, windowHours: business.cancellation_window_hours, businessName: business.name })}
               </span>
             </p>
@@ -99,7 +105,7 @@ export default async function BookPage({ params, searchParams }: Props) {
           <>
             {showChoices && (
               <section aria-labelledby="who-h" className="space-y-3">
-                <h2 id="who-h" className="font-medium">Who with?</h2>
+                <h2 id="who-h" className="text-lg font-semibold tracking-tight">Who with?</h2>
                 {choices.groups.length > 0 && (
                   <ul className="flex flex-wrap gap-2">
                     {choices.groups.map((c) => (
@@ -112,12 +118,12 @@ export default async function BookPage({ params, searchParams }: Props) {
                 )}
                 {choices.people.length > 1 && (
                   <>
-                    {choices.groups.length > 0 && <p className="text-sm text-neutral-600 dark:text-neutral-400">Or choose a person:</p>}
+                    {choices.groups.length > 0 && <p className="text-sm text-[#6b756d]">Or choose a person:</p>}
                     <ul className="space-y-2">
                       {choices.people.map((c) => (
                         <li key={c.value}>
                           <Link href={href({ staff: c.value, date })} aria-current={sp.staff === c.value ? "true" : undefined}
-                            className={`block rounded-md border px-3 py-2 text-sm ${sp.staff === c.value ? active : idle}`}>
+                            className={`block rounded-lg border px-3 py-2 text-sm ${sp.staff === c.value ? active : idle}`}>
                             <span className="block font-medium">{label(c)}</span>
                             {c.description && <span className="mt-0.5 block text-sm opacity-90">{c.description}</span>}
                           </Link>
@@ -130,7 +136,7 @@ export default async function BookPage({ params, searchParams }: Props) {
             )}
 
             <section aria-labelledby="date-h">
-              <h2 id="date-h" className="mb-2 font-medium">Pick a day</h2>
+              <h2 id="date-h" className="mb-3 text-lg font-semibold tracking-tight">Pick a day</h2>
               <ul className="flex gap-2 overflow-x-auto pb-2">
                 {dates.map((d) => (
                   <li key={d} className="shrink-0">
@@ -142,8 +148,8 @@ export default async function BookPage({ params, searchParams }: Props) {
             </section>
 
             <section aria-labelledby="time-h">
-              <h2 id="time-h" className="mb-2 font-medium">Pick a time{date && ` on ${formatYmd(date, tz)}`}</h2>
-              <p className="mb-2 text-sm text-neutral-600 dark:text-neutral-400">Times are UK time.</p>
+              <h2 id="time-h" className="mb-2 text-lg font-semibold tracking-tight">Pick a time{date && ` on ${formatYmd(date, tz)}`}</h2>
+              <p className="mb-2 text-sm text-[#6b756d]">Times are UK time.</p>
               <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {slots.map((s) => {
                   const iso = s.start.toISOString();
@@ -159,8 +165,8 @@ export default async function BookPage({ params, searchParams }: Props) {
             </section>
 
             {chosen && (
-              <section aria-labelledby="details-h" className="space-y-4 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700">
-                <h2 id="details-h" className="font-medium">Your details</h2>
+              <section aria-labelledby="details-h" className="space-y-4 rounded-2xl border border-[#e0e5df] bg-white p-6">
+                <h2 id="details-h" className="text-lg font-semibold tracking-tight">Your details</h2>
                 <p className="text-sm">{service.name}, {formatYmd(date!, tz)} at {formatTime(chosen.start, tz)} · {formatPence(price)}</p>
                 <BookingForm slug={business.slug} serviceId={service.id} staff={sp.staff} startsAt={chosen.start.toISOString()}
                   privacyUrl={business.privacy_notice_url}
@@ -169,8 +175,7 @@ export default async function BookPage({ params, searchParams }: Props) {
             )}
           </>
         )}
-      </main>
-      <PublicFooter privacyUrl={business.privacy_notice_url} />
-    </div>
+      </div>
+    </PublicShell>
   );
 }

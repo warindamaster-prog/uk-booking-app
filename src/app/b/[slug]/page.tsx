@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { acceptsBookings, getBusinessBySlug, listBookableServices, logoUrl } from "@/lib/booking/data";
 import { formatPence } from "@/lib/money";
-import { PublicFooter, PublicHeader } from "./chrome";
+import { PublicShell } from "./chrome";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -18,33 +18,36 @@ export default async function BusinessPage({ params }: Props) {
   const services = acceptsBookings(business) ? await listBookableServices(business.id) : [];
 
   return (
-    <div className="mx-auto w-full max-w-lg px-4 py-6">
-      <PublicHeader name={business.name} logo={logoUrl(business.logo_path)} />
-      <main>
-        <h1 className="mb-4 text-xl font-semibold">Choose a service</h1>
-        {services.length ? (
-          <ul className="space-y-3">
-            {services.map((s) => (
-              <li key={s.id}>
-                <Link href={`/b/${business.slug}/book/${s.id}`}
-                  className="block rounded-lg border border-neutral-300 p-4 active:bg-neutral-100 dark:border-neutral-700 dark:active:bg-neutral-800">
-                  <span className="flex items-baseline justify-between gap-3">
-                    <span className="font-medium">{s.name}</span>
-                    <span>{s.price_varies ? `from ${formatPence(s.from_pence)}` : formatPence(s.from_pence)}</span>
+    <PublicShell slug={business.slug} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={1} summary={{}}>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[1.5px] text-[#738064]">Let&apos;s get you booked</p>
+      <h1 className="text-[28px] font-semibold leading-tight tracking-[-1px]">Choose your service</h1>
+      <p className="mb-6 mt-2 text-sm text-[#6b756d]">Pick a service, then find a day and time that suits you.</p>
+      {services.length ? (
+        <ul className="space-y-3">
+          {services.map((s) => (
+            <li key={s.id}>
+              <Link href={`/b/${business.slug}/book/${s.id}`}
+                className="group block rounded-xl border border-[#dfe5da] bg-white p-5 transition hover:border-[#789467] hover:shadow-[0_0_0_1px_#78946720] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#397451] sm:p-6">
+                <span className="flex items-start justify-between gap-4">
+                  <span className="min-w-0">
+                    <span className="block text-lg font-semibold tracking-tight">{s.name}</span>
+                    <span className="mt-2 block text-sm text-[#6b756d]">
+                      {s.duration_minutes} minutes{s.deposit_pence > 0 && ` · pay ${formatPence(s.deposit_pence)} deposit now`}
+                    </span>
+                    {s.description && <span className="mt-3 block text-sm leading-6 text-[#687564]">{s.description}</span>}
                   </span>
-                  <span className="block text-sm text-neutral-600 dark:text-neutral-400">
-                    {s.duration_minutes} min{s.deposit_pence > 0 && ` · pay ${formatPence(s.deposit_pence)} deposit now`}
+                  <span className="shrink-0 text-right">
+                    <span className="block text-lg font-semibold tracking-tight">{s.price_varies ? `from ${formatPence(s.from_pence)}` : formatPence(s.from_pence)}</span>
+                    <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[#215b48] group-hover:underline">Choose <span aria-hidden="true">→</span></span>
                   </span>
-                  {s.description && <span className="mt-1 block text-sm">{s.description}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>Online booking isn&apos;t available right now. Please contact {business.name} directly.</p>
-        )}
-      </main>
-      <PublicFooter privacyUrl={business.privacy_notice_url} />
-    </div>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-xl bg-[#edf1e7] p-5 text-sm">Online booking isn&apos;t available right now. Please contact {business.name} directly.</p>
+      )}
+    </PublicShell>
   );
 }
