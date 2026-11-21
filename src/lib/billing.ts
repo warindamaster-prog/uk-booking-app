@@ -20,3 +20,8 @@ export function bookingsOpen(
 export function trialDaysLeft(trialEndsAt: string | Date, now: Date = new Date()): number {
   return Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - now.getTime()) / 86_400_000));
 }
+
+/** "1 day left" / "5 days left", so the trial banners read correctly on the last day. */
+export function daysLeftLabel(days: number): string {
+  return `${days} ${days === 1 ? "day" : "days"} left`;
+}

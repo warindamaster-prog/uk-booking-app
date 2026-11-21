@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireBusiness } from "@/lib/auth";
-import { billingEnabled, bookingsOpen, trialDaysLeft } from "@/lib/billing";
+import { billingEnabled, bookingsOpen, daysLeftLabel, trialDaysLeft } from "@/lib/billing";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { supabase, business, role, user } = await requireBusiness();
@@ -56,8 +56,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       {billing?.status === "trialing" && bookingsOpen(billing, { now: new Date(), billingEnabled: billingEnabled() }) && (
         <p role="status" className="mb-6 rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
           {billingEnabled()
-            ? <>Free trial: {trialDaysLeft(billing.trial_ends_at)} days left. <Link href="/dashboard/billing" className="underline">Add a card</Link> to keep your booking page open afterwards.</>
-            : <>Free trial: {trialDaysLeft(billing.trial_ends_at)} days left. No card needed.</>}
+            ? <>Free trial: {daysLeftLabel(trialDaysLeft(billing.trial_ends_at))}. <Link href="/dashboard/billing" className="underline">Add a card</Link> to keep your booking page open afterwards.</>
+            : <>Free trial: {daysLeftLabel(trialDaysLeft(billing.trial_ends_at))}. No card needed.</>}
         </p>
       )}
       {children}

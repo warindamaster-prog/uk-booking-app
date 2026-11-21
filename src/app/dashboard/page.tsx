@@ -18,6 +18,7 @@ export default async function DashboardPage({
   const { from, to } = rangeFor("day", todayYmd(business.timezone), business.timezone);
   const { rows: today } = await fetchBookings(supabase, business.id, { startsFrom: from, startsBefore: to, statuses: LIVE_STATUSES });
   const { logo, month, staff } = await searchParams;
+  const { count: serviceCount } = await supabase.from("services").select("id", { count: "exact", head: true }).eq("business_id", business.id);
   const publicUrl = `${publicEnv().NEXT_PUBLIC_SITE_URL}/b/${business.slug}`;
 
   return (
@@ -36,7 +37,7 @@ export default async function DashboardPage({
       </section>
       <MonthSchedule ctx={ctx} params={{ month, staff }} />
       <p>Your booking page: <a className="underline" href={publicUrl}>{publicUrl}</a></p>
-      {role === "owner" && (
+      {role === "owner" && !serviceCount && (
         <p>
           Next: add your <Link className="underline" href="/dashboard/services">services</Link>, then
           set up your <Link className="underline" href="/dashboard/staff">staff</Link> and their working hours.

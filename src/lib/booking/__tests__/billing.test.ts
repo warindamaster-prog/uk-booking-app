@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingsOpen, trialDaysLeft } from "../../billing";
+import { bookingsOpen, daysLeftLabel, trialDaysLeft } from "../../billing";
 import { grossPence, isValidSeats, monthlyPricePence, PRICING, pricePence, trialEndsFrom, vatPence, yearlySavingPence } from "../../pricing";
 import { onboardingSchema } from "../../validation/business";
 
@@ -101,3 +101,12 @@ describe("no-trial test mode", () => {
     expect(bookingsOpen({ status: "active", trial_ends_at: now }, { now: new Date(now.getTime() + 1000), billingEnabled: true })).toBe(true);
   });
 });
+
+describe("daysLeftLabel", () => {
+  it("says 'day' for one and 'days' otherwise", () => {
+    expect(daysLeftLabel(1)).toBe("1 day left");
+    expect(daysLeftLabel(2)).toBe("2 days left");
+    expect(daysLeftLabel(60)).toBe("60 days left");
+  });
+});
+
