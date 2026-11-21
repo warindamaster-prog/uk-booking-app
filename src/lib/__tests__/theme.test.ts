@@ -16,6 +16,9 @@ describe("shop colour palettes", () => {
       expect(contrast(p.text, "#ffffff"), "text on white").toBeGreaterThanOrEqual(7);
       expect(contrast(p.text, p.soft), "text on soft").toBeGreaterThanOrEqual(5.5);
       expect(contrast(p.brand, p.soft), "brand on soft").toBeGreaterThanOrEqual(5.5);
+      expect(contrast(p.ink, p.bg), "ink on page").toBeGreaterThanOrEqual(12);
+      expect(contrast(p.muted, p.bg), "muted on page").toBeGreaterThanOrEqual(4.5);
+      expect(contrast(p.muted, "#ffffff"), "muted on white").toBeGreaterThanOrEqual(4.5);
       expect(contrast(p.on, p.brand), "icon on brand").toBeGreaterThanOrEqual(4.5);
       for (const v of Object.values(p)) expect(v).toMatch(/^#[0-9a-f]{6}$/);
     });
@@ -39,7 +42,7 @@ describe("shop colour palettes", () => {
     it("sets the variables for a chosen colour", () => {
       process.env.SHOP_COLORS_ENABLED = "true";
       const s = themeStyle("blue")!;
-      expect(Object.keys(s)).toEqual(["--brand", "--brand-hover", "--brand-soft", "--brand-softer", "--brand-border", "--brand-text", "--brand-ring", "--brand-on"]);
+      expect(Object.keys(s)).toEqual(["--brand", "--brand-hover", "--brand-soft", "--brand-softer", "--brand-border", "--brand-text", "--brand-ring", "--brand-on", "--brand-ink", "--brand-muted", "--brand-line", "--brand-bg"]);
       expect(s["--brand"]).toBe(paletteFor("blue").brand);
     });
   });

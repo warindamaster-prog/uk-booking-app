@@ -22,10 +22,10 @@ export function Field({
         name={name}
         aria-invalid={errId ? true : undefined}
         aria-describedby={[hintId, errId].filter(Boolean).join(" ") || undefined}
-        className="block min-h-12 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-base text-[#24392e] outline-none transition placeholder:text-stone-400 focus:border-[color:var(--brand,#34553e)] focus:ring-2 focus:ring-[color:var(--brand-ring,#397451)]/40 aria-[invalid=true]:border-red-600 file:mr-3 file:rounded-md file:border-0 file:bg-[color:var(--brand-soft,#eef3e9)] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[color:var(--brand,#34553e)]"
+        className="block min-h-12 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-base text-[color:var(--brand-ink,#24392e)] outline-none transition placeholder:text-stone-400 focus:border-[color:var(--brand,#34553e)] focus:ring-2 focus:ring-[color:var(--brand-ring,#397451)]/40 aria-[invalid=true]:border-red-600 file:mr-3 file:rounded-md file:border-0 file:bg-[color:var(--brand-soft,#eef3e9)] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[color:var(--brand,#34553e)]"
         {...props}
       />
-      {hint && <p id={hintId} className="text-sm text-[#6b756d]">{t(hint)}</p>}
+      {hint && <p id={hintId} className="text-sm text-[color:var(--brand-muted,#6b756d)]">{t(hint)}</p>}
       {errId && <p id={errId} className="text-sm text-red-700 dark:text-red-400">{t(errors![0])}</p>}
     </div>
   );
@@ -54,7 +54,7 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
   const t = useT();
   return (
     <div
-      className={`public-light ${sans.variable} ${serif.variable} flex min-h-screen flex-col bg-[#fafbf7] text-[#24392e] selection:bg-[color:var(--brand-soft,#d5e4c7)] [&_a.underline]:text-[color:var(--brand,#215b48)]`}
+      className={`public-light ${sans.variable} ${serif.variable} flex min-h-screen flex-col bg-[color:var(--brand-bg,#fafbf7)] text-[color:var(--brand-ink,#24392e)] selection:bg-[color:var(--brand-soft,#d5e4c7)] [&_a.underline]:text-[color:var(--brand,#215b48)]`}
       style={{ fontFamily: "var(--font-dm-sans), Arial, Helvetica, var(--font-thai), sans-serif" }}
     >
       <header className="mx-auto flex h-20 w-full max-w-[1280px] items-center justify-between gap-5 px-6 lg:px-12">
@@ -67,7 +67,7 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
           {children}
         </div>
       </main>
-      <footer className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 border-t border-[#e1e6d9] px-6 py-5 text-xs text-[#6b756d] lg:px-12">
+      <footer className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 border-t border-[color:var(--brand-line,#e1e6d9)] px-6 py-5 text-xs text-[color:var(--brand-muted,#6b756d)] lg:px-12">
         <p>© {new Date().getFullYear()} WP Precision Systems</p>
         <Link href="/privacy" className="flex min-h-11 items-center hover:underline">{t("Privacy")}</Link>
       </footer>

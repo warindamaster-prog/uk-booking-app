@@ -41,8 +41,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const initial = business.name.trim().charAt(0).toUpperCase();
 
   return (
-    <div className="public-light min-h-screen overflow-x-hidden bg-[#f7f8f3] text-[#293a2c] selection:bg-[color:var(--brand-soft,#e0eabe)]" style={themeStyle((business as { accent_color?: string | null }).accent_color)}>
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[224px] flex-col border-r border-[#e2e7da] bg-[#fcfdf9] lg:flex">
+    <div className="public-light min-h-screen overflow-x-hidden bg-[color:var(--brand-bg,#f7f8f3)] text-[color:var(--brand-ink,#293a2c)] selection:bg-[color:var(--brand-soft,#e0eabe)]" style={themeStyle((business as { accent_color?: string | null }).accent_color)}>
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[224px] flex-col border-r border-[color:var(--brand-line,#e2e7da)] bg-[#fcfdf9] lg:flex">
         <Link href="/dashboard" className="flex h-[84px] items-center gap-3 px-6">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -53,20 +53,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <span className="truncate text-lg font-bold tracking-tight">{business.name}</span>
         </Link>
         <DashboardNav items={items} label={t("Dashboard")} variant="side" />
-        <div className="flex items-center gap-3 border-t border-[#e5e9dd] p-4">
+        <div className="flex items-center gap-3 border-t border-[color:var(--brand-line,#e5e9dd)] p-4">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{user.email}</p>
-            <p className="text-xs text-[#6a765f]">{role === "owner" ? t("Workspace owner") : t("Team member")}</p>
+            <p className="text-xs text-[color:var(--brand-muted,#6a765f)]">{role === "owner" ? t("Workspace owner") : t("Team member")}</p>
           </div>
           <form action="/auth/signout" method="post">
-            <button type="submit" className="min-h-11 rounded-lg px-2 text-sm text-[#486339] underline">{t("Log out")}</button>
+            <button type="submit" className="min-h-11 rounded-lg px-2 text-sm text-[color:var(--brand-text,#486339)] underline">{t("Log out")}</button>
           </form>
         </div>
       </aside>
       <div className="min-w-0 lg:ml-[224px]">
-        <header className="flex min-h-[64px] flex-wrap items-center justify-between gap-3 border-b border-[#e4e8dc] bg-[#fcfdf9] px-5 py-2 md:px-8">
+        <header className="flex min-h-[64px] flex-wrap items-center justify-between gap-3 border-b border-[color:var(--brand-line,#e4e8dc)] bg-[#fcfdf9] px-5 py-2 md:px-8">
           <Link href="/dashboard" className="text-sm font-semibold lg:hidden">{business.name}</Link>
-          <span className="hidden text-sm text-[#6a775f] lg:block">{business.name}</span>
+          <span className="hidden text-sm text-[color:var(--brand-muted,#6a775f)] lg:block">{business.name}</span>
           <div className="flex items-center gap-3">
             <LanguageSwitch />
             <form action="/auth/signout" method="post" className="lg:hidden">

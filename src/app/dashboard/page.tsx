@@ -35,9 +35,9 @@ export default async function DashboardPage({
   return (
     <main className="space-y-7">
       <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-[1.4px] text-[#7a876a]">{t("Your business, at a glance")}</p>
+        <p className="mb-2 text-xs font-medium uppercase tracking-[1.4px] text-[color:var(--brand-muted,#7a876a)]">{t("Your business, at a glance")}</p>
         <h1 className="text-[30px] font-semibold leading-tight tracking-[-1.1px]">{t("A clearer view of your day.")}</h1>
-        <p className="mt-2 text-sm text-[#6b7762]">{t("A little less admin. More time for what you do best.")}</p>
+        <p className="mt-2 text-sm text-[color:var(--brand-muted,#6b7762)]">{t("A little less admin. More time for what you do best.")}</p>
       </div>
       {logo === "failed" && (
         <p role="status" className="rounded-xl border border-[#e8dcb5] bg-[#fcf7e9] p-4 text-sm text-[#735c2d]">
@@ -50,10 +50,10 @@ export default async function DashboardPage({
           { label: t("Bookings this month"), value: monthCount ?? 0, sub: monthLabel(shownMonth, business.timezone, loc) },
           { label: t("Active customers"), value: customerCount ?? 0, sub: t("People behind the bookings") },
         ].map((x) => (
-          <article key={x.label} className="rounded-xl border border-[#e2e7da] bg-white px-5 py-5">
-            <p className="text-sm text-[#68755e]">{x.label}</p>
+          <article key={x.label} className="rounded-xl border border-[color:var(--brand-line,#e2e7da)] bg-white px-5 py-5">
+            <p className="text-sm text-[color:var(--brand-muted,#68755e)]">{x.label}</p>
             <p className="mt-1 text-[34px] font-semibold tracking-[-1px]">{x.value}</p>
-            <p className="mt-1 text-xs text-[#728066]">{x.sub}</p>
+            <p className="mt-1 text-xs text-[color:var(--brand-muted,#728066)]">{x.sub}</p>
           </article>
         ))}
       </div>

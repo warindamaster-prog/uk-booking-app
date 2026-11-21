@@ -62,11 +62,11 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
         {b.status === "pending_payment" && !paid && (
           <p>This time is held while your deposit is paid. If you didn&apos;t finish paying, the time will be released shortly and you can book again.</p>
         )}
-        <dl className="space-y-3 rounded-2xl border border-[#e0e5df] bg-white p-6">
-          <div><dt className="text-sm text-[#6b756d]">Service</dt><dd>{b.service_name} ({b.duration_minutes} min)</dd></div>
-          <div><dt className="text-sm text-[#6b756d]">When</dt><dd>{formatDateTime(b.starts_at, business.timezone)}</dd></div>
-          {staff && <div><dt className="text-sm text-[#6b756d]">With</dt><dd>{staff.name}</dd></div>}
-          <div><dt className="text-sm text-[#6b756d]">Price</dt>
+        <dl className="space-y-3 rounded-2xl border border-[color:var(--brand-line,#e0e5df)] bg-white p-6">
+          <div><dt className="text-sm text-[color:var(--brand-muted,#6b756d)]">Service</dt><dd>{b.service_name} ({b.duration_minutes} min)</dd></div>
+          <div><dt className="text-sm text-[color:var(--brand-muted,#6b756d)]">When</dt><dd>{formatDateTime(b.starts_at, business.timezone)}</dd></div>
+          {staff && <div><dt className="text-sm text-[color:var(--brand-muted,#6b756d)]">With</dt><dd>{staff.name}</dd></div>}
+          <div><dt className="text-sm text-[color:var(--brand-muted,#6b756d)]">Price</dt>
             <dd>{formatPence(b.price_pence)}{b.deposit_pence > 0 && ` (deposit ${formatPence(b.deposit_pence)}${b.deposit_status === "paid" ? ", paid" : ""})`}</dd></div>
         </dl>
         {b.deposit_pence > 0 && ["confirmed", "pending_payment"].includes(b.status) && (
@@ -84,7 +84,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
         )}
         <p className="text-sm">Keep this page&apos;s link to see your booking again.</p>
         <p>
-          <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[color:var(--brand-softer,#f1f5ed)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-ring,#397451)]">
+          <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[color:var(--brand-line,#dfe5da)] bg-white px-4 text-sm font-medium text-[color:var(--brand-muted,#415044)] transition hover:bg-[color:var(--brand-softer,#f1f5ed)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-ring,#397451)]">
             Book another appointment <span aria-hidden="true">→</span>
           </Link>
         </p>

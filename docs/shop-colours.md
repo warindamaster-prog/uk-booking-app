@@ -10,7 +10,7 @@ Status (21 Nov 2026): **ON** (`SHOP_COLORS_ENABLED=true` in Vercel). Migration `
 ## How it works
 - `src/lib/theme.ts`: the palettes (built from a hue and saturation, tuned for contrast; a test checks white on the main colour, text on the soft colours, and the icon colour) and `themeStyle()`, which returns the CSS variables for a page.
 - The green was written straight into the class names. Every accent colour in the dashboard and booking pages now reads `[color:var(--brand,#34553e)]`-style values: the variable if the shop chose a colour, otherwise the original green as the fallback. So the default look is unchanged, and the sign-in pages and landing page (no variables) keep our own green.
-- Roles: `--brand` (buttons, active step), `--brand-hover`, `--brand-soft` (selected backgrounds), `--brand-softer`, `--brand-border`, `--brand-text`, `--brand-ring` (focus), `--brand-on` (icon on the main colour).
+- Roles: `--brand` (buttons, active step), `--brand-hover`, `--brand-soft` (selected backgrounds), `--brand-softer`, `--brand-border`, `--brand-text`, `--brand-ring` (focus), `--brand-on` (icon on the main colour), and the page greys tinted with the same hue: `--brand-ink` (main text), `--brand-muted` (secondary text), `--brand-line` (borders), `--brand-bg` (page and light surfaces). Amber warning boxes and the near-white header and sidebar stay as they are.
 - The variables are set on the root of the dashboard (`src/app/dashboard/layout.tsx`) and the booking pages (`PublicShell`).
 - While the switch is off, nothing reads the column (the queries leave `accent_color` out), so the live site works without the migration.
 

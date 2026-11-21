@@ -28,7 +28,7 @@ export function ColorForm({ current }: { current: ThemeName }) {
           {THEMES.map((th) => {
             const c = th.name === "green" ? "#34553e" : paletteFor(th.name).brand;
             return (
-              <label key={th.name} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm transition ${chosen === th.name ? "border-[#34553e] bg-[#eef3e9] font-medium" : "border-stone-200 bg-white hover:bg-stone-50"}`}>
+              <label key={th.name} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm transition ${chosen === th.name ? "border-[color:var(--brand-muted,#34553e)] bg-[color:var(--brand-line,#eef3e9)] font-medium" : "border-stone-200 bg-white hover:bg-stone-50"}`}>
                 <input type="radio" name="swatch" value={th.name} checked={chosen === th.name} onChange={() => setChosen(th.name)} className="sr-only" />
                 <span aria-hidden="true" className="h-5 w-5 rounded-full border border-black/10" style={{ background: c }} />
                 {t(th.label)}
@@ -47,7 +47,7 @@ export function ColorForm({ current }: { current: ThemeName }) {
         </div>
       </div>
 
-      <p className="text-sm text-[#6b756d]">{t("The colour is used in your dashboard and on your customers' booking pages.")}</p>
+      <p className="text-sm text-[color:var(--brand-muted,#6b756d)]">{t("The colour is used in your dashboard and on your customers' booking pages.")}</p>
       <SubmitButton pending={pending}>Save colour</SubmitButton>
     </form>
   );

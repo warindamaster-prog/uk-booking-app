@@ -1,6 +1,6 @@
 /**
  * A shop's colour: one of a few ready-made palettes. Each palette is tuned so white text on the main colour and dark text on the
- * soft colours stay easy to read (a test checks the contrast). The default green sets no variables at all: every colour in the pages
+ * soft colours stay easy to read (a test checks the contrast). The greys of the pages (text, borders, backgrounds) are tinted with the same hue, so a shop's page does not keep a green cast. The default green sets no variables at all: every colour in the pages
  * has the green as its fallback, so a shop that never chooses looks exactly as before.
  */
 export const shopColorsEnabled = () => process.env.SHOP_COLORS_ENABLED === "true";
@@ -32,13 +32,14 @@ function hsl(h: number, s: number, l: number): string {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-export type Palette = { brand: string; hover: string; soft: string; softer: string; border: string; text: string; ring: string; on: string };
+export type Palette = { brand: string; hover: string; soft: string; softer: string; border: string; text: string; ring: string; on: string; ink: string; muted: string; line: string; bg: string };
 
 export function paletteFor(name: ThemeName): Palette {
   const t = THEMES.find((x) => x.name === name) ?? THEMES[0];
   return {
     brand: hsl(t.hue, t.sat, 25), hover: hsl(t.hue, t.sat, 19), soft: hsl(t.hue, t.sat * 0.6, 92), softer: hsl(t.hue, t.sat * 0.5, 96),
     border: hsl(t.hue, t.sat * 0.5, 58), text: hsl(t.hue, t.sat, 24), ring: hsl(t.hue, t.sat, 40), on: hsl(t.hue, t.sat * 0.4, 94),
+    ink: hsl(t.hue, t.sat * 0.4, 16), muted: hsl(t.hue, t.sat * 0.2, 40), line: hsl(t.hue, t.sat * 0.25, 89), bg: hsl(t.hue, t.sat * 0.3, 96),
   };
 }
 
@@ -46,5 +47,5 @@ export function paletteFor(name: ThemeName): Palette {
 export function themeStyle(name: string | null | undefined): Record<string, string> | undefined {
   if (!shopColorsEnabled() || !isThemeName(name) || name === "green") return undefined;
   const p = paletteFor(name);
-  return { "--brand": p.brand, "--brand-hover": p.hover, "--brand-soft": p.soft, "--brand-softer": p.softer, "--brand-border": p.border, "--brand-text": p.text, "--brand-ring": p.ring, "--brand-on": p.on };
+  return { "--brand": p.brand, "--brand-hover": p.hover, "--brand-soft": p.soft, "--brand-softer": p.softer, "--brand-border": p.border, "--brand-text": p.text, "--brand-ring": p.ring, "--brand-on": p.on, "--brand-ink": p.ink, "--brand-muted": p.muted, "--brand-line": p.line, "--brand-bg": p.bg };
 }

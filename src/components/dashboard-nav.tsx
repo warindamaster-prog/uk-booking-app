@@ -31,9 +31,9 @@ export function DashboardNav({ items, label, variant }: { items: NavItem[]; labe
   const isActive = (href: string) => (href === "/dashboard" ? path === href : path === href || path.startsWith(`${href}/`));
   const base = "flex min-h-11 items-center gap-3 rounded-lg px-4 text-sm";
   const on = "bg-[color:var(--brand-soft,#e9efdc)] font-semibold text-[color:var(--brand-text,#3c6132)]";
-  const off = "text-[#64705e] hover:bg-[color:var(--brand-soft,#f0f3e9)]";
+  const off = "text-[color:var(--brand-muted,#64705e)] hover:bg-[color:var(--brand-soft,#f0f3e9)]";
   return (
-    <nav aria-label={label} className={variant === "side" ? "flex-1 space-y-1 overflow-y-auto px-3" : "flex gap-1 overflow-x-auto border-b border-[#e1e7d7] bg-white px-4 py-2 lg:hidden"}>
+    <nav aria-label={label} className={variant === "side" ? "flex-1 space-y-1 overflow-y-auto px-3" : "flex gap-1 overflow-x-auto border-b border-[color:var(--brand-line,#e1e7d7)] bg-white px-4 py-2 lg:hidden"}>
       {items.map((i) => (
         <Link key={i.href} href={i.href} aria-current={isActive(i.href) ? "page" : undefined}
           className={`${base} ${variant === "top" ? "shrink-0 px-3" : "w-full"} ${isActive(i.href) ? on : off}`}>

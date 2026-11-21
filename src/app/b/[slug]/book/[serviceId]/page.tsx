@@ -80,20 +80,20 @@ export default async function BookPage({ params, searchParams }: Props) {
       <div className="space-y-8">
         <div>
           <p>
-            <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#dfe5da] bg-white px-4 text-sm font-medium text-[#415044] transition hover:bg-[color:var(--brand-softer,#f1f5ed)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-ring,#397451)]">
+            <Link href={shop || "/"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[color:var(--brand-line,#dfe5da)] bg-white px-4 text-sm font-medium text-[color:var(--brand-muted,#415044)] transition hover:bg-[color:var(--brand-softer,#f1f5ed)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-ring,#397451)]">
               <svg className="h-4 w-4 shrink-0 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
               All services
             </Link>
           </p>
           <h1 className="mt-3 text-[28px] font-semibold leading-tight tracking-[-1px]">{service.name}</h1>
-          <p className="mt-1 text-sm text-[#6b756d]">
+          <p className="mt-1 text-sm text-[color:var(--brand-muted,#6b756d)]">
             {service.duration_minutes} min · {formatPence(price)}
           </p>
           {service.deposit_pence > 0 && (
-            <p className="mt-3 rounded-xl border border-[#e0e5df] bg-white p-4 text-sm">
+            <p className="mt-3 rounded-xl border border-[color:var(--brand-line,#e0e5df)] bg-white p-4 text-sm">
               Deposit to pay now by card: <strong>{formatPence(service.deposit_pence)}</strong>
               {price > service.deposit_pence && <> · Rest to pay at the appointment: {formatPence(price - service.deposit_pence)}</>}
-              <span className="mt-1 block whitespace-pre-wrap text-[#4f5d52]">
+              <span className="mt-1 block whitespace-pre-wrap text-[color:var(--brand-muted,#4f5d52)]">
                 {depositPolicyText({ policy: business.deposit_policy, refundable: business.deposit_refundable, windowHours: business.cancellation_window_hours, businessName: business.name })}
               </span>
             </p>
@@ -123,7 +123,7 @@ export default async function BookPage({ params, searchParams }: Props) {
                 )}
                 {choices.people.length > 1 && (
                   <>
-                    {choices.groups.length > 0 && <p className="text-sm text-[#6b756d]">Or choose a person:</p>}
+                    {choices.groups.length > 0 && <p className="text-sm text-[color:var(--brand-muted,#6b756d)]">Or choose a person:</p>}
                     <ul className="space-y-2">
                       {choices.people.map((c) => (
                         <li key={c.value}>
@@ -158,7 +158,7 @@ export default async function BookPage({ params, searchParams }: Props) {
 
             <section aria-labelledby="time-h">
               <h2 id="time-h" className="mb-2 text-lg font-semibold tracking-tight">Pick a time{date && ` on ${formatYmd(date, tz)}`}</h2>
-              <p className="mb-2 text-sm text-[#6b756d]">Times are UK time.</p>
+              <p className="mb-2 text-sm text-[color:var(--brand-muted,#6b756d)]">Times are UK time.</p>
               <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {slots.map((s) => {
                   const iso = s.start.toISOString();
@@ -174,7 +174,7 @@ export default async function BookPage({ params, searchParams }: Props) {
             </section>
 
             {chosen && (
-              <section aria-labelledby="details-h" className="space-y-4 rounded-2xl border border-[#e0e5df] bg-white p-6">
+              <section aria-labelledby="details-h" className="space-y-4 rounded-2xl border border-[color:var(--brand-line,#e0e5df)] bg-white p-6">
                 <h2 id="details-h" className="text-lg font-semibold tracking-tight">Your details</h2>
                 <p className="text-sm">{service.name}, {formatYmd(date!, tz)} at {formatTime(chosen.start, tz)} · {formatPence(price)}</p>
                 <BookingForm slug={business.slug} base={shop} serviceId={service.id} staff={sp.staff} startsAt={chosen.start.toISOString()}
