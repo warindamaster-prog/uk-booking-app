@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireOwner } from "@/lib/auth";
 import { connectConfigured } from "@/lib/stripe/client";
 import { connectStripe, disconnectStripe } from "./actions";
+import { getT } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -15,6 +16,7 @@ const MESSAGES: Record<string, string> = {
 
 export default async function PaymentsPage({ searchParams }: { searchParams: Promise<{ connected?: string; disconnected?: string; error?: string }> }) {
   const { supabase, business } = await requireOwner();
+  const t = await getT();
   const sp = await searchParams;
   const { data: b } = await supabase.from("businesses").select("stripe_account_id, stripe_charges_enabled").eq("id", business.id).single();
   const connected = !!b?.stripe_account_id;
@@ -24,33 +26,32 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
 
   return (
     <main className="space-y-8">
-      <h1 className="text-2xl font-semibold">Payments</h1>
+      <h1 className="text-2xl font-semibold">{t("Payments")}</h1>
       <p>
-        Deposits are paid by card to <strong>your own Stripe account</strong>, straight from your customer. We take no commission and never
-        hold your money. Stripe charges its normal card fees to your account.
+        {t("Deposits are paid by card to")} <strong>{t("your own Stripe account")}</strong>{t(", straight from your customer. We take no commission and never hold your money. Stripe charges its normal card fees to your account.")}
       </p>
-      {sp.connected && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">Stripe connected.</p>}
-      {sp.disconnected && <p role="status" className="rounded-md border border-neutral-400 p-3 text-sm">Stripe disconnected. Services with a deposit can&apos;t be booked online until you connect again.</p>}
-      {sp.error && <p role="alert" className="rounded-md border border-red-700 p-3 text-sm text-red-700 dark:text-red-400">{MESSAGES[sp.error] ?? MESSAGES.failed}</p>}
+      {sp.connected && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{t("Stripe connected.")}</p>}
+      {sp.disconnected && <p role="status" className="rounded-md border border-neutral-400 p-3 text-sm">{t("Stripe disconnected. Services with a deposit can't be booked online until you connect again.")}</p>}
+      {sp.error && <p role="alert" className="rounded-md border border-red-700 p-3 text-sm text-red-700 dark:text-red-400">{t(MESSAGES[sp.error] ?? MESSAGES.failed)}</p>}
 
       <section aria-labelledby="status-h" className="space-y-3">
-        <h2 id="status-h" className="text-xl font-semibold">Stripe account</h2>
+        <h2 id="status-h" className="text-xl font-semibold">{t("Stripe account")}</h2>
         {enabled ? (
           <>
-            <p>Connected and able to take card payments.</p>
-            <form action={disconnectStripe}><button type="submit" className={btn}>Disconnect Stripe</button></form>
+            <p>{t("Connected and able to take card payments.")}</p>
+            <form action={disconnectStripe}><button type="submit" className={btn}>{t("Disconnect Stripe")}</button></form>
           </>
         ) : connected ? (
           <>
-            <p>Connected, but Stripe still needs some details from you before it can take payments. Finish setting up in your Stripe dashboard; this page updates by itself.</p>
-            <form action={disconnectStripe}><button type="submit" className={btn}>Disconnect Stripe</button></form>
+            <p>{t("Connected, but Stripe still needs some details from you before it can take payments. Finish setting up in your Stripe dashboard; this page updates by itself.")}</p>
+            <form action={disconnectStripe}><button type="submit" className={btn}>{t("Disconnect Stripe")}</button></form>
           </>
         ) : (
           <>
-            <p>Not connected. Until you connect, services with a deposit can&apos;t be booked online.</p>
+            <p>{t("Not connected. Until you connect, services with a deposit can't be booked online.")}</p>
             {configured
-              ? <form action={connectStripe}><button type="submit" className={btn}>Connect with Stripe</button></form>
-              : <p className="text-sm">Card payments aren&apos;t switched on for this site yet.</p>}
+              ? <form action={connectStripe}><button type="submit" className={btn}>{t("Connect with Stripe")}</button></form>
+              : <p className="text-sm">{t("Card payments aren't switched on for this site yet.")}</p>}
           </>
         )}
       </section>

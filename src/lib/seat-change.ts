@@ -1,3 +1,4 @@
+import { makeT, type T } from "./i18n/core";
 // What a change in the number of people (seats) means in money. Shared by the confirmation
 // popup (browser) and the server action, so what the owner is told is what they are charged.
 // All amounts are pence BEFORE VAT.
@@ -85,52 +86,60 @@ export function summariseSeatChange(i: {
 
 export { grossPence };
 
-const people = (n: number) => `${n} ${n === 1 ? "person" : "people"}`;
 
 /** The wording of the confirmation popup. */
 export function describeSeatChange(sum: SeatChangeSummary, c: {
   current: number; requested: number; interval: BillingInterval; periodEndLabel: string | null;
   /** No free trial: nothing is charged yet only because they have not subscribed. */
   noTrial?: boolean;
-}): { title: string; lines: string[]; confirm: string } {
+}, t: T = makeT("en")): { title: string; lines: string[]; confirm: string } {
   const per = c.interval;
-  const newPrice = `${formatPence(sum.newPriceNet)} + VAT per ${per}`;
+  const ppl = (n: number) => t(n === 1 ? "{n} person" : "{n} people", { n });
+  const price = formatPence(sum.newPriceNet);
+  const newPrice = t("{price} + VAT per {interval}", { price, interval: t(per) });
   switch (sum.plan) {
     case "immediate":
       return {
-        title: `Change your team to ${people(c.requested)}?`,
+        title: t("Change your team to {people}?", { people: ppl(c.requested) }),
         lines: c.noTrial
-          ? ["Nothing is charged yet: you haven't subscribed.", `Your plan will be ${newPrice} when you subscribe.`]
-          : ["Nothing is charged during your free trial.", `After the trial your plan is ${newPrice}.`],
-        confirm: "Confirm",
+          ? [t("Nothing is charged yet: you haven't subscribed."), t("Your plan will be {price} when you subscribe.", { price: newPrice })]
+          : [t("Nothing is charged during your free trial."), t("After the trial your plan is {price}.", { price: newPrice })],
+        confirm: t("Confirm"),
       };
     case "paid_increase": {
+      const more = t(sum.added === 1 ? "1 more person" : "{n} more people", { n: sum.added });
       const now = sum.chargeNowNet > 0
-        ? `You will be charged ${formatPence(sum.chargeNowNet)} + VAT (${formatPence(grossPence(sum.chargeNowNet))} in total) now for ${sum.added} more ${sum.added === 1 ? "person" : "people"}.`
-        : "There is nothing to pay now.";
+        ? t("You will be charged {net} + VAT ({gross} in total) now for {more}.", { net: formatPence(sum.chargeNowNet), gross: formatPence(grossPence(sum.chargeNowNet)), more })
+        : t("There is nothing to pay now.");
+      const covers = sum.months && sum.chargeNowNet > 0
+        ? [t("That covers the {months} left until your plan renews, at {rate} a month for each person.", {
+          months: t(sum.months === 1 ? "1 month" : "{n} months", { n: sum.months }), rate: formatPence(PRICING.extraSeatMonthlyPence) })]
+        : [];
       return {
-        title: `Add ${sum.added} more ${sum.added === 1 ? "person" : "people"}?`,
-        lines: [now, ...(sum.months && sum.chargeNowNet > 0 ? [`That covers the ${sum.months} ${sum.months === 1 ? "month" : "months"} left until your plan renews, at ${formatPence(PRICING.extraSeatMonthlyPence)} a month for each person.`] : []), `From your next billing period your plan is ${newPrice}.`],
-        confirm: sum.chargeNowNet > 0 ? `Pay ${formatPence(grossPence(sum.chargeNowNet))} and add` : "Add",
+        title: t("Add {more}?", { more }),
+        lines: [now, ...covers, t("From your next billing period your plan is {price}.", { price: newPrice })],
+        confirm: sum.chargeNowNet > 0 ? t("Pay {amount} and add", { amount: formatPence(grossPence(sum.chargeNowNet)) }) : t("Add"),
       };
     }
     case "schedule_reduction":
       return {
-        title: `Reduce your team to ${people(c.requested)}?`,
+        title: t("Reduce your team to {people}?", { people: ppl(c.requested) }),
         lines: [
-          `Next billing period${c.periodEndLabel ? ` (from ${c.periodEndLabel})` : ""}: ${newPrice}.`,
-          `Until then you keep ${people(c.current)} and your price does not change.`,
+          c.periodEndLabel
+            ? t("Next billing period (from {date}): {price}.", { date: c.periodEndLabel, price: newPrice })
+            : t("Next billing period: {price}.", { price: newPrice }),
+          t("Until then you keep {people} and your price does not change.", { people: ppl(c.current) }),
         ],
-        confirm: "Confirm",
+        confirm: t("Confirm"),
       };
     case "cancel_reduction":
       return {
-        title: `Keep ${people(c.current)}?`,
-        lines: [`The planned reduction is cancelled. Your plan stays at ${newPrice}.`],
-        confirm: "Keep my plan",
+        title: t("Keep {people}?", { people: ppl(c.current) }),
+        lines: [t("The planned reduction is cancelled. Your plan stays at {price}.", { price: newPrice })],
+        confirm: t("Keep my plan"),
       };
     default:
-      return { title: "", lines: [], confirm: "Confirm" };
+      return { title: "", lines: [], confirm: t("Confirm") };
   }
 }
 

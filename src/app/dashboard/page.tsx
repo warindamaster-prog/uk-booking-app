@@ -7,6 +7,8 @@ import { rangeFor } from "@/lib/calendar";
 import { fetchBookings, LIVE_STATUSES } from "@/lib/dashboard/bookings";
 import { todayYmd } from "@/lib/time";
 import { publicEnv } from "@/lib/env";
+import { getT } from "@/lib/i18n/server";
+import { rich } from "@/lib/i18n/rich";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -14,6 +16,7 @@ export default async function DashboardPage({
   searchParams,
 }: { searchParams: Promise<{ logo?: string; month?: string; staff?: string }> }) {
   const ctx = await requireBusiness();
+  const t = await getT();
   const { supabase, business, role } = ctx;
   const { from, to } = rangeFor("day", todayYmd(business.timezone), business.timezone);
   const { rows: today } = await fetchBookings(supabase, business.id, { startsFrom: from, startsBefore: to, statuses: LIVE_STATUSES });
@@ -25,22 +28,24 @@ export default async function DashboardPage({
     <main className="space-y-4">
       {logo === "failed" && (
         <p role="status" className="rounded-md border border-amber-700 p-3 text-sm">
-          Your business was created, but the logo couldn&apos;t be uploaded. You can add it later.
+          {t("Your business was created, but the logo couldn't be uploaded. You can add it later.")}
         </p>
       )}
       <section aria-labelledby="today-h" className="space-y-2">
-        <h2 id="today-h" className="text-xl font-semibold">Today</h2>
+        <h2 id="today-h" className="text-xl font-semibold">{t("Today")}</h2>
         {today.length ? (
           <ul className="space-y-2">{today.map((b) => <li key={b.id}><BookingCard b={b} tz={business.timezone} showStaff={role === "owner"} compact /></li>)}</ul>
-        ) : <p>No bookings today.</p>}
-        <p><Link href="/dashboard/calendar" className="text-sm underline">Open the schedule</Link></p>
+        ) : <p>{t("No bookings today.")}</p>}
+        <p><Link href="/dashboard/calendar" className="text-sm underline">{t("Open the schedule")}</Link></p>
       </section>
       <MonthSchedule ctx={ctx} params={{ month, staff }} />
-      <p>Your booking page: <a className="underline" href={publicUrl}>{publicUrl}</a></p>
+      <p>{t("Your booking page:")} <a className="underline" href={publicUrl}>{publicUrl}</a></p>
       {role === "owner" && !serviceCount && (
         <p>
-          Next: add your <Link className="underline" href="/dashboard/services">services</Link>, then
-          set up your <Link className="underline" href="/dashboard/staff">staff</Link> and their working hours.
+          {rich(t, "Next: add your {services}, then set up your {staff} and their working hours.", {
+            services: <Link className="underline" href="/dashboard/services">{t("services")}</Link>,
+            staff: <Link className="underline" href="/dashboard/staff">{t("staff")}</Link>,
+          })}
         </p>
       )}
     </main>

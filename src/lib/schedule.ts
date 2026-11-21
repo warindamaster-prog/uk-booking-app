@@ -26,8 +26,8 @@ export function monthDays(ym: string): { days: string[]; leadingBlanks: number }
   return { days, leadingBlanks: isoWeekday(first) - 1 };
 }
 
-export function monthLabel(ym: string, tz: string): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: tz, month: "long", year: "numeric" }).format(zonedToUtc(`${ym}-15`, 12 * 60, tz));
+export function monthLabel(ym: string, tz: string, loc: string = "en-GB"): string {
+  return new Intl.DateTimeFormat(loc, { timeZone: tz, month: "long", year: "numeric" }).format(zonedToUtc(`${ym}-15`, 12 * 60, tz));
 }
 
 /** UTC bounds [from, to) of the whole local month. */

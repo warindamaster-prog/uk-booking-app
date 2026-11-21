@@ -3,6 +3,8 @@ import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
 import { safeSearchTerm } from "@/lib/customers";
 import { formatDate } from "@/lib/time";
+import { intlLocale } from "@/lib/i18n/core";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -10,6 +12,8 @@ const PAGE_SIZE = 25;
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { supabase, business } = await requireOwner();
+  const t = await getT();
+  const loc = intlLocale(await getLocale());
   const raw = await searchParams;
   const val = (k: string) => (Array.isArray(raw[k]) ? raw[k][0] : raw[k]);
   const q = safeSearchTerm(val("q"));
@@ -39,17 +43,17 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
 
   return (
     <main className="space-y-6">
-      <h1 className="text-2xl font-semibold">Customers</h1>
+      <h1 className="text-2xl font-semibold">{t("Customers")}</h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        People who have booked with you. You can download a copy of a customer&apos;s data or delete their personal details if they ask.
+        {t("People who have booked with you. You can download a copy of a customer's data or delete their personal details if they ask.")}
       </p>
-      {deleted && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">The customer&apos;s personal details were deleted.</p>}
+      {deleted && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{t("The customer's personal details were deleted.")}</p>}
 
       <form method="get" role="search" className="flex gap-2">
-        <label htmlFor="q" className="sr-only">Search by name or email</label>
-        <input id="q" name="q" type="search" defaultValue={q} placeholder="Search by name or email" maxLength={60}
+        <label htmlFor="q" className="sr-only">{t("Search by name or email")}</label>
+        <input id="q" name="q" type="search" defaultValue={q} placeholder={t("Search by name or email")} maxLength={60}
           className="min-h-11 grow rounded-md border border-neutral-400 bg-transparent px-3 py-2" />
-        <button type="submit" className="min-h-11 rounded-md border border-neutral-400 px-4 text-sm">Search</button>
+        <button type="submit" className="min-h-11 rounded-md border border-neutral-400 px-4 text-sm">{t("Search")}</button>
       </form>
 
       {customers?.length ? (
@@ -64,20 +68,20 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                     {[c.email, c.phone].filter(Boolean).join(" · ")}
                   </span>
                   <span className="block text-sm text-neutral-600 dark:text-neutral-400">
-                    {s ? `${s.count} booking${s.count === 1 ? "" : "s"}, latest ${formatDate(s.last!, business.timezone)}` : "No active bookings"}
+                    {s ? t(s.count === 1 ? "1 booking, latest {date}" : "{n} bookings, latest {date}", { n: s.count, date: formatDate(s.last!, business.timezone, loc) }) : t("No active bookings")}
                   </span>
                 </Link>
               </li>
             );
           })}
         </ul>
-      ) : <p>{q ? "No customers match that search." : "No customers yet. They appear here after their first booking."}</p>}
+      ) : <p>{q ? t("No customers match that search.") : t("No customers yet. They appear here after their first booking.")}</p>}
 
       {pages > 1 && (
-        <nav aria-label="Pages" className="flex items-center justify-between text-sm">
-          {page > 1 ? <Link href={href(page - 1)} className="underline">← Previous</Link> : <span />}
-          <span>Page {page} of {pages}</span>
-          {page < pages ? <Link href={href(page + 1)} className="underline">Next →</Link> : <span />}
+        <nav aria-label={t("Pages")} className="flex items-center justify-between text-sm">
+          {page > 1 ? <Link href={href(page - 1)} className="underline">{t("← Previous")}</Link> : <span />}
+          <span>{t("Page {page} of {pages}", { page, pages })}</span>
+          {page < pages ? <Link href={href(page + 1)} className="underline">{t("Next →")}</Link> : <span />}
         </nav>
       )}
     </main>

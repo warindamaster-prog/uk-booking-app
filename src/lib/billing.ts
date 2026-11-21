@@ -1,3 +1,5 @@
+import { makeT, type T } from "./i18n/core";
+
 export const billingEnabled = () => process.env.BILLING_ENABLED === "true";
 
 /** Testing: no free trial. A new business must subscribe (and pay) before its booking page opens. */
@@ -22,6 +24,6 @@ export function trialDaysLeft(trialEndsAt: string | Date, now: Date = new Date()
 }
 
 /** "1 day left" / "5 days left", so the trial banners read correctly on the last day. */
-export function daysLeftLabel(days: number): string {
-  return `${days} ${days === 1 ? "day" : "days"} left`;
+export function daysLeftLabel(days: number, t: T = makeT("en")): string {
+  return t(days === 1 ? "1 day left" : "{n} days left", { n: days });
 }

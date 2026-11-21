@@ -7,6 +7,8 @@ import { loadBookingContext } from "@/lib/booking/data";
 import { allowedActions } from "@/lib/calendar";
 import { fetchBooking } from "@/lib/dashboard/bookings";
 import { formatTime, formatYmd, todayYmd } from "@/lib/time";
+import { intlLocale } from "@/lib/i18n/core";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { uuid } from "@/lib/validation/catalog";
 import { z } from "zod";
 import { RescheduleForm } from "./reschedule-form";
@@ -29,6 +31,8 @@ export default async function ReschedulePage({ params: routeParams, searchParams
   const id = uuid.safeParse((await routeParams).id);
   if (!id.success) notFound();
   const { supabase, business, role } = await requireBusiness();
+  const t = await getT();
+  const loc = intlLocale(await getLocale());
   const booking = await fetchBooking(supabase, business.id, id.data);
   if (!booking) notFound();
   if (!allowedActions(booking).reschedule) redirect(`/dashboard/bookings/${booking.id}`);
@@ -46,8 +50,8 @@ export default async function ReschedulePage({ params: routeParams, searchParams
   });
   if (!ctx) {
     if (staffId !== booking.staff_id) redirect(`/dashboard/bookings/${booking.id}/reschedule`);
-    return <main className="space-y-4"><p>This booking can&apos;t be moved because nobody is set up to offer {booking.service_name}.</p>
-      <Link href={`/dashboard/bookings/${booking.id}`} className="underline">Back to the booking</Link></main>;
+    return <main className="space-y-4"><p>{t("This booking can't be moved because nobody is set up to offer {service}.", { service: booking.service_name })}</p>
+      <Link href={`/dashboard/bookings/${booking.id}`} className="underline">{t("Back to the booking")}</Link></main>;
   }
   // Keep the duration and buffers the booking was made with.
   const base = { ...ctx.base, service: {
@@ -71,17 +75,17 @@ export default async function ReschedulePage({ params: routeParams, searchParams
 
   return (
     <main className="space-y-8">
-      <p><Link href={`/dashboard/bookings/${booking.id}`} className="text-sm underline">← Back to the booking</Link></p>
+      <p><Link href={`/dashboard/bookings/${booking.id}`} className="text-sm underline">{t("← Back to the booking")}</Link></p>
       <div>
-        <h1 className="text-2xl font-semibold">Reschedule</h1>
+        <h1 className="text-2xl font-semibold">{t("Reschedule")}</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          {booking.service_name} for {booking.customer?.name ?? "the customer"}. The price and details stay the same.
+          {t("{service} for {customer}. The price and details stay the same.", { service: booking.service_name, customer: booking.customer?.name ?? t("the customer") })}
         </p>
       </div>
 
       {role === "owner" && ctx.staffOptions.length > 1 && (
         <section aria-labelledby="who-h">
-          <h2 id="who-h" className="mb-2 font-medium">With</h2>
+          <h2 id="who-h" className="mb-2 font-medium">{t("With")}</h2>
           <ul className="flex flex-wrap gap-2">
             {ctx.staffOptions.map((s) => (
               <li key={s.id}><Link href={href({ staff: s.id, date })} aria-current={staffId === s.id ? "true" : undefined}
@@ -91,31 +95,31 @@ export default async function ReschedulePage({ params: routeParams, searchParams
         </section>
       )}
 
-      {!dates.length ? <p role="status">There are no free times in the next 28 days for this person.</p> : (
+      {!dates.length ? <p role="status">{t("There are no free times in the next 28 days for this person.")}</p> : (
         <>
           <section aria-labelledby="date-h">
-            <h2 id="date-h" className="mb-2 font-medium">New day</h2>
+            <h2 id="date-h" className="mb-2 font-medium">{t("New day")}</h2>
             <ul className="flex gap-2 overflow-x-auto pb-2">
               {dates.map((d) => (
                 <li key={d} className="shrink-0"><Link href={href({ date: d })} aria-current={d === date ? "date" : undefined}
-                  className={`${pill} ${d === date ? active : idle}`}>{formatYmd(d, tz)}</Link></li>
+                  className={`${pill} ${d === date ? active : idle}`}>{formatYmd(d, tz, loc)}</Link></li>
               ))}
             </ul>
           </section>
           <section aria-labelledby="time-h">
-            <h2 id="time-h" className="mb-2 font-medium">New time{date && ` on ${formatYmd(date, tz)}`}</h2>
-            <p className="mb-2 text-sm text-neutral-600 dark:text-neutral-400">Times are UK time.</p>
+            <h2 id="time-h" className="mb-2 font-medium">{date ? t("New time on {date}", { date: formatYmd(date, tz, loc) }) : t("New time")}</h2>
+            <p className="mb-2 text-sm text-neutral-600 dark:text-neutral-400">{t("Times are UK time.")}</p>
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {slots.map((s) => {
                 const iso = s.start.toISOString();
                 const on = chosen?.start.toISOString() === iso;
                 return <li key={iso}><Link href={href({ date, time: iso })} aria-current={on ? "true" : undefined}
-                  className={`${pill} w-full ${on ? active : idle}`}>{formatTime(s.start, tz)}</Link></li>;
+                  className={`${pill} w-full ${on ? active : idle}`}>{formatTime(s.start, tz, loc)}</Link></li>;
               })}
             </ul>
           </section>
           {chosen && <RescheduleForm id={booking.id} staff={staffId} startsAt={chosen.start.toISOString()}
-            label={`${formatYmd(date!, tz)} at ${formatTime(chosen.start, tz)}`} />}
+            label={t("{date} at {time}", { date: formatYmd(date!, tz, loc), time: formatTime(chosen.start, tz, loc) })} />}
         </>
       )}
     </main>

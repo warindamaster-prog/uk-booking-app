@@ -4,11 +4,14 @@ import { fetchBookings, LIVE_STATUSES, type BookingView } from "@/lib/dashboard/
 import { dayStatus, monthBounds, monthDays, monthLabel, parseMonth, shiftMonth, type DayStatus } from "@/lib/schedule";
 import { formatTime, formatYmd, todayYmd } from "@/lib/time";
 import type { requireBusiness } from "@/lib/auth";
+import { intlLocale } from "@/lib/i18n/core";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 type Ctx = Awaited<ReturnType<typeof requireBusiness>>;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUS_TEXT: Record<DayStatus, string | null> = { off: "Day off", part_off: "Part day off", not_working: "Not working", working: null };
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const SCHEDULE_ANCHOR = "month-schedule";
 
 /**
@@ -17,6 +20,8 @@ export const SCHEDULE_ANCHOR = "month-schedule";
  */
 export async function MonthSchedule({ ctx, params }: { ctx: Ctx; params: { month?: string; staff?: string } }) {
   const { supabase, business, role, user } = ctx;
+  const t = await getT();
+  const loc = intlLocale(await getLocale());
   const tz = business.timezone;
   const today = todayYmd(tz);
   const month = parseMonth(params.month, today);
@@ -61,70 +66,70 @@ export async function MonthSchedule({ ctx, params }: { ctx: Ctx; params: { month
     return (
       <div className={`space-y-1 ${st === "off" || st === "not_working" ? "opacity-70" : ""}`}>
         <p className="flex items-baseline justify-between gap-1 text-xs">
-          <Link href={dayHref(d)} className="font-medium underline">{Number(d.slice(8))}{d === today && <span className="sr-only"> (today)</span>}</Link>
-          {d === today && <span aria-hidden className="rounded bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-neutral-900">today</span>}
+          <Link href={dayHref(d)} className="font-medium underline">{Number(d.slice(8))}{d === today && <span className="sr-only"> ({t("today")})</span>}</Link>
+          {d === today && <span aria-hidden className="rounded bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-neutral-900">{t("today")}</span>}
         </p>
-        {STATUS_TEXT[st] && <p className="rounded bg-neutral-100 px-1 text-[11px] dark:bg-neutral-800">{STATUS_TEXT[st]}</p>}
-        {away.map((n) => <p key={n} className="truncate rounded bg-neutral-100 px-1 text-[11px] dark:bg-neutral-800">{n} off</p>)}
+        {STATUS_TEXT[st] && <p className="rounded bg-neutral-100 px-1 text-[11px] dark:bg-neutral-800">{t(STATUS_TEXT[st]!)}</p>}
+        {away.map((n) => <p key={n} className="truncate rounded bg-neutral-100 px-1 text-[11px] dark:bg-neutral-800">{t("{name} off", { name: n })}</p>)}
         {items.slice(0, max).map((b) => (
           <Link key={b.id} href={`/dashboard/bookings/${b.id}`}
             className="block truncate rounded border border-neutral-300 px-1 text-[11px] hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900">
-            {formatTime(b.starts_at, tz)} {b.customer?.name ?? "Customer"}
+            {formatTime(b.starts_at, tz, loc)} {b.customer?.name ?? t("Customer")}
             {everyone && ` · ${b.staffName}`}
-            {displayStatus(b) !== "confirmed" && ` (${(STATUS_LABEL[displayStatus(b)] ?? displayStatus(b)).toLowerCase()})`}
+            {displayStatus(b) !== "confirmed" && ` (${t(STATUS_LABEL[displayStatus(b)] ?? displayStatus(b)).toLowerCase()})`}
           </Link>
         ))}
-        {items.length > max && <Link href={dayHref(d)} className="block text-[11px] underline">+{items.length - max} more</Link>}
+        {items.length > max && <Link href={dayHref(d)} className="block text-[11px] underline">{t("+{n} more", { n: items.length - max })}</Link>}
       </div>
     );
   };
 
   return (
     <section id={SCHEDULE_ANCHOR} aria-labelledby="schedule-h" className="space-y-4 scroll-mt-4">
-      <h2 id="schedule-h" className="text-xl font-semibold">{monthLabel(month, tz)}</h2>
+      <h2 id="schedule-h" className="text-xl font-semibold">{monthLabel(month, tz, loc)}</h2>
 
       <div className="flex flex-wrap items-end gap-3">
         {role === "owner" && people.length > 1 && (
           <form method="get" action={`/dashboard#${SCHEDULE_ANCHOR}`} className="flex flex-wrap items-end gap-2">
             <input type="hidden" name="month" value={month} />
             <div className="space-y-1">
-              <label htmlFor="staff" className="block text-sm font-medium">Show bookings for</label>
+              <label htmlFor="staff" className="block text-sm font-medium">{t("Show bookings for")}</label>
               <select id="staff" name="staff" defaultValue={picked?.id ?? "all"} className="block rounded-md border border-neutral-400 bg-transparent px-3 py-2 text-base">
-                <option value="all">Everyone</option>
+                <option value="all">{t("Everyone")}</option>
                 {people.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
-            <button type="submit" className={pill}>Show</button>
+            <button type="submit" className={pill}>{t("Show")}</button>
           </form>
         )}
         <div className="flex flex-wrap items-center gap-2">
-          <Link href={q(shiftMonth(month, -1))} className={pill} aria-label="Previous month" scroll={false}>← Previous</Link>
-          <Link href={q(today.slice(0, 7))} className={pill} scroll={false}>This month</Link>
-          <Link href={q(shiftMonth(month, 1))} className={pill} aria-label="Next month" scroll={false}>Next →</Link>
+          <Link href={q(shiftMonth(month, -1))} className={pill} aria-label={t("Previous month")} scroll={false}>{t("← Previous")}</Link>
+          <Link href={q(today.slice(0, 7))} className={pill} scroll={false}>{t("This month")}</Link>
+          <Link href={q(shiftMonth(month, 1))} className={pill} aria-label={t("Next month")} scroll={false}>{t("Next →")}</Link>
         </div>
       </div>
 
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        {rows.length} booking{rows.length === 1 ? "" : "s"} this month{picked ? ` for ${picked.name}` : ""}, including past ones. Cancelled bookings are on the Bookings page.
-        Times are UK time. Tap a date for the full day, or a booking to open it.
+        {t(rows.length === 1 ? "1 booking this month" : "{n} bookings this month", { n: rows.length })}{picked ? ` ${t("for {name}", { name: picked.name })}` : ""}{t(", including past ones. Cancelled bookings are on the Bookings page.")}{" "}
+        {t("Times are UK time. Tap a date for the full day, or a booking to open it.")}
       </p>
 
       {/* Phones: a list of days that have something on. Wider screens: the month grid. */}
-      <ul className="space-y-3 sm:hidden" aria-label="Days with bookings or time off">
+      <ul className="space-y-3 sm:hidden" aria-label={t("Days with bookings or time off")}>
         {days.filter(busy).map((d) => (
           <li key={d} className="rounded-md border border-neutral-300 p-3 dark:border-neutral-700">
-            <p className="mb-1 text-sm font-medium">{formatYmd(d, tz)}{d === today && " (today)"}</p>
+            <p className="mb-1 text-sm font-medium">{formatYmd(d, tz, loc)}{d === today && ` (${t("today")})`}</p>
             {cell(d, 50)}
           </li>
         ))}
-        {!days.some(busy) && <li className="text-sm">Nothing this month.</li>}
+        {!days.some(busy) && <li className="text-sm">{t("Nothing this month.")}</li>}
       </ul>
 
       <div className="hidden sm:block">
-        <div role="grid" aria-label={`${monthLabel(month, tz)} bookings`}
+        <div role="grid" aria-label={t("{month} bookings", { month: monthLabel(month, tz, loc) })}
           className="grid grid-cols-7 gap-px overflow-hidden rounded-md border border-neutral-300 bg-neutral-300 dark:border-neutral-700 dark:bg-neutral-700">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
-            <div key={w} role="columnheader" className="bg-neutral-100 p-1 text-center text-xs font-medium dark:bg-neutral-800">{w}</div>
+          {WEEKDAYS.map((w) => (
+            <div key={w} role="columnheader" className="bg-neutral-100 p-1 text-center text-xs font-medium dark:bg-neutral-800">{t(w)}</div>
           ))}
           {Array.from({ length: leadingBlanks }, (_, i) => <div key={`b${i}`} className="bg-white dark:bg-neutral-950" />)}
           {days.map((d) => (

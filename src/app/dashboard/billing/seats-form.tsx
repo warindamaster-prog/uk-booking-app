@@ -8,6 +8,7 @@ import { formatPence } from "@/lib/money";
 import { isValidSeats, pricePence, type BillingInterval } from "@/lib/pricing";
 import { describeSeatChange, summariseSeatChange } from "@/lib/seat-change";
 import { planSeatChange } from "@/lib/stripe/billing";
+import { useT } from "@/lib/i18n/client";
 
 export function SeatsForm({ current, scheduled, interval, hasSubscription, periodEnd, periodEndLabel, noTrial = false }: {
   /** Seats paid for now. */
@@ -20,6 +21,7 @@ export function SeatsForm({ current, scheduled, interval, hasSubscription, perio
   periodEndLabel: string | null;
   noTrial?: boolean;
 }) {
+  const t = useT();
   const [state, action, pending] = useActionState<FormState, FormData>(updateSeats, {});
   const [text, setText] = useState(String(scheduled ?? current));
   const dialog = useRef<HTMLDialogElement>(null);
@@ -32,7 +34,7 @@ export function SeatsForm({ current, scheduled, interval, hasSubscription, perio
   const summary = valid
     ? summariseSeatChange({ plan, current, requested: n, interval, periodEnd: periodEnd ? new Date(periodEnd) : null, now: new Date() })
     : null;
-  const popup = summary && plan !== "noop" ? describeSeatChange(summary, { current, requested: n, interval, periodEndLabel, noTrial }) : null;
+  const popup = summary && plan !== "noop" ? describeSeatChange(summary, { current, requested: n, interval, periodEndLabel, noTrial }, t) : null;
 
   return (
     <>
@@ -43,13 +45,13 @@ export function SeatsForm({ current, scheduled, interval, hasSubscription, perio
           dialog.current?.showModal();
         }}>
         <FormError message={state.error} />
-        {state.message && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{state.message}</p>}
+        {state.message && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{t(state.message)}</p>}
         <Field label="People who take bookings" name="seats" inputMode="numeric" required value={text}
           onChange={(e) => setText(e.target.value)} errors={state.fieldErrors?.seats}
           hint={hasSubscription
             ? "Adding people is charged straight away. Reducing takes effect at the end of your current billing period."
             : (noTrial ? "Changes apply immediately. Nothing is charged until you subscribe." : "Changes apply immediately. Nothing is charged during your free trial.")} />
-        {valid && <p className="text-sm" aria-live="polite">Plan price: {formatPence(pricePence(n, interval))} + VAT per {interval}</p>}
+        {valid && <p className="text-sm" aria-live="polite">{t("Plan price: {price} + VAT per {interval}", { price: formatPence(pricePence(n, interval)), interval: t(interval) })}</p>}
         <SubmitButton pending={pending}>Update team size</SubmitButton>
       </form>
 
@@ -61,7 +63,7 @@ export function SeatsForm({ current, scheduled, interval, hasSubscription, perio
             {popup.lines.map((l) => <p key={l} className="text-sm">{l}</p>)}
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => dialog.current?.close()}
-                className="inline-flex min-h-11 items-center rounded-md border border-neutral-400 px-4 py-2 text-sm">Cancel</button>
+                className="inline-flex min-h-11 items-center rounded-md border border-neutral-400 px-4 py-2 text-sm">{t("Cancel")}</button>
               <button type="button" disabled={pending}
                 onClick={() => { confirmed.current = true; dialog.current?.close(); form.current?.requestSubmit(); }}
                 className="inline-flex min-h-11 items-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900">

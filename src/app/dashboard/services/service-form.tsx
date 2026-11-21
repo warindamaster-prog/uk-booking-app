@@ -5,6 +5,7 @@ import { saveService } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
 import Link from "next/link";
 import type { FormState } from "@/lib/form";
+import { useT } from "@/lib/i18n/client";
 import { depositNote, type DepositStatus } from "@/lib/stripe/deposit-status";
 
 export type ServiceDefaults = {
@@ -17,6 +18,7 @@ export const EMPTY_SERVICE: ServiceDefaults = {
 };
 
 export function ServiceForm({ defaults, deposits = "ready" }: { defaults: ServiceDefaults; deposits?: DepositStatus }) {
+  const t = useT();
   const note = depositNote(deposits);
   const [state, action, pending] = useActionState<FormState, FormData>(saveService, {});
   const v = state.values ?? {};
@@ -27,12 +29,12 @@ export function ServiceForm({ defaults, deposits = "ready" }: { defaults: Servic
       {defaults.id && <input type="hidden" name="id" value={defaults.id} />}
       <Field label="Service name" name="name" required maxLength={100} defaultValue={v.name ?? defaults.name} errors={e.name} />
       <div className="space-y-1">
-        <label htmlFor="description" className="block text-sm font-medium">Description (optional)</label>
+        <label htmlFor="description" className="block text-sm font-medium">{t("Description (optional)")}</label>
         <textarea id="description" name="description" rows={3} maxLength={500}
           defaultValue={v.description ?? defaults.description}
           aria-describedby={e.description ? "description-error" : undefined}
           className="block w-full rounded-md border border-neutral-400 bg-transparent px-3 py-2 text-base" />
-        {e.description && <p id="description-error" className="text-sm text-red-700 dark:text-red-400">{e.description[0]}</p>}
+        {e.description && <p id="description-error" className="text-sm text-red-700 dark:text-red-400">{t(e.description[0])}</p>}
       </div>
       <Field label="Duration (minutes)" name="duration" inputMode="numeric" required defaultValue={v.duration ?? defaults.duration} errors={e.duration} />
       <div className="grid grid-cols-2 gap-4">
@@ -42,7 +44,7 @@ export function ServiceForm({ defaults, deposits = "ready" }: { defaults: Servic
       </div>
       {note && (
         <p role="note" className="rounded-md border border-amber-700 p-3 text-sm">
-          {note}{deposits !== "off" && <> <Link href="/dashboard/payments" className="underline">Open Payments</Link>.</>}
+          {t(note)}{deposits !== "off" && <> <Link href="/dashboard/payments" className="underline">{t("Open Payments")}</Link>.</>}
         </p>
       )}
       <div className="grid grid-cols-2 gap-4">
@@ -51,7 +53,7 @@ export function ServiceForm({ defaults, deposits = "ready" }: { defaults: Servic
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="active" defaultChecked={v.active !== undefined ? v.active === "on" : defaults.active} />
-        Available to book
+        {t("Available to book")}
       </label>
       <SubmitButton pending={pending}>{defaults.id ? "Save changes" : "Add service"}</SubmitButton>
     </form>

@@ -5,16 +5,19 @@ import { addTimeOff, saveHours, saveStaff, saveStaffServices } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
 import type { FormState } from "@/lib/form";
 import { WEEKDAYS, RANGES_PER_DAY } from "@/lib/hours";
+import { useT } from "@/lib/i18n/client";
 
 function Message({ text }: { text?: string }) {
+  const t = useT();
   if (!text) return null;
-  return <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{text}</p>;
+  return <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{t(text)}</p>;
 }
 
 export function StaffForm({ defaults, levels }: {
   defaults: { id?: string; name: string; email: string; active: boolean; description: string; levelId: string };
   levels: { id: string; name: string }[];
 }) {
+  const t = useT();
   const [state, action, pending] = useActionState<FormState, FormData>(saveStaff, {});
   const v = state.values ?? {};
   return (
@@ -27,25 +30,25 @@ export function StaffForm({ defaults, levels }: {
         hint="Used for their own login later. Never shown to customers." errors={state.fieldErrors?.email} />
       {levels.length > 0 && (
         <div className="space-y-1">
-          <label htmlFor="levelId" className="block text-sm font-medium">Level</label>
+          <label htmlFor="levelId" className="block text-sm font-medium">{t("Level")}</label>
           <select id="levelId" name="levelId" defaultValue={v.levelId ?? defaults.levelId}
             className="block w-full rounded-md border border-neutral-400 bg-transparent px-3 py-2 text-base">
-            <option value="">No level (standard prices)</option>
+            <option value="">{t("No level (standard prices)")}</option>
             {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
         </div>
       )}
       <div className="space-y-1">
-        <label htmlFor="description" className="block text-sm font-medium">About (optional)</label>
+        <label htmlFor="description" className="block text-sm font-medium">{t("About (optional)")}</label>
         <textarea id="description" name="description" rows={3} maxLength={300} defaultValue={v.description ?? defaults.description}
           aria-describedby="description-hint"
           className="block w-full rounded-md border border-neutral-400 bg-transparent px-3 py-2 text-base" />
-        <p id="description-hint" className="text-sm text-neutral-600 dark:text-neutral-400">Shown to customers when they choose this person.</p>
-        {state.fieldErrors?.description && <p className="text-sm text-red-700 dark:text-red-400">{state.fieldErrors.description[0]}</p>}
+        <p id="description-hint" className="text-sm text-neutral-600 dark:text-neutral-400">{t("Shown to customers when they choose this person.")}</p>
+        {state.fieldErrors?.description && <p className="text-sm text-red-700 dark:text-red-400">{t(state.fieldErrors.description[0])}</p>}
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="active" defaultChecked={v.active !== undefined ? v.active === "on" : defaults.active} />
-        Takes bookings
+        {t("Takes bookings")}
       </label>
       <SubmitButton pending={pending}>{defaults.id ? "Save changes" : "Add team member"}</SubmitButton>
     </form>
@@ -55,15 +58,16 @@ export function StaffForm({ defaults, levels }: {
 export function ServicesForm({ staffId, services, selected }: {
   staffId: string; services: { id: string; name: string }[]; selected: string[];
 }) {
+  const t = useT();
   const [state, action, pending] = useActionState<FormState, FormData>(saveStaffServices, {});
-  if (!services.length) return <p>Add a service first, then choose which ones this person offers.</p>;
+  if (!services.length) return <p>{t("Add a service first, then choose which ones this person offers.")}</p>;
   return (
     <form action={action} className="space-y-4">
       <FormError message={state.error} />
       <Message text={state.message} />
       <input type="hidden" name="staffId" value={staffId} />
       <fieldset className="space-y-2">
-        <legend className="sr-only">Services offered</legend>
+        <legend className="sr-only">{t("Services offered")}</legend>
         {services.map((s) => (
           <label key={s.id} className="flex items-center gap-2">
             <input type="checkbox" name="service" value={s.id} defaultChecked={selected.includes(s.id)} /> {s.name}
@@ -78,6 +82,7 @@ export function ServicesForm({ staffId, services, selected }: {
 export function HoursForm({ staffId, initial }: {
   staffId: string; initial: Record<string, string>; // keys like "h-1-0-start"
 }) {
+  const t = useT();
   const [state, action, pending] = useActionState<FormState, FormData>(saveHours, {});
   return (
     <form action={action} className="space-y-4">
@@ -85,27 +90,27 @@ export function HoursForm({ staffId, initial }: {
       <Message text={state.message} />
       <input type="hidden" name="staffId" value={staffId} />
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        Times are UK time. Leave a day blank if closed. Use the second row for a split day, such as after a lunch break.
+        {t("Times are UK time. Leave a day blank if closed. Use the second row for a split day, such as after a lunch break.")}
       </p>
       {WEEKDAYS.map((day, i) => {
         const wd = i + 1;
         const err = state.fieldErrors?.[`day-${wd}`]?.[0];
         return (
           <fieldset key={day} className="rounded-md border border-neutral-300 p-3 dark:border-neutral-700">
-            <legend className="px-1 text-sm font-medium">{day}</legend>
+            <legend className="px-1 text-sm font-medium">{t(day)}</legend>
             {Array.from({ length: RANGES_PER_DAY }, (_, n) => (
               <div key={n} className="mb-2 flex items-center gap-2 last:mb-0">
-                <label className="sr-only" htmlFor={`h-${wd}-${n}-start`}>{day} range {n + 1} start</label>
+                <label className="sr-only" htmlFor={`h-${wd}-${n}-start`}>{t("{day} range {n} start", { day: t(day), n: n + 1 })}</label>
                 <input id={`h-${wd}-${n}-start`} name={`h-${wd}-${n}-start`} type="time" defaultValue={initial[`h-${wd}-${n}-start`] ?? ""}
                   aria-invalid={err ? true : undefined} aria-describedby={err ? `day-${wd}-error` : undefined}
                   className="rounded-md border border-neutral-400 bg-transparent px-2 py-1" />
-                <span aria-hidden="true">to</span>
-                <label className="sr-only" htmlFor={`h-${wd}-${n}-end`}>{day} range {n + 1} end</label>
+                <span aria-hidden="true">{t("to")}</span>
+                <label className="sr-only" htmlFor={`h-${wd}-${n}-end`}>{t("{day} range {n} end", { day: t(day), n: n + 1 })}</label>
                 <input id={`h-${wd}-${n}-end`} name={`h-${wd}-${n}-end`} type="time" defaultValue={initial[`h-${wd}-${n}-end`] ?? ""}
                   className="rounded-md border border-neutral-400 bg-transparent px-2 py-1" />
               </div>
             ))}
-            {err && <p id={`day-${wd}-error`} className="mt-1 text-sm text-red-700 dark:text-red-400">{err}</p>}
+            {err && <p id={`day-${wd}-error`} className="mt-1 text-sm text-red-700 dark:text-red-400">{t(err)}</p>}
           </fieldset>
         );
       })}

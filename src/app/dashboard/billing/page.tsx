@@ -6,6 +6,8 @@ import { billingStripeReady } from "@/lib/stripe/billing-service";
 import { formatPence } from "@/lib/money";
 import { grossPence, vatPence } from "@/lib/pricing";
 import { formatDate } from "@/lib/time";
+import { intlLocale } from "@/lib/i18n/core";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { manageBilling, subscribe } from "./actions";
 import { CancelReductionForm } from "./cancel-form";
 import { SeatsForm } from "./seats-form";
@@ -16,83 +18,86 @@ export const metadata: Metadata = { title: "Billing" };
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ subscribed?: string; error?: string; welcome?: string }> }) {
   const sp = await searchParams;
   const { supabase, business } = await requireOwner();
+  const t = await getT();
+  const loc = intlLocale(await getLocale());
+  const fd = (d: string | Date) => formatDate(d, undefined, loc);
   const { data: b } = await supabase.from("business_billing").select("*").eq("business_id", business.id).maybeSingle();
   const { count } = await supabase.from("staff").select("id", { count: "exact", head: true }).eq("business_id", business.id).eq("active", true);
-  if (!b) return <main><p>We couldn&apos;t find your billing details. Please contact support.</p></main>;
+  if (!b) return <main><p>{t("We couldn't find your billing details. Please contact support.")}</p></main>;
 
   const per = b.billing_interval as "month" | "year";
-  const line = (pence: number) => `${formatPence(pence)} + ${formatPence(vatPence(pence))} VAT = ${formatPence(grossPence(pence))}`;
+  const line = (pence: number) => t("{net} + {vat} VAT = {gross}", { net: formatPence(pence), vat: formatPence(vatPence(pence)), gross: formatPence(grossPence(pence)) });
   const row = "flex justify-between gap-4 py-2";
 
   return (
     <main className="space-y-8">
-      <h1 className="text-2xl font-semibold">Billing</h1>
+      <h1 className="text-2xl font-semibold">{t("Billing")}</h1>
 
       {sp.welcome && (
         <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">
-          Welcome! Your business is set up. {noTrialMode() ? "There is no free trial: subscribe below to open your booking page to customers. Until then you can set everything up here." : ""}
+          {t("Welcome! Your business is set up.")} {noTrialMode() ? t("There is no free trial: subscribe below to open your booking page to customers. Until then you can set everything up here.") : ""}
         </p>
       )}
       {billingEnabled() && !bookingsOpen(b, { now: new Date(), billingEnabled: true }) && (
         <p role="alert" className="rounded-md border border-amber-700 p-3 text-sm">
-          Your booking page is closed. Customers see &quot;Online booking isn&apos;t available right now&quot; until your subscription is active.
+          {t("Your booking page is closed. Customers see \"Online booking isn't available right now\" until your subscription is active.")}
         </p>
       )}
       {b.status === "trialing" && bookingsOpen(b, { now: new Date(), billingEnabled: billingEnabled() }) && (
         <p role="status" className="rounded-md bg-neutral-100 p-3 text-sm dark:bg-neutral-800">
-          You&apos;re on a free trial: {daysLeftLabel(trialDaysLeft(b.trial_ends_at))} (until {formatDate(b.trial_ends_at)}).{" "}
+          {t("You're on a free trial: {left} (until {date}).", { left: daysLeftLabel(trialDaysLeft(b.trial_ends_at), t), date: fd(b.trial_ends_at) })}{" "}
           {b.stripe_subscription_id
-            ? "Your card is saved: the first payment is taken when the trial ends, not before."
-            : "No card is needed for the trial. If you add a card, nothing is charged until the trial ends; after that your subscription starts."}
+            ? t("Your card is saved: the first payment is taken when the trial ends, not before.")
+            : t("No card is needed for the trial. If you add a card, nothing is charged until the trial ends; after that your subscription starts.")}
         </p>
       )}
 
-      {sp.subscribed && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">Thank you. Your subscription is being set up and this page will update in a moment.</p>}
+      {sp.subscribed && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{t("Thank you. Your subscription is being set up and this page will update in a moment.")}</p>}
       {sp.error && <p role="alert" className="rounded-md border border-red-700 p-3 text-sm text-red-700 dark:text-red-400">
-        {sp.error === "unavailable" ? "Card payments aren't set up on this site yet." : "Something went wrong. Please try again."}</p>}
+        {sp.error === "unavailable" ? t("Card payments aren't set up on this site yet.") : t("Something went wrong. Please try again.")}</p>}
 
       {billingEnabled() && (
         <section aria-labelledby="sub-h" className="space-y-3">
-          <h2 id="sub-h" className="text-xl font-semibold">Subscription</h2>
+          <h2 id="sub-h" className="text-xl font-semibold">{t("Subscription")}</h2>
           {b.stripe_subscription_id ? (
             <>
-              <p>Status: {b.status === "trialing" ? "free trial (your card is saved; nothing is charged until the trial ends)" : b.status.replace("_", " ")}.
-                {b.current_period_end && ` Next renewal: ${formatDate(b.current_period_end)}.`}</p>
-              <form action={manageBilling}><button type="submit" className="inline-flex min-h-11 items-center rounded-md border border-neutral-400 px-4 py-2 text-sm">Manage card, invoices and cancellation</button></form>
+              <p>{t("Status: {status}.", { status: b.status === "trialing" ? t("free trial (your card is saved; nothing is charged until the trial ends)") : t(b.status.replace("_", " ")) })}
+                {b.current_period_end && ` ${t("Next renewal: {date}.", { date: fd(b.current_period_end) })}`}</p>
+              <form action={manageBilling}><button type="submit" className="inline-flex min-h-11 items-center rounded-md border border-neutral-400 px-4 py-2 text-sm">{t("Manage card, invoices and cancellation")}</button></form>
             </>
           ) : (
             <>
               <p>{noTrialMode()
-                ? "Subscribe to open your booking page to customers. The first payment is taken straight away (test mode)."
+                ? t("Subscribe to open your booking page to customers. The first payment is taken straight away (test mode).")
                 : new Date(b.trial_ends_at) > new Date()
                 ? (process.env.BILLING_SKIP_TRIAL === "true"
-                  ? "Test mode: subscribing takes the first payment straight away instead of waiting for the free trial to end."
-                  : `Add a card to keep your booking page open after your free trial ends on ${formatDate(b.trial_ends_at)}. Nothing is charged until then.`)
-                : "Your free trial has ended. Add a card to open your booking page again."}</p>
+                  ? t("Test mode: subscribing takes the first payment straight away instead of waiting for the free trial to end.")
+                  : t("Add a card to keep your booking page open after your free trial ends on {date}. Nothing is charged until then.", { date: fd(b.trial_ends_at) }))
+                : t("Your free trial has ended. Add a card to open your booking page again.")}</p>
               {billingStripeReady()
-                ? <form action={subscribe}><button type="submit" className="inline-flex min-h-11 items-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900">Add a card and subscribe</button></form>
-                : <p className="text-sm">Card payments aren&apos;t set up on this site yet.</p>}
+                ? <form action={subscribe}><button type="submit" className="inline-flex min-h-11 items-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900">{t("Add a card and subscribe")}</button></form>
+                : <p className="text-sm">{t("Card payments aren't set up on this site yet.")}</p>}
             </>
           )}
         </section>
       )}
 
       <section aria-labelledby="plan-h">
-        <h2 id="plan-h" className="mb-2 text-xl font-semibold">Your plan</h2>
+        <h2 id="plan-h" className="mb-2 text-xl font-semibold">{t("Your plan")}</h2>
         <dl className="divide-y divide-neutral-300 rounded-md border border-neutral-300 px-3 dark:divide-neutral-700 dark:border-neutral-700">
-          <div className={row}><dt>Team members paid for</dt><dd>{b.staff_seats} ({count ?? 0} in use)</dd></div>
+          <div className={row}><dt>{t("Team members paid for")}</dt><dd>{t("{paid} ({used} in use)", { paid: b.staff_seats, used: count ?? 0 })}</dd></div>
           {(smsPacksEnabled() || b.sms_packs > 0) && <div className={row}><dt>SMS packs</dt><dd>{b.sms_packs === 0 ? "None" : `${b.sms_packs} (${b.sms_packs * 50} texts a month, ${b.sms_enabled ? "on" : "off"})`}</dd></div>}
-          <div className={row}><dt>Billing</dt><dd>{per === "year" ? "Yearly" : "Monthly"}</dd></div>
+          <div className={row}><dt>{t("Billing")}</dt><dd>{t(per === "year" ? "Yearly" : "Monthly")}</dd></div>
           {b.stripe_subscription_id && b.status !== "trialing" ? (
             <>
-              <div className={row}><dt>{`Paid this ${per}`}</dt><dd>{line(b.paid_this_period_pence)}</dd></div>
+              <div className={row}><dt>{t(per === "year" ? "Paid this year" : "Paid this month")}</dt><dd>{line(b.paid_this_period_pence)}</dd></div>
               <div className={row}>
-                <dt>{b.current_period_end ? `From your next renewal (${formatDate(b.current_period_end)})` : "From your next renewal"}</dt>
+                <dt>{b.current_period_end ? t("From your next renewal ({date})", { date: fd(b.current_period_end) }) : t("From your next renewal")}</dt>
                 <dd>
                   {b.next_price_pence !== null && b.change_effective_at ? (
                     <>
-                      {b.next_staff_seats ?? b.staff_seats} team members
-                      {(b.next_sms_packs ?? b.sms_packs) > 0 && `, ${b.next_sms_packs ?? b.sms_packs} SMS ${(b.next_sms_packs ?? b.sms_packs) === 1 ? "pack" : "packs"}`}
+                      {t("{n} team members", { n: b.next_staff_seats ?? b.staff_seats })}
+                      {(b.next_sms_packs ?? b.sms_packs) > 0 && `, ${t((b.next_sms_packs ?? b.sms_packs) === 1 ? "{n} SMS pack" : "{n} SMS packs", { n: b.next_sms_packs ?? b.sms_packs })}`}
                       {`, ${line(b.next_price_pence)}`}
                     </>
                   ) : line(b.current_price_pence)}
@@ -101,13 +106,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             </>
           ) : (
             <>
-              <div className={row}><dt>{b.status === "trialing" && !noTrialMode() ? `Price after trial (per ${per})` : `Plan price (per ${per})`}</dt><dd>{line(b.current_price_pence)}</dd></div>
+              <div className={row}><dt>{b.status === "trialing" && !noTrialMode() ? t(per === "year" ? "Price after trial (per year)" : "Price after trial (per month)") : t(per === "year" ? "Plan price (per year)" : "Plan price (per month)")}</dt><dd>{line(b.current_price_pence)}</dd></div>
               {b.next_price_pence !== null && b.change_effective_at && (
                 <div className={row}>
-                  <dt>From {formatDate(b.change_effective_at)}</dt>
+                  <dt>{t("From {date}", { date: fd(b.change_effective_at) })}</dt>
                   <dd>
-                    {b.next_staff_seats ?? b.staff_seats} team members
-                    {(b.next_sms_packs ?? b.sms_packs) > 0 && `, ${b.next_sms_packs ?? b.sms_packs} SMS ${(b.next_sms_packs ?? b.sms_packs) === 1 ? "pack" : "packs"}`}
+                    {t("{n} team members", { n: b.next_staff_seats ?? b.staff_seats })}
+                    {(b.next_sms_packs ?? b.sms_packs) > 0 && `, ${t((b.next_sms_packs ?? b.sms_packs) === 1 ? "{n} SMS pack" : "{n} SMS packs", { n: b.next_sms_packs ?? b.sms_packs })}`}
                     {`, ${line(b.next_price_pence)}`}
                   </dd>
                 </div>
@@ -119,9 +124,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       </section>
 
       <section aria-labelledby="team-h" className="space-y-3">
-        <h2 id="team-h" className="text-xl font-semibold">Change team size</h2>
+        <h2 id="team-h" className="text-xl font-semibold">{t("Change team size")}</h2>
         <SeatsForm noTrial={noTrialMode()} current={b.staff_seats} scheduled={b.next_staff_seats} interval={per} hasSubscription={!!b.stripe_subscription_id}
-          periodEnd={b.current_period_end} periodEndLabel={b.current_period_end ? formatDate(b.current_period_end) : null} />
+          periodEnd={b.current_period_end} periodEndLabel={b.current_period_end ? fd(b.current_period_end) : null} />
       </section>
 
       {smsPacksEnabled() && (

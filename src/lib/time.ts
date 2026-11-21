@@ -48,8 +48,8 @@ export function minutesToHhmm(min: number): string {
 }
 
 /** Display an instant in the business time zone, e.g. "Sat 4 Apr 2026". */
-export function formatDate(d: Date | string, tz: string = BUSINESS_TZ): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(d));
+export function formatDate(d: Date | string, tz: string = BUSINESS_TZ, loc: string = "en-GB"): string {
+  return new Intl.DateTimeFormat(loc, { timeZone: tz, weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(d));
 }
 
 /** False for wall-clock times that don't exist (the hour skipped when clocks go forward). */
@@ -60,17 +60,17 @@ export function isValidLocalTime(ymd: string, minutes: number, tz: string = BUSI
 }
 
 /** "10:30" in the business time zone. */
-export function formatTime(d: Date | string, tz: string = BUSINESS_TZ): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(d));
+export function formatTime(d: Date | string, tz: string = BUSINESS_TZ, loc: string = "en-GB"): string {
+  return new Intl.DateTimeFormat(loc, { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(d));
 }
 
 /** "Tue 2 Jun" for a local calendar date (noon avoids any clock-change edge). */
-export function formatYmd(ymd: string, tz: string = BUSINESS_TZ): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short" })
+export function formatYmd(ymd: string, tz: string = BUSINESS_TZ, loc: string = "en-GB"): string {
+  return new Intl.DateTimeFormat(loc, { timeZone: tz, weekday: "short", day: "numeric", month: "short" })
     .format(zonedToUtc(ymd, 12 * 60, tz));
 }
 
 /** "Tue 2 Jun 2026, 10:30" in the business time zone. */
-export function formatDateTime(d: Date | string, tz: string = BUSINESS_TZ): string {
-  return `${formatDate(d, tz)}, ${formatTime(d, tz)}`;
+export function formatDateTime(d: Date | string, tz: string = BUSINESS_TZ, loc: string = "en-GB"): string {
+  return `${formatDate(d, tz, loc)}, ${formatTime(d, tz, loc)}`;
 }

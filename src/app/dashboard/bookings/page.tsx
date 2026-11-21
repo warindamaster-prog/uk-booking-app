@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BookingCard } from "@/components/booking-card";
 import { requireBusiness } from "@/lib/auth";
 import { fetchBookings } from "@/lib/dashboard/bookings";
+import { getT } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: "Bookings" };
 
@@ -16,6 +17,7 @@ type Filter = keyof typeof FILTERS;
 
 export default async function BookingsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { supabase, business, role } = await requireBusiness();
+  const t = await getT();
   const raw = await searchParams;
   const val = (k: string) => (Array.isArray(raw[k]) ? raw[k][0] : raw[k]);
   const filter: Filter = val("filter") === "past" || val("filter") === "cancelled" ? (val("filter") as Filter) : "upcoming";
@@ -36,10 +38,10 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
 
   return (
     <main className="space-y-6">
-      <h1 className="text-2xl font-semibold">Bookings</h1>
-      <ul className="flex flex-wrap gap-2" aria-label="Show">
+      <h1 className="text-2xl font-semibold">{t("Bookings")}</h1>
+      <ul className="flex flex-wrap gap-2" aria-label={t("Show")}>
         {(Object.keys(FILTERS) as Filter[]).map((f) => (
-          <li key={f}><Link href={href(f)} aria-current={filter === f ? "true" : undefined} className={`${pill} ${filter === f ? on : ""}`}>{FILTERS[f].label}</Link></li>
+          <li key={f}><Link href={href(f)} aria-current={filter === f ? "true" : undefined} className={`${pill} ${filter === f ? on : ""}`}>{t(FILTERS[f].label)}</Link></li>
         ))}
       </ul>
 
@@ -47,13 +49,13 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
         <ul className="space-y-2">
           {rows.map((b) => <li key={b.id}><BookingCard b={b} tz={business.timezone} showDate showStaff={role === "owner"} /></li>)}
         </ul>
-      ) : <p>No {FILTERS[filter].label.toLowerCase()} bookings.</p>}
+      ) : <p>{t(filter === "upcoming" ? "No upcoming bookings." : filter === "past" ? "No past bookings." : "No cancelled bookings.")}</p>}
 
       {pages > 1 && (
-        <nav aria-label="Pages" className="flex items-center justify-between text-sm">
-          {page > 1 ? <Link href={href(filter, page - 1)} className="underline">← Newer</Link> : <span />}
-          <span>Page {page} of {pages}</span>
-          {page < pages ? <Link href={href(filter, page + 1)} className="underline">Older →</Link> : <span />}
+        <nav aria-label={t("Pages")} className="flex items-center justify-between text-sm">
+          {page > 1 ? <Link href={href(filter, page - 1)} className="underline">{t("← Newer")}</Link> : <span />}
+          <span>{t("Page {page} of {pages}", { page, pages })}</span>
+          {page < pages ? <Link href={href(filter, page + 1)} className="underline">{t("Older →")}</Link> : <span />}
         </nav>
       )}
     </main>
