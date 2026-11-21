@@ -41,7 +41,8 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 
 - [x] Domain `getitbook.com` bought at Namecheap (21 Nov 2026), DNS points to Vercel, `NEXT_PUBLIC_SITE_URL`, Supabase URLs, Stripe Connect redirect URI and both Live webhooks, and the GitHub `APP_URL` secret all moved to it.
 - [ ] Redirect the old `book.wpprecisionsystems.co.uk` to `getitbook.com` (keep the old domain for at least a year: customers hold old links). Do it only after a test sign-up on the new domain works.
-- [ ] Confirm the ICANN email verification for the domain at Namecheap (the yellow ALERT), keep Auto-Renew on and 2-step verification on the Namecheap account.
+- [ ] **Domain renewal:** `getitbook.com` expires 21 Nov 2027. Check in early Oct 2027 that Auto-Renew is on (domain AND the privacy switch), the Namecheap card is valid and the notice email is read. A reminder was scheduled in the assistant session for 4 Oct 2027 (not in the owner's own calendar: add one there too).
+- [x] ICANN email verification done (status ACTIVE, 21 Nov 2026). Auto-Renew was found switched off on 21 Nov: switch it on. Original note: confirm the ICANN email verification for the domain at Namecheap (the yellow ALERT), keep Auto-Renew on and 2-step verification on the Namecheap account.
 
 - [ ] Choose the brand and domain (getitbook.com at Vercel was the recommendation). Then migrate: `NEXT_PUBLIC_SITE_URL`, Supabase redirect URLs, Stripe webhook and Connect redirect URIs, GitHub `APP_URL`, email sender. Per-shop subdomains later.
 - [ ] Selling outside the UK needs accountant input (VAT and tax).
