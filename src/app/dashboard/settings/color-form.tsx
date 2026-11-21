@@ -20,6 +20,8 @@ export function ColorForm({ current }: { current: ThemeName }) {
     <form action={action} className="space-y-4">
       <FormError message={state.error} />
       {state.message && <p role="status" className="rounded-lg border border-green-700 p-3 text-sm text-green-800">{t(state.message)}</p>}
+      {/* What is saved comes from the state, not from the radio buttons: React resets a form after its action, which would put the radios back to their first value. */}
+      <input type="hidden" name="color" value={chosen} />
       <fieldset>
         <legend className="mb-2 text-sm font-medium">{t("Your colour")}</legend>
         <div className="flex flex-wrap gap-3">
@@ -27,7 +29,7 @@ export function ColorForm({ current }: { current: ThemeName }) {
             const c = th.name === "green" ? "#34553e" : paletteFor(th.name).brand;
             return (
               <label key={th.name} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm transition ${chosen === th.name ? "border-[#34553e] bg-[#eef3e9] font-medium" : "border-stone-200 bg-white hover:bg-stone-50"}`}>
-                <input type="radio" name="color" value={th.name} checked={chosen === th.name} onChange={() => setChosen(th.name)} className="sr-only" />
+                <input type="radio" name="swatch" value={th.name} checked={chosen === th.name} onChange={() => setChosen(th.name)} className="sr-only" />
                 <span aria-hidden="true" className="h-5 w-5 rounded-full border border-black/10" style={{ background: c }} />
                 {t(th.label)}
               </label>
