@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireBusiness, requireOwner } from "@/lib/auth";
 import { zodState, type FormState } from "@/lib/form";
-import { parseWeeklyHours } from "@/lib/hours";
+import { DEFAULT_WORKING_HOURS, parseWeeklyHours } from "@/lib/hours";
 import { addDaysYmd, localMidnightUtc } from "@/lib/time";
 import { staffSchema, timeOffSchema, uuid } from "@/lib/validation/catalog";
 
@@ -45,6 +45,12 @@ export async function saveStaff(_: FormState, formData: FormData): Promise<FormS
   }
   const { data, error } = await supabase.from("staff").insert({ ...row, business_id: business.id }).select("id").single();
   if (error || !data) return { error: isSeatLimit(error) ? await seatsFullMessage(supabase, business.id) : GENERIC, values: { ...raw, active: active ? "on" : "" } };
+  // A new team member starts with 08:00 to 17:00 every day so they can take bookings straight away.
+  // Best effort: if this fails the owner just sees an empty hours form and sets the hours there.
+  await supabase.rpc("set_working_hours", {
+    p_staff_id: data.id,
+    p_hours: DEFAULT_WORKING_HOURS.map((h) => ({ weekday: h.weekday, start: h.start, end: h.end })),
+  });
   redirect(`/dashboard/staff/${data.id}`);
 }
 

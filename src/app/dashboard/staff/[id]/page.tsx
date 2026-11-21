@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireBusiness } from "@/lib/auth";
 import { formatDate, minutesToHhmm } from "@/lib/time";
+import { defaultHoursFields } from "@/lib/hours";
 import { uuid } from "@/lib/validation/catalog";
 import { deleteTimeOff } from "../actions";
 import { DeleteStaff } from "./delete-staff";
@@ -43,6 +44,10 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
     initial[`h-${h.weekday}-${n}-end`] = minutesToHhmm(h.end_minute);
   }
 
+  // Someone with no hours saved yet (added before the defaults existed): suggest 08:00 to 17:00, but only the owner pressing Save makes it real.
+  const suggested = !(hoursRes.data ?? []).length;
+  const formInitial = suggested ? defaultHoursFields(minutesToHhmm) : initial;
+
   return (
     <main className="space-y-10">
       {isOwner && <p><Link href="/dashboard/staff" className="text-sm underline">{t("← All staff")}</Link></p>}
@@ -69,7 +74,8 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
 
       <section aria-labelledby="hours-h" className="space-y-4">
         <h2 id="hours-h" className="text-xl font-semibold">{t("Working hours")}</h2>
-        <HoursForm staffId={member.id} initial={initial} />
+        {suggested && <p role="status" className="rounded-md border border-amber-700 p-3 text-sm">{t("No working hours are saved yet, so customers can't book this person. We've filled in 08:00 to 17:00 every day: change it if you like, then press Save working hours.")}</p>}
+        <HoursForm staffId={member.id} initial={formInitial} />
       </section>
 
       <section aria-labelledby="off-h" className="space-y-4">

@@ -34,3 +34,16 @@ export function parseWeeklyHours(get: (name: string) => string): HoursResult {
   }
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, hours };
 }
+
+/** What a new team member starts with: 08:00 to 17:00, every day of the week. The owner can change it. */
+export const DEFAULT_WORKING_HOURS: HourRange[] = Array.from({ length: 7 }, (_, i) => ({ weekday: i + 1, start: 8 * 60, end: 17 * 60 }));
+
+/** The same defaults as form field values (h-{weekday}-0-start / -end). */
+export function defaultHoursFields(minutesToHhmm: (m: number) => string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const h of DEFAULT_WORKING_HOURS) {
+    out[`h-${h.weekday}-0-start`] = minutesToHhmm(h.start);
+    out[`h-${h.weekday}-0-end`] = minutesToHhmm(h.end);
+  }
+  return out;
+}

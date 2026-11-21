@@ -1,5 +1,6 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "No working hours are saved yet, so customers can't book this person. We've filled in 08:00 to 17:00 every day: change it if you like, then press Save working hours.": "ยังไม่ได้บันทึกเวลาทำงาน ลูกค้าจึงจองคนนี้ไม่ได้ เราใส่ 08:00 ถึง 17:00 ทุกวันให้ก่อน แก้ได้ตามต้องการ แล้วกด Save working hours",
  "Copy": "คัดลอก",
  "Link copied.": "คัดลอกลิงก์แล้ว",
  "Couldn't copy. Select the link and copy it.": "คัดลอกไม่ได้ เลือกลิงก์แล้วคัดลอกเอง",
