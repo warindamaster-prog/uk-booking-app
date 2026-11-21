@@ -23,6 +23,12 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 - [ ] Check SPF, DKIM and DMARC of system emails (use "Show original" in desktop Gmail, or mail-tester).
 - [ ] Set `SUPPORT_EMAIL` (support messages) and use a non-WP sender address; consider Resend.
 
+## 3-year prepaid package
+
+- [x] Code written and tested, switched off (`THREE_YEAR_ENABLED=false`). Migration 0019 is in the repo but NOT applied to the live database. See `docs/three-year-plan.md` ("Going live").
+- [ ] Owner approves and applies migration 0019; test the Stripe payment in Sandbox; legal and accounting check; then switch on after the brand and domain are final.
+- [ ] Phase 2: top-up when adding staff during the term; let existing monthly or yearly shops switch to it.
+
 ## Product and design
 
 - [ ] **Customer booking page, shop's own look** (hero text, accent colour). Needs two new columns, `description` and `accent_color`, which have not been approved. Write the migration for review first.

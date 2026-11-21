@@ -63,3 +63,41 @@ describe("trial emails", () => {
     expect(e.subject).toBe("Your free trial has ended");
   });
 });
+
+import { prepaidNoticeDue, renderPrepaidNoticeEmail } from "../trial-email";
+
+describe("prepaid 3-year plan notices", () => {
+  const day = 86_400_000;
+  const end = new Date("2029-12-01T10:00:00Z");
+  const at = (daysBefore: number) => new Date(end.getTime() - daysBefore * day);
+  const row = (o: Partial<Parameters<typeof prepaidNoticeDue>[0]> = {}) => ({ status: "active", billing_interval: "three_year", stripe_subscription_id: null, current_period_end: end.toISOString(), prepaid_notice_sent_at: null, ...o });
+
+  it("sends nothing until 60 days before the end", () => {
+    expect(prepaidNoticeDue(row(), at(61))).toBeNull();
+    expect(prepaidNoticeDue(row(), at(60))).toBe("first");
+  });
+  it("sends the first notice once", () => {
+    expect(prepaidNoticeDue(row({ prepaid_notice_sent_at: at(60).toISOString() }), at(45))).toBeNull();
+  });
+  it("sends the second notice at 30 days, once", () => {
+    const sentAt60 = row({ prepaid_notice_sent_at: at(60).toISOString() });
+    expect(prepaidNoticeDue(sentAt60, at(31))).toBeNull();
+    expect(prepaidNoticeDue(sentAt60, at(30))).toBe("second");
+    expect(prepaidNoticeDue(row({ prepaid_notice_sent_at: at(29.5).toISOString() }), at(10))).toBeNull(); // the marker moved to the second notice
+  });
+  it("a shop first seen inside the last 30 days gets the first notice, then the second one only if it was sent earlier", () => {
+    expect(prepaidNoticeDue(row(), at(20))).toBe("first");
+  });
+  it("ignores other plans, unpaid shops and ended terms", () => {
+    expect(prepaidNoticeDue(row({ billing_interval: "year" }), at(10))).toBeNull();
+    expect(prepaidNoticeDue(row({ status: "trialing" }), at(10))).toBeNull();
+    expect(prepaidNoticeDue(row({ stripe_subscription_id: "sub_1" }), at(10))).toBeNull();
+    expect(prepaidNoticeDue(row({ current_period_end: null }), at(10))).toBeNull();
+    expect(prepaidNoticeDue(row(), new Date(end.getTime() + day))).toBeNull();
+  });
+  it("the email says the plan does not renew by itself", () => {
+    const m = renderPrepaidNoticeEmail({ shopName: "Klean Me", endsOn: "1 Dec 2029", billingUrl: "https://x/billing", supportEmail: "s@x" });
+    expect(m.text).toContain("does not renew by itself");
+    expect(m.subject).toContain("1 Dec 2029");
+  });
+});

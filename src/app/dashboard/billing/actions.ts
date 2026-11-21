@@ -8,9 +8,10 @@ import type { FormState } from "@/lib/form";
 import { formatPence } from "@/lib/money";
 import { isValidSeats, isValidSmsPacks, PRICING, pricePence, type BillingInterval } from "@/lib/pricing";
 import { planSeatChange } from "@/lib/stripe/billing";
-import { billingStripeReady, chargeForExtraSeats, openBillingPortal, setSubscriptionSeats, setSubscriptionSmsPacks, smsStripeReady, startSubscriptionCheckout } from "@/lib/stripe/billing-service";
+import { billingStripeReady, chargeForExtraSeats, openBillingPortal, prepaidStripeReady, setSubscriptionSeats, setSubscriptionSmsPacks, smsStripeReady, startPrepaidCheckout, startSubscriptionCheckout } from "@/lib/stripe/billing-service";
 import { summariseSeatChange, summariseSmsChange } from "@/lib/seat-change";
 import { smsPacksEnabled } from "@/lib/sms-switch";
+import { threeYearEnabled } from "@/lib/three-year-switch";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/time";
 
@@ -32,8 +33,13 @@ export async function updateSeats(_: FormState, formData: FormData): Promise<For
   }
 
   const { data: b } = await supabase.from("business_billing")
-    .select("stripe_subscription_id, staff_seats, next_staff_seats, sms_packs, next_sms_packs, billing_interval, current_period_end").eq("business_id", business.id).single();
+    .select("stripe_subscription_id, staff_seats, next_staff_seats, sms_packs, next_sms_packs, billing_interval, current_period_end, status").eq("business_id", business.id).single();
   if (!b) return { error: GENERIC, values };
+  if (b.billing_interval === "three_year") {
+    // The 3-year plan is paid once for a fixed team. Before paying it can still change (at least 3); after paying, changes go through support.
+    if (b.status === "active") return { error: "Your 3-year plan covers the team size you paid for. To change it, please contact support.", values };
+    if (seats < PRICING.threeYearMinSeats) return { fieldErrors: { seats: [`The 3-year plan needs at least ${PRICING.threeYearMinSeats} staff`] }, values };
+  }
   const plan = planSeatChange({ current: b.staff_seats, scheduled: b.next_staff_seats, requested: seats, hasSubscription: !!b.stripe_subscription_id });
   const subId = b.stripe_subscription_id as string | null;
   const setSeatsInDb = (n: number) => supabase.rpc("change_staff_seats", { p_business_id: business.id, p_new_seats: n });
@@ -105,6 +111,8 @@ export async function updateSeats(_: FormState, formData: FormData): Promise<For
 export async function updateSmsPacks(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, business } = await requireOwner();
   if (!smsPacksEnabled()) return { error: "SMS packs aren't available yet." };
+  const { data: plan3 } = await supabase.from("business_billing").select("billing_interval").eq("business_id", business.id).single();
+  if (plan3?.billing_interval === "three_year") return { error: "SMS packs are not part of the 3-year plan." };
   const text = String(formData.get("packs") ?? "").trim();
   const packs = /^\d+$/.test(text) ? Number(text) : NaN;
   const values = { packs: text };
@@ -222,6 +230,7 @@ export async function subscribe(): Promise<void> {
     .select("stripe_subscription_id, staff_seats, sms_packs, billing_interval, trial_ends_at").eq("business_id", business.id).single();
   const { data: biz } = await supabase.from("businesses").select("email").eq("id", business.id).single();
   if (!b || b.stripe_subscription_id) redirect("/dashboard/billing");
+  if (b.billing_interval === "three_year") return payPrepaid(); // a prepaid plan is paid once, not subscribed to
 
   let url: string;
   try {
@@ -229,6 +238,25 @@ export async function subscribe(): Promise<void> {
       { seats: b.staff_seats, smsPacks: b.sms_packs, interval: b.billing_interval as BillingInterval, trialEndsAt: new Date(b.trial_ends_at) });
   } catch (e) {
     console.error("subscription checkout failed", e instanceof Error ? e.message : e);
+    redirect("/dashboard/billing?error=failed");
+  }
+  redirect(url);
+}
+
+/** Pays for the 3-year plan (one payment with VAT). Only for shops on that plan that have not paid for the current term. */
+export async function payPrepaid(): Promise<void> {
+  const { supabase, business } = await requireOwner();
+  if (!threeYearEnabled() || !billingEnabled() || !prepaidStripeReady()) redirect("/dashboard/billing?error=unavailable");
+
+  const { data: b } = await supabase.from("business_billing").select("billing_interval, status, staff_seats").eq("business_id", business.id).single();
+  const { data: biz } = await supabase.from("businesses").select("email").eq("id", business.id).single();
+  if (!b || b.billing_interval !== "three_year" || b.status === "active") redirect("/dashboard/billing");
+
+  let url: string;
+  try {
+    url = await startPrepaidCheckout(createAdminClient(), { id: business.id, name: business.name, email: biz?.email ?? null }, { seats: b.staff_seats });
+  } catch (e) {
+    console.error("prepaid checkout failed", e instanceof Error ? e.message : e);
     redirect("/dashboard/billing?error=failed");
   }
   redirect(url);

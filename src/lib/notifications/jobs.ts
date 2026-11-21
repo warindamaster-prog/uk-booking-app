@@ -5,15 +5,16 @@ import type { Mailers } from "./provider";
 import { settleDeposit } from "@/lib/stripe/service";
 import { isStaleToRetry } from "./rules";
 import { MAX_ATTEMPTS, sendNotification, type NotifyConfig } from "./send";
+import { runPrepaidJobs } from "./prepaid-jobs";
 import { runTrialEmails } from "./trial-jobs";
 import type { EmailKind, Recipient } from "./templates";
 
 type Db = ReturnType<typeof createAdminClient>;
-export type JobCounts = { expiredHolds: number; remindersSent: number; retried: number; gaveUp: number; refundsRetried: number; reductionsApplied: number; trialEmailsSent: number };
+export type JobCounts = { expiredHolds: number; remindersSent: number; retried: number; gaveUp: number; refundsRetried: number; reductionsApplied: number; trialEmailsSent: number; prepaidClosed: number; prepaidNoticesSent: number };
 
 /** Run every few minutes: releases expired unpaid holds, sends due reminders, retries failed emails and refunds, applies plan reductions that have come due. */
 export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConfig, now: Date = new Date()): Promise<JobCounts> {
-  const counts: JobCounts = { expiredHolds: 0, remindersSent: 0, retried: 0, gaveUp: 0, refundsRetried: 0, reductionsApplied: 0, trialEmailsSent: 0 };
+  const counts: JobCounts = { expiredHolds: 0, remindersSent: 0, retried: 0, gaveUp: 0, refundsRetried: 0, reductionsApplied: 0, trialEmailsSent: 0, prepaidClosed: 0, prepaidNoticesSent: 0 };
 
   // 1. Unpaid holds whose time ran out stop blocking the calendar.
   const expired = await db.from("bookings").update({ status: "expired" }, { count: "exact" })
@@ -69,5 +70,7 @@ export async function runNotificationJobs(db: Db, mail: Mailers, cfg: NotifyConf
 
   // 6. Free-trial emails (a week before the end, and once after it ended without a subscription). Never lets a problem here stop the jobs above.
   try { counts.trialEmailsSent = await runTrialEmails(db, mail, now); } catch (e) { console.error("trial emails failed", e instanceof Error ? e.message : e); }
+  // 7. Prepaid 3-year plans: close the ones that ended, and send the 60 and 30 day notices (does nothing while the plan is switched off).
+  try { const r = await runPrepaidJobs(db, mail, now); counts.prepaidClosed = r.closed; counts.prepaidNoticesSent = r.noticesSent; } catch (e) { console.error("prepaid jobs failed", e instanceof Error ? e.message : e); }
   return counts;
 }

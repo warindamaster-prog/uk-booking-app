@@ -2,7 +2,7 @@ import "server-only";
 import { publicEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { BillingInterval } from "@/lib/pricing";
-import { buildSubscriptionCheckoutParams, smsPriceIds } from "./billing";
+import { buildPrepaidCheckoutParams, buildSubscriptionCheckoutParams, smsPriceIds } from "./billing";
 import type { BillingStore } from "./billing-events";
 import { getStripe, stripeConfigured } from "./client";
 
@@ -11,6 +11,9 @@ type Db = ReturnType<typeof createAdminClient>;
 /** The prices and VAT rate are created once with `npm run stripe:setup`; their ids go in the environment. */
 export const billingStripeReady = () =>
   stripeConfigured() && !!process.env.STRIPE_PRICE_MONTHLY && !!process.env.STRIPE_PRICE_YEARLY && !!process.env.STRIPE_VAT_TAX_RATE_ID;
+
+/** The 3-year prepayment needs only Stripe itself and the VAT rate (its price is built on the fly). */
+export const prepaidStripeReady = () => stripeConfigured() && !!process.env.STRIPE_VAT_TAX_RATE_ID;
 
 /** True when the SMS pack prices exist on our Stripe account (created by `npm run stripe:setup`). */
 export const smsStripeReady = () => !!process.env.STRIPE_PRICE_SMS_MONTHLY && !!process.env.STRIPE_PRICE_SMS_YEARLY;
@@ -23,6 +26,12 @@ export function createBillingStore(db: Db = createAdminClient()): BillingStore {
         p_period_end: f.periodEnd.toISOString(), p_interval: f.interval, p_quantity: f.quantity, p_sms_quantity: f.smsQuantity,
       });
       if (error) throw new Error(`sync_subscription: ${error.message}`);
+    },
+    async activatePrepaidTerm(f) {
+      const { error } = await db.rpc("activate_prepaid_term", {
+        p_business_id: f.businessId, p_payment_intent_id: f.paymentIntentId, p_customer_id: f.customerId, p_seats: f.seats, p_paid_at: f.paidAt.toISOString(),
+      });
+      if (error) throw new Error(`activate_prepaid_term: ${error.message}`);
     },
     async businessIdForCustomer(customerId) {
       const { data } = await db.from("business_billing").select("business_id").eq("stripe_customer_id", customerId).maybeSingle();
@@ -56,6 +65,18 @@ export async function startSubscriptionCheckout(db: Db, business: { id: string; 
     smsPacks: plan.smsPacks ?? 0,
     smsPriceId: plan.interval === "year" ? process.env.STRIPE_PRICE_SMS_YEARLY : process.env.STRIPE_PRICE_SMS_MONTHLY,
     successUrl: `${site}/dashboard/billing?subscribed=1`, cancelUrl: `${site}/dashboard/billing`,
+  }));
+  if (!session.url) throw new Error("Stripe returned no checkout URL");
+  return session.url;
+}
+
+/** Starts the Checkout for the 3-year prepayment (one payment, with VAT). Returns the Stripe URL. */
+export async function startPrepaidCheckout(db: Db, business: { id: string; name: string; email: string | null }, plan: { seats: number }): Promise<string> {
+  const customerId = await ensureCustomer(db, business);
+  const site = publicEnv().NEXT_PUBLIC_SITE_URL;
+  const session = await getStripe().checkout.sessions.create(buildPrepaidCheckoutParams({
+    businessId: business.id, businessName: business.name, customerId, seats: plan.seats, vatRateId: process.env.STRIPE_VAT_TAX_RATE_ID!,
+    successUrl: `${site}/dashboard/billing?paid=1`, cancelUrl: `${site}/dashboard/billing`,
   }));
   if (!session.url) throw new Error("Stripe returned no checkout URL");
   return session.url;

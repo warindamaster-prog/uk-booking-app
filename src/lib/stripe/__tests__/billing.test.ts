@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { describe, expect, it } from "vitest";
-import { buildSubscriptionCheckoutParams, canUseTrialEnd, mapSubscriptionStatus, planSeatChange, readSubscription, smsPriceIds, type SubscriptionFacts } from "../billing";
+import { buildPrepaidCheckoutParams, buildSubscriptionCheckoutParams, canUseTrialEnd, mapSubscriptionStatus, planSeatChange, readSubscription, smsPriceIds, type SubscriptionFacts } from "../billing";
 import { handlePlatformEvent, type BillingDeps } from "../billing-events";
 
 const now = new Date("2026-06-01T12:00:00Z");
@@ -108,6 +108,7 @@ describe("platform webhook events", () => {
   const deps = (over: Partial<BillingDeps> = {}): BillingDeps => ({
     store: {
       syncSubscription: async (b, f: SubscriptionFacts) => { log.push(`sync ${b} ${f.id} ${f.status} ${f.quantity} ${f.interval}`); },
+      activatePrepaidTerm: async (f) => { log.push(`prepaid ${f.businessId} ${f.paymentIntentId} ${f.seats} ${f.customerId} ${f.paidAt.toISOString()}`); },
       businessIdForCustomer: async (c) => (c === "cus_known" ? "biz_from_customer" : null),
     },
     retrieveSubscription: async (id) => { log.push(`retrieve ${id}`); return sub({ id }); },
@@ -159,5 +160,66 @@ describe("stripe setup script matches the pricing formula", () => {
       expect(tiered(1500, 200, seats)).toBe(pricePence(seats, "month"));
       expect(tiered(15000, 2000, seats)).toBe(pricePence(seats, "year"));
     }
+  });
+});
+
+describe("3-year prepaid checkout", () => {
+  const input = { businessId: "biz_1", businessName: "Klean Me", customerId: "cus_1", vatRateId: "txr_vat", seats: 3, successUrl: "https://app.example/ok", cancelUrl: "https://app.example/back" };
+
+  it("is a one-time payment of our own price with 20% VAT, tagged so the webhook knows it", () => {
+    const p = buildPrepaidCheckoutParams(input);
+    expect(p.mode).toBe("payment");
+    expect(p.line_items).toEqual([expect.objectContaining({ quantity: 1, tax_rates: ["txr_vat"], price_data: expect.objectContaining({ currency: "gbp", unit_amount: 44460, tax_behavior: "exclusive" }) })]);
+    expect(p.metadata).toEqual({ kind: "prepaid_3y", business_id: "biz_1", seats: "3" });
+    expect(p.payment_intent_data?.metadata).toEqual(p.metadata);
+    expect(p.invoice_creation?.enabled).toBe(true);
+    expect(p.client_reference_id).toBe("biz_1");
+  });
+  it("needs 3 to 50 staff", () => {
+    for (const seats of [2, 51, 3.5]) expect(() => buildPrepaidCheckoutParams({ ...input, seats })).toThrow(RangeError);
+  });
+
+  const deps = (over: Partial<BillingDeps> = {}): BillingDeps => ({
+    store: {
+      syncSubscription: async () => { throw new Error("must not sync"); },
+      activatePrepaidTerm: async (f) => { log.push(`prepaid ${f.businessId} ${f.paymentIntentId} ${f.seats} ${f.customerId} ${f.paidAt.toISOString()}`); },
+      businessIdForCustomer: async () => null,
+    },
+    retrieveSubscription: async () => { throw new Error("must not retrieve"); },
+    ...over,
+  });
+  const log: string[] = [];
+  const paid = (over: Record<string, unknown> = {}) => ({
+    id: "cs_1", mode: "payment", payment_status: "paid", payment_intent: "pi_1", customer: "cus_1", amount_subtotal: 44460, amount_total: 53352,
+    metadata: { kind: "prepaid_3y", business_id: "biz_1", seats: "3" }, ...over,
+  });
+  const run = async (object: unknown, d = deps()) => {
+    log.length = 0;
+    return handlePlatformEvent({ id: "evt_9", type: "checkout.session.completed", created: 1_800_000_000, data: { object } } as unknown as Stripe.Event, d);
+  };
+
+  it("a paid prepayment starts the term, dated from the event", async () => {
+    expect(await run(paid())).toBe("3-year plan started");
+    expect(log).toEqual(["prepaid biz_1 pi_1 3 cus_1 2027-01-15T08:00:00.000Z"]);
+  });
+  it("does nothing until the payment is paid", async () => {
+    expect(await run(paid({ payment_status: "unpaid" }))).toMatch(/not paid/);
+    expect(log).toEqual([]);
+  });
+  it("refuses an amount that is not our price for those seats", async () => {
+    expect(await run(paid({ amount_subtotal: 100 }))).toMatch(/does not match/);
+    expect(await run(paid({ amount_subtotal: 44460 + 1 }))).toMatch(/does not match/);
+    expect(await run(paid({ metadata: { kind: "prepaid_3y", business_id: "biz_1", seats: "5" } }))).toMatch(/does not match/); // 5 staff cost more
+    expect(log).toEqual([]);
+  });
+  it("refuses invalid seats, and a session without a business or payment", async () => {
+    expect(await run(paid({ metadata: { kind: "prepaid_3y", business_id: "biz_1", seats: "2" } }))).toMatch(/invalid seats/);
+    expect(await run(paid({ metadata: { kind: "prepaid_3y", seats: "3" }, client_reference_id: null }))).toMatch(/without a business/);
+    expect(await run(paid({ payment_intent: null }))).toMatch(/without a business/);
+    expect(log).toEqual([]);
+  });
+  it("other one-time payments (no prepaid tag) are ignored", async () => {
+    expect(await run(paid({ metadata: {} }))).toMatch(/not a subscription/);
+    expect(log).toEqual([]);
   });
 });

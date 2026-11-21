@@ -1,7 +1,9 @@
 # 3-year prepaid package: proposal (awaiting approval)
 
-Status: **design only. Nothing in the database, Stripe or the app has been changed.**
-Written 21 Nov 2026. Decisions from the owner so far:
+Status (21 Nov 2026): **the code is written and tested, switched OFF. Migration 0019 is in the repository but has NOT been applied to the live database.**
+The owner accepted all the recommendations below ("ตามที่แนะนำ"). Switching on needs the steps under "Going live" at the end of this file.
+
+Decisions from the owner:
 
 - 35% off is taken from the full **monthly** price times 36 months (not from the yearly price).
 - Stripe: do **not** use a Subscription for this. Use a **one-time payment**, and let our own backend track the 3 years, the renewal notices and the end of the term.
@@ -29,9 +31,9 @@ For 3 staff the yearly plan x 3 years is £570.00, so the 3-year package is £12
 
 Why not charge at the end of the trial automatically: that needs a saved card and an off-session charge of £533 or more, which can be declined for strong customer authentication and would surprise the owner. Paying on purpose avoids both.
 
-## Database change (to approve; not applied)
+## Database change (migration `supabase/migrations/0019_three_year_prepaid.sql`, not yet applied to the live database)
 
-No new tables. One check constraint widened, one SQL function updated, three columns added, two functions added. The SQL below is a draft for review and is **not** in `supabase/migrations/` yet (the test suite runs everything in that folder).
+No new tables. A check constraint widened (plus two new ones: at least 3 staff, no SMS packs), the price and create-business functions updated, `sync_subscription` made to skip prepaid rows, three columns added, two functions added. The first draft is kept below for reference; the real file is the migration (it also carries the latest `sync_subscription` from 0016 and the SMS-pack rules).
 
 ```sql
 -- 0019_three_year_prepaid.sql (DRAFT)
@@ -126,3 +128,25 @@ The existing functions that assume a Stripe subscription (`sync_subscription`, t
 8. **Accounting.** Three years paid in advance is deferred income, and VAT is usually due when the money is received. Ask the accountant.
 9. **Stripe fees.** One large card payment pays the usual percentage fee once; check the real figure in Stripe.
 10. **Term start.** Recommended: from the payment date (a few remaining trial days are not added on top).
+
+## What was built (all behind `THREE_YEAR_ENABLED`, default off)
+
+- `src/lib/pricing.ts`: `PlanInterval` (`month | year | three_year`), the 3-year price, savings helpers. `BillingInterval` is unchanged on purpose: the subscription code (seat changes, SMS packs) never sees `three_year`.
+- Migration 0019 and `supabase/tests/schema.test.ts`: price twin test for 3 to 50 staff, constraints, activation (idempotent), end of term, and that subscription events never overwrite a prepaid plan.
+- Setup, step 2: a third plan card (greyed out below 3 staff, falls back to monthly if the staff count drops). The server refuses `three_year` while the switch is off.
+- Billing page: for a prepaid shop, the "Pay £X for 3 years" button before paying; term dates after paying; no team-size or SMS forms.
+- Stripe: `buildPrepaidCheckoutParams` (one-time payment, price from our formula, 20% VAT, invoice created, metadata tag `prepaid_3y`); the webhook checks the paid amount against the price before it calls `activate_prepaid_term`.
+- Cron: `runPrepaidJobs` closes ended terms and sends the 60 and 30 day notices (one column, claim-then-send like the trial emails).
+- Seat and SMS changes on a paid prepaid plan are refused ("contact support"). Adding staff during the term (top-up) is not built (phase 2).
+- Thai strings for all of the above.
+
+Not built: switching an existing monthly or yearly shop to the 3-year plan (only new sign-ups can choose it, and a shop on a free trial pays from Billing); the top-up for extra staff; refunds are manual through Stripe and support.
+
+## Going live (in this order)
+
+1. Brand and domain final (planned Feb 2027).
+2. A solicitor or accountant reads the terms (refund wording above, price lock, VAT on prepayment, deferred income).
+3. Apply `0019_three_year_prepaid.sql` to the live database (reviewed and approved by the owner first).
+4. Check in Stripe **Sandbox** first: pay a 3-year Checkout with a test card, see the webhook start the term (`3-year plan started`), see the invoice with VAT. Then Live with the smallest case, then a refund.
+5. Set `THREE_YEAR_ENABLED=true` in Vercel and redeploy.
+6. Put the 3-year price on the landing page pricing section and in the terms.

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { noTrialMode } from "@/lib/billing";
 import { smsPacksEnabled } from "@/lib/sms-switch";
+import { threeYearEnabled } from "@/lib/three-year-switch";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { zodState, type FormState } from "@/lib/form";
 import {
@@ -25,6 +26,9 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
   };
   const parsed = onboardingSchema.safeParse(raw);
   if (!parsed.success) return zodState(parsed.error, { ...raw, smsOn: formData.get("smsOn") === "on" ? "on" : "" });
+  if (parsed.data.interval === "three_year" && !threeYearEnabled()) {
+    return { fieldErrors: { interval: ["Choose a plan"] }, values: raw }; // the plan is not on sale yet
+  }
 
   // Optional logo: validate size and real file signature before creating anything.
   let logo: { bytes: Uint8Array; type: keyof typeof LOGO_TYPES } | null = null;

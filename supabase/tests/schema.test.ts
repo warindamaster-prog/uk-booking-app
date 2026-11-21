@@ -1116,3 +1116,80 @@ describe("deposit policy columns", () => {
   });
 });
 
+
+describe("3-year prepaid plan", () => {
+  const asServer = async <T,>(fn: () => Promise<T>) => {
+    await db.exec("set role service_role");
+    try { return await fn(); } finally { await db.exec("reset role"); }
+  };
+  let n = 0;
+  const shop = async (seats: number, interval = "three_year", packs = 0) => {
+    const i = ++n, uid = `00000000-0000-0000-0000-0000000cc${String(i).padStart(3, "0")}`, email = `three${i}@x.com`;
+    await db.exec(`insert into auth.users values ('${uid}','${email}')`);
+    const id = (await as(uid, email, () => db.query<{ id: string }>(
+      `select public.create_business('Three ${i}','three-${i}','Owner',$1,'07700 900004',$2,$3,$4) id`, [email, seats, interval, packs]))).rows[0].id;
+    return { id, uid, email };
+  };
+  const row = async (id: string) => (await db.query<Record<string, unknown>>(`select * from business_billing where business_id=$1`, [id])).rows[0];
+
+  it("SQL and TypeScript prices agree for every seat count from 3 to 50", async () => {
+    for (let seats = 3; seats <= 50; seats++) {
+      const r = await db.query<{ p: number }>(`select public.billing_price_pence($1,'three_year') p`, [seats]);
+      expect(r.rows[0].p, `${seats}`).toBe(pricePence(seats, "three_year"));
+    }
+    expect(pricePence(3, "three_year")).toBe(44460); // £444.60 for 3 staff
+  });
+
+  it("a shop can be created on the plan: trial as usual, price computed, nothing paid yet", async () => {
+    const s = await shop(3);
+    expect(await row(s.id)).toMatchObject({ status: "trialing", billing_interval: "three_year", staff_seats: 3, current_price_pence: 44460, prepaid_payment_intent_id: null, stripe_subscription_id: null });
+  });
+
+  it("needs at least 3 staff and takes no SMS packs", async () => {
+    await expect(shop(2)).rejects.toThrow(/at least 3 staff/);
+    await expect(shop(3, "three_year", 1)).rejects.toThrow(/sms packs/);
+  });
+
+  it("the table itself refuses fewer than 3 staff or SMS packs on the plan", async () => {
+    const s = await shop(4);
+    await expect(db.query(`update business_billing set staff_seats=2 where business_id=$1`, [s.id])).rejects.toThrow(/three_year_min_staff/);
+    await expect(db.query(`update business_billing set sms_packs=1 where business_id=$1`, [s.id])).rejects.toThrow(/three_year_no_sms/);
+  });
+
+  it("activating the term makes it active for exactly 3 years and is idempotent", async () => {
+    const s = await shop(3);
+    const paidAt = "2026-12-01T10:00:00Z";
+    await asServer(() => db.query(`select public.activate_prepaid_term($1,'pi_1','cus_1',3,$2)`, [s.id, paidAt]));
+    const a = await row(s.id);
+    expect(a).toMatchObject({ status: "active", billing_interval: "three_year", staff_seats: 3, stripe_customer_id: "cus_1", stripe_subscription_id: null,
+      prepaid_payment_intent_id: "pi_1", current_price_pence: 44460, paid_this_period_pence: 44460 });
+    expect((a.current_period_end as Date).toISOString()).toBe("2029-12-01T10:00:00.000Z");
+    await asServer(() => db.query(`select public.activate_prepaid_term($1,'pi_1','cus_1',3,'2027-05-05T00:00:00Z')`, [s.id])); // the same webhook again
+    expect((await row(s.id)).current_period_end).toEqual(a.current_period_end);
+  });
+
+  it("only the server can activate or expire; owners cannot", async () => {
+    const s = await shop(3);
+    await expect(as(s.uid, s.email, () => db.query(`select public.activate_prepaid_term($1,'pi_x',null,3,now())`, [s.id]))).rejects.toThrow(/permission denied/);
+    await expect(as(s.uid, s.email, () => db.query(`select public.expire_prepaid_terms()`))).rejects.toThrow(/permission denied/);
+  });
+
+  it("subscription events never overwrite a prepaid plan", async () => {
+    const s = await shop(3);
+    await asServer(() => db.query(`select public.activate_prepaid_term($1,'pi_2','cus_2',3,now())`, [s.id]));
+    await asServer(() => db.query(`select public.sync_subscription($1,'sub_x','cus_2','canceled','2027-01-01T00:00:00Z','month',1,0)`, [s.id]));
+    expect(await row(s.id)).toMatchObject({ status: "active", billing_interval: "three_year", staff_seats: 3, stripe_subscription_id: null });
+  });
+
+  it("closes the plan when the three years are over, and only then", async () => {
+    const s = await shop(3);
+    await asServer(() => db.query(`select public.activate_prepaid_term($1,'pi_3','cus_3',3,now())`, [s.id]));
+    const open = await asServer(() => db.query<{ n: number }>(`select public.expire_prepaid_terms() n`));
+    expect(open.rows[0].n).toBe(0);
+    expect((await row(s.id)).status).toBe("active");
+    await db.query(`update business_billing set current_period_end = now() - interval '1 minute' where business_id=$1`, [s.id]);
+    const closed = await asServer(() => db.query<{ n: number }>(`select public.expire_prepaid_terms() n`));
+    expect(closed.rows[0].n).toBeGreaterThanOrEqual(1);
+    expect((await row(s.id)).status).toBe("canceled");
+  });
+});

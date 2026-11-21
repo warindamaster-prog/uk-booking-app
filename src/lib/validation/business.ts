@@ -20,10 +20,14 @@ export const onboardingSchema = z.object({
   seats: z.string().trim().regex(/^\d+$/, "Enter a whole number")
     .transform(Number)
     .refine((n) => n >= PRICING.minSeats && n <= PRICING.maxSeats, `Enter a number from ${PRICING.minSeats} to ${PRICING.maxSeats}`),
-  interval: z.enum(["month", "year"], { message: "Choose monthly or yearly" }),
+  interval: z.enum(["month", "year", "three_year"], { message: "Choose a plan" }),
   /** Optional SMS confirmation packs chosen at setup (0 = none). */
   smsPacks: z.string().trim().default("0").pipe(z.string().regex(/^\d+$/, "Enter a whole number")).transform(Number)
     .refine((n) => n >= 0 && n <= PRICING.maxSmsPacks, `Enter a number from 0 to ${PRICING.maxSmsPacks}`),
+}).refine((d) => d.interval !== "three_year" || d.seats >= PRICING.threeYearMinSeats, {
+  path: ["seats"], message: `The 3-year plan needs at least ${PRICING.threeYearMinSeats} staff`,
+}).refine((d) => d.interval !== "three_year" || d.smsPacks === 0, {
+  path: ["interval"], message: "SMS packs are not part of the 3-year plan",
 });
 
 export const LOGO_MAX_BYTES = 2 * 1024 * 1024;

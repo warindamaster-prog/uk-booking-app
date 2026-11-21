@@ -70,3 +70,41 @@ export function trialEmailDue(r: TrialRow, now: Date): "reminder" | "final" | "e
   if (left <= 86_400_000 && r.trial_reminder_sent_at && new Date(r.trial_reminder_sent_at).getTime() < ends - 86_400_000) return "final";
   return null;
 }
+
+// ---------------------------------------------------------------------------------------------- 3-year prepaid plan
+
+/** The two notices before a prepaid 3-year term ends: 60 days and 30 days before. */
+export const PREPAID_NOTICE_DAYS = [60, 30] as const;
+
+export type PrepaidRow = { status: string; billing_interval: string; stripe_subscription_id: string | null; current_period_end: string | null; prepaid_notice_sent_at: string | null };
+
+/**
+ * Which renewal notice (if any) a prepaid shop is due. Pure, so it can be tested without a database.
+ * - "first": the term ends within 60 days and no notice went out yet.
+ * - "second": the term ends within 30 days and the only notice so far went out before the 30-day point
+ *   (prepaid_notice_sent_at holds the time of the LAST notice, so one column is enough).
+ */
+export function prepaidNoticeDue(r: PrepaidRow, now: Date): "first" | "second" | null {
+  if (r.status !== "active" || r.billing_interval !== "three_year" || r.stripe_subscription_id || !r.current_period_end) return null;
+  const end = new Date(r.current_period_end).getTime();
+  const left = end - now.getTime();
+  if (left <= 0) return null;
+  const day = 86_400_000;
+  if (left <= PREPAID_NOTICE_DAYS[0] * day && !r.prepaid_notice_sent_at) return "first";
+  if (left <= PREPAID_NOTICE_DAYS[1] * day && r.prepaid_notice_sent_at && new Date(r.prepaid_notice_sent_at).getTime() < end - PREPAID_NOTICE_DAYS[1] * day) return "second";
+  return null;
+}
+
+/** Sent 60 and 30 days before the prepaid term ends. The plan does not renew by itself. */
+export function renderPrepaidNoticeEmail(p: { shopName: string; endsOn: string; billingUrl: string; supportEmail: string }): Mail {
+  const lines = [
+    `Your 3-year plan for ${p.shopName} ends on ${p.endsOn}.`,
+    "It does not renew by itself and nothing will be charged automatically. After that date your online booking page closes: customers will not be able to book. You can still log in and see your bookings.",
+    `To keep your booking page open, you can pay for another 3 years, or choose a monthly or yearly plan, in Billing. Questions? ${p.supportEmail}`,
+  ];
+  return {
+    subject: `Your 3-year plan ends on ${p.endsOn}`,
+    text: [...lines, "", `Billing: ${p.billingUrl}`].join("\n"),
+    html: wrap("Your 3-year plan is ending", lines, { href: p.billingUrl, label: "Open Billing" }),
+  };
+}

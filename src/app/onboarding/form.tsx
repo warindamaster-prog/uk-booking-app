@@ -5,7 +5,7 @@ import { createBusiness } from "./actions";
 import { Field, FormError, SubmitButton } from "@/components/ui";
 import type { FormState } from "@/lib/form";
 import { formatPence } from "@/lib/money";
-import { grossPence, isValidSeats, isValidSmsPacks, PRICING, pricePence, smsPackPricePence, vatPence, yearlySavingPence, type BillingInterval } from "@/lib/pricing";
+import { grossPence, isValidSeats, isValidSmsPacks, PRICING, pricePence, smsPackPricePence, threeYearSavingVsMonthlyPence, vatPence, yearlySavingPence, type PlanInterval } from "@/lib/pricing";
 import { slugify } from "@/lib/slug";
 import { useT } from "@/lib/i18n/client";
 
@@ -18,22 +18,25 @@ const STEP1_REQUIRED: Record<string, string> = {
   phone: "Enter a valid phone number, for example 07700 900123",
 };
 
-export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false }: { siteHost: string; noTrial?: boolean; smsEnabled?: boolean }) {
+export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false, threeYearOn = false }: { siteHost: string; noTrial?: boolean; smsEnabled?: boolean; threeYearOn?: boolean }) {
   const t = useT();
   const [state, action, pending] = useActionState<FormState, FormData>(createBusiness, {});
   const v = state.values ?? {};
   const [slug, setSlug] = useState<string | null>(null); // null = follow the business name
   const [name, setName] = useState(v.name ?? "");
   const [seatsText, setSeatsText] = useState(v.seats ?? "1");
-  const [interval, setInterval] = useState<BillingInterval>(v.interval === "year" ? "year" : "month");
+  const [chosen, setInterval] = useState<PlanInterval>(v.interval === "year" ? "year" : v.interval === "three_year" && threeYearOn ? "three_year" : "month");
   const shownSlug = slug ?? v.slug ?? slugify(name);
   const [smsOn, setSmsOn] = useState(v.smsOn === "on");
   const [packsText, setPacksText] = useState(v.smsPacks && v.smsPacks !== "0" ? v.smsPacks : "1");
 
   const seats = /^\d+$/.test(seatsText) ? Number(seatsText) : NaN;
   const seatsOk = isValidSeats(seats);
+  // The 3-year plan needs at least 3 staff: with fewer the card is greyed out and the choice falls back to monthly.
+  const threeYearOk = threeYearOn && seatsOk && seats >= PRICING.threeYearMinSeats;
+  const interval: PlanInterval = chosen === "three_year" && !threeYearOk ? "month" : chosen;
   const packsN = /^\d+$/.test(packsText) ? Number(packsText) : NaN;
-  const packs = smsEnabled && smsOn && isValidSmsPacks(packsN) ? packsN : 0;
+  const packs = smsEnabled && smsOn && interval !== "three_year" && isValidSmsPacks(packsN) ? packsN : 0;
   const e = state.fieldErrors ?? {};
 
   // Two steps in one form: your business, then your plan. Nothing is saved until the last button.
@@ -95,18 +98,22 @@ export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false }
         <fieldset>
           <legend className="mb-2 text-sm font-medium text-[#2d4a38]">{t("Billing")}</legend>
           <div className="space-y-2">
-            {(["month", "year"] as const).map((i) => {
-              const price = seatsOk ? pricePence(seats, i, packs) : null;
+            {((threeYearOn ? ["month", "year", "three_year"] : ["month", "year"]) as PlanInterval[]).map((i) => {
+              const off = i === "three_year" && !threeYearOk;
+              const price = seatsOk && !off ? pricePence(seats, i, i === "three_year" ? 0 : packs) : null;
               return (
-                <label key={i} className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-4 transition has-[:checked]:border-[#34553e] has-[:checked]:bg-[#eef3e9]">
-                  <input type="radio" name="interval" value={i} checked={interval === i}
+                <label key={i} className={`flex items-start gap-3 rounded-xl border p-4 transition ${interval === i ? "border-[#34553e] bg-[#eef3e9]" : "border-stone-200 bg-white"} ${off ? "opacity-60" : ""}`}>
+                  <input type="radio" name="interval" value={i} checked={interval === i} disabled={off}
                     onChange={() => setInterval(i)} className="mt-1 h-5 w-5 accent-[#34553e]" />
                   <span>
-                    <span className="block font-medium">{t(i === "month" ? "Monthly" : "Yearly (12 months for the price of 10)")}</span>
+                    <span className="block font-medium">{t(i === "month" ? "Monthly" : i === "year" ? "Yearly (12 months for the price of 10)" : "3-year prepaid: 35% off")}</span>
                     <span className="block text-sm">
-                      {price === null ? t("Enter the number of people to see the price")
+                      {i === "three_year" && off ? t("Needs at least {n} staff.", { n: PRICING.threeYearMinSeats })
+                        : price === null ? t("Enter the number of people to see the price")
+                        : i === "three_year" ? t("{price} + VAT, paid once for 3 years", { price: formatPence(price) })
                         : t("{price} + VAT per {interval}", { price: formatPence(price), interval: t(i) })}
                       {price !== null && i === "year" && ` (${t("save {amount}", { amount: formatPence(yearlySavingPence(seats)) })})`}
+                      {price !== null && i === "three_year" && ` (${t("save {amount}", { amount: formatPence(threeYearSavingVsMonthlyPence(seats)) })})`}
                     </span>
                   </span>
                 </label>
@@ -116,7 +123,7 @@ export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false }
           {e.interval && <p className="mt-1 text-sm text-red-700 dark:text-red-400">{t(e.interval[0])}</p>}
         </fieldset>
 
-        {smsEnabled && (
+        {smsEnabled && interval !== "three_year" && (
         <div className="space-y-2">
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" name="smsOn" checked={smsOn} onChange={(ev) => setSmsOn(ev.target.checked)} className="mt-1 h-5 w-5 accent-[#34553e]" />
@@ -140,6 +147,9 @@ export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false }
           <p className="font-medium">{noTrial ? t("No free trial. You subscribe after setting up, and your booking page opens once you have.") : t("Free for {days} days. No card needed.", { days: PRICING.trialDays })}</p>
           {seatsOk && (() => {
             const net = pricePence(seats, interval, packs);
+            if (interval === "three_year") {
+              return <p>{t("You pay once, after the trial: {net} + {vat} VAT = {gross} for 3 years. Nothing is charged automatically, and you can pay any time from Billing.", { net: formatPence(net), vat: formatPence(vatPence(net)), gross: formatPence(grossPence(net)) })}</p>;
+            }
             return <p>{t(noTrial ? "Your plan" : "After the trial")}: {t("{net} + {vat} VAT = {gross} per {interval}.", { net: formatPence(net), vat: formatPence(vatPence(net)), gross: formatPence(grossPence(net)), interval: t(interval) })}</p>;
           })()}
         </div>
