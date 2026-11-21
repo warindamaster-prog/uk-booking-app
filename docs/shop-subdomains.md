@@ -1,6 +1,6 @@
 # Shop sub-domains: wp-consulting.getitbook.com
 
-Status (21 Nov 2026): code written and tested, **switched off** (`SHOP_SUBDOMAINS_ENABLED` unset). `*.getitbook.com` is added to the Vercel project, but the DNS and the wildcard certificate are not ready yet.
+Status (21 Nov 2026): **ON** (`SHOP_SUBDOMAINS_ENABLED=true` in Vercel). Nameservers of `getitbook.com` moved to Vercel (the NS delegation of `_acme-challenge` did not work for an external domain), the wildcard certificate `*.getitbook.com` was issued and auto-renews. Tested by hand on the live site: the shop page, the old `/b/<shop>` redirect, clean links, the sign-up form hint, the dashboard link, a booking, the confirmation email link and the cancellation (both emails sent).
 
 ## How it works
 - `src/proxy.ts` calls `routeShopHost()` (`src/lib/shop-host.ts`, tested): on `<shop>.getitbook.com`, `/`, `/book/...` and `/booking/...` are rewritten onto the existing `/b/<shop>/...` pages. Nothing else about the pages changed.

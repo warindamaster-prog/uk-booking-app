@@ -39,7 +39,7 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 
 ## Brand and domain
 
-- [ ] **Shop sub-domains** (`shop.getitbook.com`): code written and tested, switched off (`SHOP_SUBDOMAINS_ENABLED`). Needs the wildcard DNS and certificate first (see `docs/shop-subdomains.md`), then a test, then switch on.
+- [x] **Shop sub-domains** (`shop.getitbook.com`) are live and tested (21 Nov 2026). DNS is now managed at Vercel (nameservers `ns1/ns2.vercel-dns.com`); the domain is still registered and renewed at Namecheap. See `docs/shop-subdomains.md`.
 
 - [x] Domain `getitbook.com` bought at Namecheap (21 Nov 2026), DNS points to Vercel, `NEXT_PUBLIC_SITE_URL`, Supabase URLs, Stripe Connect redirect URI and both Live webhooks, and the GitHub `APP_URL` secret all moved to it.
 - [ ] Redirect the old `book.wpprecisionsystems.co.uk` to `getitbook.com` (keep the old domain for at least a year: customers hold old links). Do it only after a test sign-up on the new domain works.
