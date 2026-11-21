@@ -8,7 +8,8 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 - [ ] **Klean Me "trial ended" email** was never sent in the 21 Nov test because of the scheduler gap above. The trial has since been restored (ends 19 Jan 2027), so this only needs re-testing with a test shop whose trial is set to end soon.
 - [ ] **Keep Supabase from pausing (Free plan pauses after about 1 week of no activity).** The cron already reads the database, which probably counts. To be sure, add a light `/api/health` endpoint (one trivial query, creates no data) and have the scheduler call it every 6 days. Do not use test bookings: they create fake customers and may send emails.
 - [ ] **Weekly database backup (no automatic backups on Free).** A GitHub Actions workflow every 7 days runs `pg_dump`, encrypts the file (it holds customer personal data) and stores it as a private artifact. Download a copy to the owner's computer now and then. The database password goes into GitHub Secrets, entered by the owner. Alternative: Windows Task Scheduler running `pg_dump` on the owner's computer.
-- [ ] **Supabase Pro** before the first real charge (about 23 Jan 2027) or before the first shop takes real deposits, whichever is first. It adds daily backups (7 days) and no pausing. Also Vercel Pro (the Hobby plan is not for commercial use).
+- [ ] **Supabase stays on Free for now (decided 21 Nov 2026).** The pause is covered by the `/api/health` call and the cron, and data loss by the weekly encrypted backup. Revisit when about 3 shops pay, or when losing up to 7 days of data (the gap between backups) is no longer acceptable. Pro would add daily backups and one-click restore.
+- [ ] **Vercel Pro: buy when the first customer pays (decided 21 Nov 2026).** The Hobby plan is for non-commercial use. Before then, stay on Hobby.
 
 ## Money
 
