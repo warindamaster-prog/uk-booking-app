@@ -23,6 +23,7 @@ export function SettingsForm({ defaults, shopName }: {
   const [policy, setPolicy] = useState(v.depositPolicy ?? defaults.depositPolicy);
   const [refundable, setRefundable] = useState((v.depositRefundable ?? (defaults.depositRefundable ? "yes" : "no")) === "yes");
   const current = Number(v.cancellationHours ?? defaults.cancellationHours);
+  const [hours, setHours] = useState(current); // follows the select so the preview updates as the owner chooses
   const options = [...new Set([...CANCELLATION_PRESETS, defaults.cancellationHours])].sort((a, b) => a - b);
 
   return (
@@ -63,7 +64,7 @@ export function SettingsForm({ defaults, shopName }: {
 
       <div className="space-y-1">
         <label htmlFor="cancellationHours" className="block text-sm font-medium">Customers can cancel online</label>
-        <select id="cancellationHours" name="cancellationHours" defaultValue={String(current)}
+        <select id="cancellationHours" name="cancellationHours" defaultValue={String(current)} onChange={(ev) => setHours(Number(ev.target.value))}
           aria-describedby="cancel-hint" className="block w-full rounded-md border border-neutral-400 bg-transparent px-3 py-2 text-base">
           {options.map((h) => <option key={h} value={h}>{cancellationLabel(h)}</option>)}
         </select>
@@ -76,11 +77,11 @@ export function SettingsForm({ defaults, shopName }: {
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Deposits when a customer cancels online</legend>
         <label className="flex items-start gap-3 text-sm">
-          <input type="radio" name="depositRefundable" value="yes" checked={refundable} onChange={() => setRefundable(true)} className="mt-1 h-5 w-5" />
+          <input type="radio" name="depositRefundable" value="yes" defaultChecked={refundable} onChange={() => setRefundable(true)} className="mt-1 h-5 w-5" />
           <span>Refund the deposit automatically (if they cancel in time, as set above).</span>
         </label>
         <label className="flex items-start gap-3 text-sm">
-          <input type="radio" name="depositRefundable" value="no" checked={!refundable} onChange={() => setRefundable(false)} className="mt-1 h-5 w-5" />
+          <input type="radio" name="depositRefundable" value="no" defaultChecked={!refundable} onChange={() => setRefundable(false)} className="mt-1 h-5 w-5" />
           <span>Keep the deposit whenever a customer cancels. You can still refund a deposit yourself from the booking.</span>
         </label>
       </fieldset>
@@ -96,7 +97,7 @@ export function SettingsForm({ defaults, shopName }: {
         {e.depositPolicy && <p className="text-sm text-red-700 dark:text-red-400">{e.depositPolicy[0]}</p>}
         <div className="rounded-md border border-neutral-300 p-3 text-sm dark:border-neutral-700" aria-live="polite">
           <p className="mb-1 font-medium">What customers will see</p>
-          <p className="whitespace-pre-wrap">{depositPolicyText({ policy, refundable, windowHours: current, businessName: shopName })}</p>
+          <p className="whitespace-pre-wrap">{depositPolicyText({ policy, refundable, windowHours: hours, businessName: shopName })}</p>
         </div>
       </div>
 
