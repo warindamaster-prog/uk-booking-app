@@ -84,14 +84,14 @@ export function ShopPageForm({ defaults, hoursEnabled, hoursOwn, hoursInitial, c
             </fieldset>
             {ownNow && (
               <div className="space-y-3">
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("Times are UK time, 24-hour clock. Leave a day blank if closed. Use the second row for a split day, such as after a lunch break.")}</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("Times are UK time, 24-hour clock. Leave a day blank if closed.")}</p>
                 {WEEKDAYS.map((day, i) => {
                   const wd = i + 1;
                   const err = e[`day-${wd}`]?.[0];
                   return (
                     <fieldset key={day} className="rounded-md border border-neutral-300 p-3 dark:border-neutral-700">
                       <legend className="px-1 text-sm font-medium">{t(day)}</legend>
-                      {Array.from({ length: RANGES_PER_DAY }, (_, n) => (
+                      {Array.from({ length: initial[`h-${wd}-1-start`] ? RANGES_PER_DAY : 1 }, (_, n) => ( // one row a day; a second row only if one was saved earlier
                         <div key={n} className="mb-2 flex items-center gap-2 last:mb-0">
                           <TimeSelect id={`h-${wd}-${n}-start`} name={`h-${wd}-${n}-start`} label={t("{day} range {n} start", { day: t(day), n: n + 1 })} defaultValue={initial[`h-${wd}-${n}-start`] ?? ""} invalid={!!err} />
                           <span aria-hidden="true">{t("to")}</span>
