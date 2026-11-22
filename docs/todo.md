@@ -59,4 +59,5 @@ Notes written 21 Nov 2026. Nothing here has been done yet unless it says so.
 
 ## Shop front page (built, waiting for migration 0021 + switch)
 - Code is pushed with `SHOP_PAGE_ENABLED` off: `<shop>.getitbook.com/` still goes straight to the service list (now at `/services`).
+- Each shop ticks what to show in Settings → Booking page (tab B); nothing ticked = straight to the service list.
 - To switch on: apply `0021_shop_page.sql` (after approval), set `SHOP_PAGE_ENABLED=true` in Vercel, redeploy. Owners then edit it at Settings → Shop page.

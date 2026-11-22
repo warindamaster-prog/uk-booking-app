@@ -25,32 +25,37 @@ export default async function ShopPage({ params }: Props) {
   if (!business) notFound();
   const base = await shopBase(business.slug);
   // Until the front page is switched on, the shop's address opens the service list as before.
-  if (!shopPageEnabled()) redirect(`${base}/services`);
+  const show = new Set(business.shop_page_show ?? []);
+  if (!shopPageEnabled() || show.size === 0) redirect(`${base}/services`);
 
   const open = acceptsBookings(business);
+  const on = (k: string) => show.has(k);
   const [photos, days, services] = await Promise.all([
-    listShopPhotos(business.id), listOpeningTimes(business.id), open ? listBookableServices(business.id) : Promise.resolve([]),
+    on("cover") || on("gallery") ? listShopPhotos(business.id) : Promise.resolve([]),
+    on("hours") ? listOpeningTimes(business.id) : Promise.resolve([]),
+    open && on("services") ? listBookableServices(business.id) : Promise.resolve([]),
   ]);
   const hours = groupedOpeningTimes(days);
   const anyHours = days.some((d) => d.ranges.length);
-  const [cover, ...gallery] = photos;
+  const cover = on("cover") ? photos[0] : undefined;
+  const gallery = on("gallery") ? photos.slice(on("cover") ? 1 : 0) : [];
   const phoneHref = business.contact?.phone ? `tel:${business.contact.phone.replace(/[^+\d]/g, "")}` : null;
 
   return (
     <PublicShell accent={business.accent_color} base={base} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} wide>
       <section aria-labelledby="shop-h">
-        <div className="overflow-hidden rounded-2xl bg-[color:var(--brand-soft,#edf1e7)]">
+        {on("cover") && <div className="overflow-hidden rounded-2xl bg-[color:var(--brand-soft,#edf1e7)]">
           {cover ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={cover.url} alt={`${business.name}`} className="aspect-[16/8] w-full object-cover" />
           ) : (
             <div aria-hidden="true" className="flex aspect-[16/6] w-full items-center justify-center text-6xl font-semibold text-[color:var(--brand,#215b48)]/40">{business.name.trim().charAt(0).toUpperCase()}</div>
           )}
-        </div>
+        </div>}
         <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <h1 id="shop-h" className="text-[32px] font-semibold leading-tight tracking-[-1px]">{business.name}</h1>
-            {business.address && <p className="mt-2 text-[color:var(--brand-muted,#6b756d)]">{business.address}</p>}
+            {on("map") && business.address && <p className="mt-2 text-[color:var(--brand-muted,#6b756d)]">{business.address}</p>}
           </div>
           <div className="flex flex-wrap gap-3">
             {open ? <Link href={`${base}/services`} className={BUTTON}>Book now</Link> : null}
@@ -62,7 +67,7 @@ export default async function ShopPage({ params }: Props) {
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="space-y-8">
-          {business.about && (
+          {on("about") && business.about && (
             <section aria-labelledby="about-h" className={CARD}>
               <h2 id="about-h" className={H2}>About</h2>
               <p className="mt-3 whitespace-pre-line text-[15px] leading-7">{business.about}</p>
@@ -87,7 +92,7 @@ export default async function ShopPage({ params }: Props) {
               <Link href={`${base}/services`} className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-[color:var(--brand,#215b48)] hover:underline">{services.length > 6 ? "See all services and book →" : "Choose a service and book →"}</Link>
             </section>
           )}
-          {business.additional_info && (
+          {on("info") && business.additional_info && (
             <section aria-labelledby="info-h" className={CARD}>
               <h2 id="info-h" className={H2}>Additional information</h2>
               <p className="mt-3 whitespace-pre-line text-[15px] leading-7">{business.additional_info}</p>
@@ -109,7 +114,7 @@ export default async function ShopPage({ params }: Props) {
               </dl>
             </section>
           )}
-          {business.address && (
+          {on("map") && business.address && (
             <section aria-labelledby="map-h" className={`${CARD} overflow-hidden`}>
               <h2 id="map-h" className={H2}>Find us</h2>
               <p className="mt-2 text-[15px]">{business.address}</p>

@@ -5,7 +5,7 @@ import { requireOwner } from "@/lib/auth";
 import { zodState, type FormState } from "@/lib/form";
 import { shopPageEnabled } from "@/lib/shop-page-switch";
 import { LOGO_TYPES, sniffLogoType } from "@/lib/validation/business";
-import { MAX_PHOTOS, PHOTO_MAX_BYTES, shopPageSchema } from "@/lib/validation/shop-page";
+import { MAX_PHOTOS, PHOTO_MAX_BYTES, SECTION_KEYS, shopPageSchema } from "@/lib/validation/shop-page";
 
 export async function saveShopPage(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, business } = await requireOwner();
@@ -13,11 +13,12 @@ export async function saveShopPage(_: FormState, formData: FormData): Promise<Fo
   const raw = Object.fromEntries(["about", "address", "additionalInfo"].map((k) => [k, String(formData.get(k) ?? "")]));
   const parsed = shopPageSchema.safeParse(raw);
   if (!parsed.success) return zodState(parsed.error, raw);
+  const show = [...new Set(formData.getAll("show").map(String))].filter((k) => SECTION_KEYS.includes(k));
   const { error } = await supabase.from("businesses").update({
-    about: parsed.data.about, address: parsed.data.address, additional_info: parsed.data.additionalInfo,
+    about: parsed.data.about, address: parsed.data.address, additional_info: parsed.data.additionalInfo, shop_page_show: show,
   }).eq("id", business.id);
   if (error) return { error: "Something went wrong. Please try again.", values: raw };
-  revalidatePath("/dashboard/settings/shop-page");
+  revalidatePath("/dashboard/settings");
   return { message: "Saved.", values: raw };
 }
 
@@ -44,7 +45,7 @@ export async function uploadPhoto(formData: FormData): Promise<{ error?: string 
     await supabase.storage.from("shop-photos").remove([path]);
     return { error: "Could not save the photo. Please try again." };
   }
-  revalidatePath("/dashboard/settings/shop-page");
+  revalidatePath("/dashboard/settings");
   return {};
 }
 
@@ -55,7 +56,7 @@ export async function deletePhoto(formData: FormData): Promise<void> {
   if (!data) return;
   await supabase.from("shop_photos").delete().eq("id", id).eq("business_id", business.id);
   await supabase.storage.from("shop-photos").remove([data.path as string]);
-  revalidatePath("/dashboard/settings/shop-page");
+  revalidatePath("/dashboard/settings");
 }
 
 /** Makes a photo the cover (first in the list). */
@@ -64,5 +65,5 @@ export async function makeCover(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   const { data: first } = await supabase.from("shop_photos").select("sort_order").eq("business_id", business.id).order("sort_order").limit(1).maybeSingle();
   await supabase.from("shop_photos").update({ sort_order: (first?.sort_order ?? 0) - 1 }).eq("id", id).eq("business_id", business.id);
-  revalidatePath("/dashboard/settings/shop-page");
+  revalidatePath("/dashboard/settings");
 }

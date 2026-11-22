@@ -21,7 +21,7 @@ export type PublicBusiness = {
   /** The shop's colour name (only read while SHOP_COLORS_ENABLED). */
   accent_color?: string | null;
   /** The shop's front page texts (only read while SHOP_PAGE_ENABLED). */
-  about?: string | null; address?: string | null; additional_info?: string | null;
+  about?: string | null; address?: string | null; additional_info?: string | null; shop_page_show?: string[];
   billing_status: string; trial_ends_at: string;
   /** Only set when the owner allows customers to see them (Settings). */
   contact: { email: string | null; phone: string | null } | null;
@@ -40,7 +40,7 @@ export const acceptsBookings = (b: Pick<PublicBusiness, "billing_status" | "tria
 
 export async function getBusinessBySlug(slug: string): Promise<PublicBusiness | null> {
   const db = createAdminClient();
-  const cols: string = `id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, stripe_charges_enabled, stripe_account_id, cancellation_window_hours, deposit_policy, deposit_refundable, email, phone, show_contact_to_customers${shopColorsEnabled() ? ", accent_color" : ""}${shopPageEnabled() ? ", about, address, additional_info" : ""}`;
+  const cols: string = `id, name, slug, timezone, logo_path, slot_interval_minutes, min_notice_minutes, max_advance_days, privacy_notice_url, stripe_charges_enabled, stripe_account_id, cancellation_window_hours, deposit_policy, deposit_refundable, email, phone, show_contact_to_customers${shopColorsEnabled() ? ", accent_color" : ""}${shopPageEnabled() ? ", about, address, additional_info, shop_page_show" : ""}`;
   // The column list is built at run time (accent_color only once its migration is live), so supabase-js cannot type it: describe the row here.
   type Row = Omit<PublicBusiness, "billing_status" | "trial_ends_at" | "contact"> & { email: string | null; phone: string | null; show_contact_to_customers: boolean };
   const { data } = (await db.from("businesses").select(cols).eq("slug", slug).maybeSingle()) as unknown as { data: Row | null };

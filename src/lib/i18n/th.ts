@@ -1,5 +1,15 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "Info & Policy": "ข้อมูลและนโยบาย",
+ "Booking page": "หน้าจอง",
+ "What to show": "สิ่งที่จะแสดง",
+ "Show on your booking page": "แสดงในหน้าจองของคุณ",
+ "Tick what customers see first. If you tick nothing, customers go straight to your service list.": "ติ๊กสิ่งที่ลูกค้าจะเห็นก่อน ถ้าไม่ติ๊กอะไรเลย ลูกค้าจะข้ามไปหน้าเลือกบริการเลย",
+ "This is the first page customers see at {url}. The Book now button leads to your service list.": "นี่คือหน้าแรกที่ลูกค้าเห็นที่ {url} ปุ่ม Book now จะพาไปหน้าเลือกบริการ",
+ "About": "แนะนำร้าน",
+ "Opening times": "เวลาเปิดทำการ",
+ "Map and address": "แผนที่และที่อยู่",
+ "Gallery": "คลังภาพ",
  "Shop page": "หน้าร้าน",
  "Add photos, an about text, your address and extra information to the page customers see first.": "ใส่รูปภาพ ข้อความแนะนำร้าน ที่อยู่ และข้อมูลเพิ่มเติม ในหน้าแรกที่ลูกค้าเห็น",
  "Edit your shop page": "แก้ไขหน้าร้าน",

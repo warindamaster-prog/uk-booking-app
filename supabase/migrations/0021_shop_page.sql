@@ -3,9 +3,13 @@
 alter table public.businesses
   add column about text check (about is null or char_length(about) <= 1500),
   add column address text check (address is null or char_length(address) <= 300),
-  add column additional_info text check (additional_info is null or char_length(additional_info) <= 1500);
+  add column additional_info text check (additional_info is null or char_length(additional_info) <= 1500),
+  -- Which parts the front page shows: any of cover, about, services, hours, map, info, gallery. Empty = no front page:
+  -- the shop's address opens the service list directly (as before).
+  add column shop_page_show text[] not null default '{}'
+    check (shop_page_show <@ array['cover','about','services','hours','map','info','gallery']::text[]);
 
-grant update (about, address, additional_info) on public.businesses to authenticated;
+grant update (about, address, additional_info, shop_page_show) on public.businesses to authenticated;
 
 -- Photos: the first one is the cover. Customers see them through the server (service role); only the owner can write.
 create table public.shop_photos (

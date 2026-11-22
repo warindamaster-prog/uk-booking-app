@@ -134,6 +134,10 @@ describe("shop page (0021)", () => {
   });
   it("lets the owner edit the texts and limits their length", async () => {
     await as(A, "a@x.com", () => db.query(`update businesses set about='Hello', address='1 High St', additional_info='Parking at the back' where id=$1`, [bizA]));
+    await as(A, "a@x.com", () => db.query(`update businesses set shop_page_show=array['about','map'] where id=$1`, [bizA]));
+    await expect(as(A, "a@x.com", () => db.query(`update businesses set shop_page_show=array['nope'] where id=$1`, [bizA]))).rejects.toThrow(/check constraint/);
+    const none = await db.query(`select shop_page_show from businesses where id=$2 or id=$1`, [bizB, bizA]);
+    expect(none.rows.some((r: { shop_page_show: string[] }) => r.shop_page_show.length === 0)).toBe(true); // other shops default to no front page
     await expect(as(A, "a@x.com", () => db.query(`update businesses set about=$2 where id=$1`, [bizA, "x".repeat(1501)]))).rejects.toThrow(/check constraint/);
   });
 });

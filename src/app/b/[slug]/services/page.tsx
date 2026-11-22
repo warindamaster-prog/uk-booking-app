@@ -22,7 +22,7 @@ export default async function BusinessPage({ params }: Props) {
 
   return (
     <PublicShell accent={business.accent_color} base={base} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} step={1} summary={{}}>
-      {shopPageEnabled() && (
+      {shopPageEnabled() && (business.shop_page_show ?? []).length > 0 && (
         <Link href={base || "/"} className="mb-4 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[color:var(--brand-muted,#415044)] hover:underline">← About {business.name}</Link>
       )}
       <p className="mb-2 text-xs font-semibold uppercase tracking-[1.5px] text-[color:var(--brand-muted,#738064)]">Let&apos;s get you booked</p>
