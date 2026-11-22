@@ -3,24 +3,10 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
+import { shrinkImage } from "@/lib/shrink-image";
 import { deletePhoto, makeCover, uploadPhoto } from "./actions";
 
 type Photo = { id: string; url: string };
-
-/** Shrinks a big phone photo to at most 1800 px wide before uploading (falls back to the original if the browser cannot). */
-async function shrink(file: File): Promise<File> {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
-    if (scale === 1 && file.size <= 1_500_000) return file;
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.85));
-    return blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : file;
-  } catch { return file; }
-}
 
 export function PhotoManager({ photos, max }: { photos: Photo[]; max: number }) {
   const t = useT();
@@ -42,7 +28,7 @@ export function PhotoManager({ photos, max }: { photos: Photo[]; max: number }) 
     setBusy(true); setError("");
     for (const f of Array.from(files)) {
       const fd = new FormData();
-      fd.set("photo", await shrink(f));
+      fd.set("photo", await shrinkImage(f, 1800));
       const r = await uploadPhoto(fd);
       if (r.error) { setError(r.error); break; }
     }

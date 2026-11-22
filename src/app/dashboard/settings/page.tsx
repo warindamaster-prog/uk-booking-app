@@ -11,6 +11,8 @@ import { defaultHoursFields } from "@/lib/hours";
 import { minutesToHhmm } from "@/lib/time";
 import { MAX_PHOTOS } from "@/lib/validation/shop-page";
 import { ShopPageForm } from "./shop-page/shop-page-form";
+import { LogoManager } from "./shop-page/logo-manager";
+import { logoUrl } from "@/lib/booking/data";
 import { PhotoManager } from "./shop-page/photo-manager";
 import { shopUrl } from "@/lib/shop-host";
 import { publicEnv } from "@/lib/env";
@@ -60,6 +62,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         {tabBar}
         <p className="text-sm">{t("This is the first page customers see at {url}. The Book now button leads to your service list.", { url })}</p>
         <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-sm underline">{t("View your page")}</a>
+        <LogoManager url={logoUrl(business.logo_path)} initial={business.name.trim().charAt(0).toUpperCase()} />
         <ShopPageForm defaults={{ about: b?.about ?? "", address: b?.address ?? "", additionalInfo: b?.additional_info ?? "", show: b?.shop_page_show ?? [] }}
           hoursEnabled={hoursOn} hoursOwn={own} hoursInitial={hoursInitial}>
           <PhotoManager photos={photos} max={MAX_PHOTOS} />

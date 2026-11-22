@@ -1,5 +1,13 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "Logo": "โลโก้",
+ "Change logo": "เปลี่ยนโลโก้",
+ "+ Add logo": "+ เพิ่มโลโก้",
+ "Remove logo": "ลบโลโก้",
+ "Choose a logo.": "เลือกโลโก้",
+ "Shown in your dashboard and on your customers' booking pages. PNG, JPEG or WebP, square works best.": "แสดงในแดชบอร์ดและในหน้าจองของลูกค้า PNG, JPEG หรือ WebP ภาพสี่เหลี่ยมจัตุรัสจะสวยที่สุด",
+ "Could not upload the logo. Please try again.": "อัปโหลดโลโก้ไม่สำเร็จ กรุณาลองอีกครั้ง",
+ "Could not save the logo. Please try again.": "บันทึกโลโก้ไม่สำเร็จ กรุณาลองอีกครั้ง",
  "+ Add photos": "+ เพิ่มรูปภาพ",
  "Click to choose photos from your device. You can pick several at once.": "คลิกเพื่อเลือกรูปจากเครื่องของคุณ เลือกได้หลายรูปพร้อมกัน",
  "Use my team's working hours (Staff)": "ใช้เวลาทำงานของทีม (หน้า Staff)",

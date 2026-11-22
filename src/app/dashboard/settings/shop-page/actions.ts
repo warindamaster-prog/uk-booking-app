@@ -84,3 +84,36 @@ export async function makeCover(formData: FormData): Promise<void> {
   await supabase.from("shop_photos").update({ sort_order: (first?.sort_order ?? 0) - 1 }).eq("id", id).eq("business_id", business.id);
   revalidatePath("/dashboard/settings");
 }
+
+const LOGO_MAX = 2 * 1024 * 1024;
+
+/** Replaces the shop's logo (shown in the dashboard and on the booking pages). */
+export async function uploadLogo(formData: FormData): Promise<{ error?: string }> {
+  const { supabase, business } = await requireOwner();
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a logo." };
+  if (file.size > LOGO_MAX) return { error: "Logo must be 2 MB or smaller" };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = sniffLogoType(bytes);
+  if (!type) return { error: "Use a PNG, JPEG or WebP image." };
+  const path = `${business.id}/logo-${crypto.randomUUID()}.${LOGO_TYPES[type]}`;
+  const up = await supabase.storage.from("logos").upload(path, bytes, { contentType: type, cacheControl: "31536000" });
+  if (up.error) return { error: "Could not upload the logo. Please try again." };
+  const { data: old } = await supabase.from("businesses").select("logo_path").eq("id", business.id).single();
+  const upd = await supabase.from("businesses").update({ logo_path: path }).eq("id", business.id);
+  if (upd.error) {
+    await supabase.storage.from("logos").remove([path]);
+    return { error: "Could not save the logo. Please try again." };
+  }
+  if (old?.logo_path) await supabase.storage.from("logos").remove([old.logo_path as string]);
+  revalidatePath("/dashboard", "layout");
+  return {};
+}
+
+export async function removeLogo(): Promise<void> {
+  const { supabase, business } = await requireOwner();
+  const { data: old } = await supabase.from("businesses").select("logo_path").eq("id", business.id).single();
+  await supabase.from("businesses").update({ logo_path: null }).eq("id", business.id);
+  if (old?.logo_path) await supabase.storage.from("logos").remove([old.logo_path as string]);
+  revalidatePath("/dashboard", "layout");
+}
