@@ -5,7 +5,7 @@
  */
 export const shopColorsEnabled = () => process.env.SHOP_COLORS_ENABLED === "true";
 
-export type ThemeName = "green" | "blue" | "violet" | "rose" | "red" | "orange" | "teal" | "slate";
+export type ThemeName = "green" | "blue" | "violet" | "rose" | "red" | "orange" | "teal" | "slate" | "mono";
 
 export const THEMES: { name: ThemeName; label: string; hue: number; sat: number }[] = [
   { name: "green", label: "Green", hue: 134, sat: 26 },
@@ -16,6 +16,7 @@ export const THEMES: { name: ThemeName; label: string; hue: number; sat: number 
   { name: "orange", label: "Orange", hue: 22, sat: 62 },
   { name: "teal", label: "Teal", hue: 176, sat: 56 },
   { name: "slate", label: "Slate", hue: 215, sat: 14 },
+  { name: "mono", label: "Black & white", hue: 0, sat: 0 },
 ];
 
 export const THEME_NAMES = THEMES.map((t) => t.name) as [ThemeName, ...ThemeName[]];
@@ -35,6 +36,8 @@ function hsl(h: number, s: number, l: number): string {
 export type Palette = { brand: string; hover: string; soft: string; softer: string; border: string; text: string; ring: string; on: string; ink: string; muted: string; line: string; bg: string };
 
 export function paletteFor(name: ThemeName): Palette {
+  // Black and white: true greys, no tint at all.
+  if (name === "mono") return { brand: "#111111", hover: "#333333", soft: "#ebebeb", softer: "#f5f5f5", border: "#8a8a8a", text: "#111111", ring: "#444444", on: "#ffffff", ink: "#111111", muted: "#595959", line: "#e2e2e2", bg: "#fafafa" };
   const t = THEMES.find((x) => x.name === name) ?? THEMES[0];
   return {
     brand: hsl(t.hue, t.sat, 25), hover: hsl(t.hue, t.sat, 19), soft: hsl(t.hue, t.sat * 0.6, 92), softer: hsl(t.hue, t.sat * 0.5, 96),

@@ -1,5 +1,6 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "Black & white": "ขาวดำ",
  "Logo": "โลโก้",
  "Change logo": "เปลี่ยนโลโก้",
  "+ Add logo": "+ เพิ่มโลโก้",

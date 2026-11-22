@@ -150,6 +150,14 @@ describe("shop hours (0022)", () => {
   });
 });
 
+describe("shop colour mono (0023)", () => {
+  it("accepts black and white and still rejects unknown colours", async () => {
+    await as(A, "a@x.com", () => db.query(`update businesses set accent_color='mono' where id=$1`, [bizA]));
+    await as(A, "a@x.com", () => db.query(`update businesses set accent_color=null where id=$1`, [bizA]));
+    await expect(as(A, "a@x.com", () => db.query(`update businesses set accent_color='pink' where id=$1`, [bizA]))).rejects.toThrow(/check constraint/);
+  });
+});
+
 describe("set_working_hours / set_staff_services", () => {
   const S = "00000000-0000-0000-0000-00000000000c";
   let staffS: string;
