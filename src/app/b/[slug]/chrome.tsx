@@ -2,6 +2,7 @@ import { themeStyle } from "@/lib/theme";
 import Link from "next/link";
 import { DM_Sans } from "next/font/google";
 import { formatPence } from "@/lib/money";
+import { serif } from "@/lib/fonts";
 
 const sans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 
@@ -27,7 +28,7 @@ export function PublicShell({ base, accent, name, logo, privacyUrl, step, summar
   children: React.ReactNode;
 }) {
   return (
-    <div className={`public-light ${sans.variable} flex min-h-screen flex-col overflow-x-hidden bg-[color:var(--brand-bg,#f8f9f5)] font-[family-name:var(--font-dm-sans)] text-[color:var(--brand-ink,#243e32)] selection:bg-[color:var(--brand-soft,#d7eac2)]`} style={themeStyle(accent)}>
+    <div className={`public-light ${sans.variable} ${serif.variable} [&_.font-serif]:font-[family-name:var(--font-dm-serif)] flex min-h-screen flex-col overflow-x-hidden bg-[color:var(--brand-bg,#f8f9f5)] font-[family-name:var(--font-dm-sans)] text-[color:var(--brand-ink,#243e32)] selection:bg-[color:var(--brand-soft,#d7eac2)]`} style={themeStyle(accent)}>
       <header className="border-b border-[color:var(--brand-line,#e3e8de)] bg-[#fffefa]">
         <div className="mx-auto flex min-h-20 max-w-[1100px] items-center justify-between gap-4 px-5 py-3 lg:px-8">
           <Link href={base || "/"} className="flex min-h-11 items-center gap-3">
