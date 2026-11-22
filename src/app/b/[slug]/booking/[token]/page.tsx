@@ -1,4 +1,4 @@
-import { cancelDepositNote, depositPolicyText } from "@/lib/deposit-policy";
+import { cancelDepositNote, cancelRule, depositPolicyText } from "@/lib/deposit-policy";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -41,12 +41,14 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
 
   // Customers can cancel online until the business's cancellation window starts (unpaid holds: any time).
   const start = new Date(b.starts_at);
-  const deadline = new Date(start.getTime() - business.cancellation_window_hours * 3_600_000);
+  const { anyTime, deadline } = cancelRule({ refundable: business.deposit_refundable, depositPence: b.deposit_pence, windowHours: business.cancellation_window_hours, start });
   const upcoming = start > new Date();
   const canCancel = upcoming && (b.status === "pending_payment" || (b.status === "confirmed" && new Date() <= deadline));
   const cancelNote = !upcoming || !["confirmed", "pending_payment"].includes(b.status) ? null
     : canCancel && b.status === "confirmed"
-      ? <p className="text-sm">You can cancel online until {formatDateTime(deadline, business.timezone)}.</p>
+      ? <p className="text-sm">{anyTime
+          ? "You can cancel online at any time before your appointment. Your deposit is not refunded if you cancel."
+          : `You can cancel online until ${formatDateTime(deadline, business.timezone)}.`}</p>
       : !canCancel ? <p className="text-sm">Online cancellation has closed. To change or cancel, please reply to your confirmation email or contact {business.name} directly.</p> : null;
 
   return (

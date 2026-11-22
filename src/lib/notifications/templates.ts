@@ -24,6 +24,8 @@ export type EmailData = {
   dashboardUrl: string;
   /** Last moment the customer can cancel online, or null if not applicable. */
   cancelDeadline: Date | null;
+  /** The shop keeps the deposit, so the customer can cancel any time before the start (the deadline is the start). */
+  cancelAnyTime?: boolean;
   cancelledBy: "customer" | "business" | null;
   /** The business's contact details to show the customer, or null when the owner has turned this off. */
   contact: { email: string | null; phone: string | null } | null;
@@ -117,7 +119,9 @@ export function renderEmail(kind: EmailKind, recipient: Recipient, d: EmailData)
     businessName: d.businessName, startsAt: d.startsAt, tz: d.tz }) : "";
   const manage: Row[] = [["View or cancel your booking", d.manageUrl]];
   const policyRow: Row[] = d.depositPolicy && d.depositPence > 0 ? [["Deposit policy", d.depositPolicy]] : [];
-  const deadline = d.cancelDeadline
+  const deadline = d.cancelDeadline && d.cancelAnyTime
+    ? `You can cancel online at any time before your appointment. Your deposit is not refunded if you cancel.`
+    : d.cancelDeadline
     ? `You can cancel online until ${formatDateTime(d.cancelDeadline, d.tz)}. After that, please contact ${d.businessName} directly.`
     : `To cancel, please contact ${d.businessName} directly.`;
 

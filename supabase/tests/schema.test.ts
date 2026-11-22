@@ -647,6 +647,24 @@ describe("emails: booking ids, ICS sequence, outbox and customer cancellation", 
     await db.query(`update businesses set cancellation_window_hours=24 where id=$1`, [bizA]);
   });
 
+  it("a shop that keeps deposits lets customers cancel any time before the start (0024)", async () => {
+    const soon = (await db.query<{ id: string }>(
+      `insert into bookings(business_id,staff_id,service_id,customer_id,starts_at,ends_at,status,service_name,duration_minutes,price_pence,deposit_pence,deposit_status,cancel_token_hash)
+       values($1,$2,$3,$4, now() + interval '5 hours', now() + interval '6 hours','confirmed','Gel',60,3000,1000,'paid',${hash("tok-keep")}) returning id`,
+      [bizA, staffA, svc, cus])).rows[0].id;
+    await expect(cancelBy("tok-keep")).rejects.toThrow(/cancellation_window_closed/); // refundable shop: the 24 hour window still applies
+    await db.query(`update businesses set deposit_refundable=false where id=$1`, [bizA]);
+    await cancelBy("tok-keep");
+    expect((await bookingOf(soon)).status).toBe("cancelled");
+    const started = (await db.query<{ id: string }>(
+      `insert into bookings(business_id,staff_id,service_id,customer_id,starts_at,ends_at,status,service_name,duration_minutes,price_pence,deposit_pence,deposit_status,cancel_token_hash)
+       values($1,$2,$3,$4, now() - interval '1 hour', now() + interval '1 hour','confirmed','Gel',120,3000,1000,'paid',${hash("tok-started")}) returning id`,
+      [bizA, staffA, svc, cus])).rows[0].id;
+    await expect(cancelBy("tok-started")).rejects.toThrow(/cancellation_window_closed/); // never after it has started
+    expect((await bookingOf(started)).status).toBe("confirmed");
+    await db.query(`update businesses set deposit_refundable=true where id=$1`, [bizA]);
+  });
+
   it("unpaid holds can always be cancelled, and the function is server-only", async () => {
     const hold = (await db.query<{ id: string }>(
       `insert into bookings(business_id,staff_id,service_id,customer_id,starts_at,ends_at,status,service_name,duration_minutes,price_pence,hold_expires_at,cancel_token_hash)

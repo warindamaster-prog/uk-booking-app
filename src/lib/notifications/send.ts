@@ -5,7 +5,7 @@ import { deriveCancelToken } from "@/lib/booking/token";
 import type { Mailers } from "./provider";
 import { buildIcs } from "./ics";
 import { MAX_ATTEMPTS, safeDisplayName } from "./rules";
-import { depositPolicyText } from "@/lib/deposit-policy";
+import { cancelRule, depositPolicyText } from "@/lib/deposit-policy";
 import { loadShopMailbox, recordShopMailboxError } from "./shop-mailbox";
 import { renderEmail, type EmailKind, type Recipient } from "./templates";
 
@@ -53,13 +53,13 @@ export async function sendNotification(
 
   const startsAt = new Date(b.starts_at), endsAt = new Date(b.ends_at);
   const manageUrl = shopUrl({ siteUrl: cfg.siteUrl, slug: biz.slug, path: `/booking/${deriveCancelToken(cfg.tokenSecret, b.id).raw}` });
-  const deadline = new Date(startsAt.getTime() - biz.cancellation_window_hours * 3_600_000);
+  const { anyTime, deadline } = cancelRule({ refundable: biz.deposit_refundable, depositPence: b.deposit_pence, windowHours: biz.cancellation_window_hours, start: startsAt });
   const rendered = renderEmail(req.kind, req.recipient, {
     businessName: biz.name, serviceName: b.service_name, staffName: staff?.name ?? "your practitioner",
     customerName: cust.name, customerEmail: cust.email, customerPhone: cust.phone,
     startsAt, endsAt, tz: biz.timezone, pricePence: b.price_pence, depositPence: b.deposit_pence, depositStatus: b.deposit_status,
     manageUrl, dashboardUrl: `${cfg.siteUrl}/dashboard/bookings/${b.id}`,
-    cancelDeadline: b.status === "confirmed" && deadline > new Date() ? deadline : null,
+    cancelDeadline: b.status === "confirmed" && deadline > new Date() ? deadline : null, cancelAnyTime: anyTime,
     cancelledBy: b.cancelled_by, shopMessage: biz.confirmation_message,
     depositPolicy: b.deposit_pence > 0 ? depositPolicyText({ policy: biz.deposit_policy, refundable: biz.deposit_refundable, windowHours: biz.cancellation_window_hours, businessName: biz.name }) : null,
     contact: biz.show_contact_to_customers ? { email: biz.email, phone: biz.phone } : null,

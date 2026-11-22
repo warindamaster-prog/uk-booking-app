@@ -16,6 +16,12 @@ describe("ics", () => {
   const base = { uid: "abc@example.com", sequence: 0, method: "PUBLISH" as const, start: data.startsAt, end: data.endsAt,
     summary: "Gel manicure, Lily Nails", now: new Date("2026-05-01T10:00:00Z") };
 
+  it("says customers can cancel any time, without a refund, when the shop keeps the deposit", () => {
+    const text = renderEmail("confirmation", "customer", { ...data, cancelAnyTime: true, cancelDeadline: data.startsAt }).text;
+    expect(text).toContain("at any time before your appointment");
+    expect(text).toContain("deposit is not refunded");
+  });
+
   it("builds a valid event in UTC with CRLF line endings", () => {
     const s = buildIcs({ ...base, description: "Booked online", url: "https://app.example/x" });
     expect(s.endsWith("\r\n")).toBe(true);

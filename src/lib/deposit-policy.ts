@@ -26,3 +26,12 @@ export function cancelDepositNote(p: { refundable: boolean; depositPaid: boolean
     ? "Your deposit will be refunded to your card."
     : `${p.businessName} will keep your deposit if you cancel.`;
 }
+
+/**
+ * When a customer may cancel online. A shop that keeps the deposit (not refundable) and a booking with a deposit: any time before
+ * the appointment starts, because no refund depends on the window. Otherwise: until the window starts.
+ */
+export function cancelRule(p: { refundable: boolean; depositPence: number; windowHours: number; start: Date }): { anyTime: boolean; deadline: Date } {
+  const anyTime = !p.refundable && p.depositPence > 0;
+  return { anyTime, deadline: anyTime ? p.start : new Date(p.start.getTime() - p.windowHours * 3_600_000) };
+}

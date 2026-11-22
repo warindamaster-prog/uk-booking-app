@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cancelDepositNote, depositPolicyText } from "../deposit-policy";
+import { cancelDepositNote, cancelRule, depositPolicyText } from "../deposit-policy";
 
 const base = { policy: null, refundable: true, windowHours: 24, businessName: "Nails <b>" };
 
@@ -25,5 +25,17 @@ describe("deposit policy wording", () => {
     expect(cancelDepositNote({ refundable: true, depositPaid: true, businessName: "X" })).toBe("Your deposit will be refunded to your card.");
     expect(cancelDepositNote({ refundable: false, depositPaid: true, businessName: "X" })).toBe("X will keep your deposit if you cancel.");
     expect(cancelDepositNote({ refundable: true, depositPaid: false, businessName: "X" })).toBeNull();
+  });
+});
+
+describe("cancelRule", () => {
+  const start = new Date("2026-12-10T12:00:00Z");
+  it("lets customers cancel any time when the shop keeps a deposit", () => {
+    const r = cancelRule({ refundable: false, depositPence: 1000, windowHours: 72, start });
+    expect(r).toEqual({ anyTime: true, deadline: start });
+  });
+  it("keeps the window when the deposit is refundable or there is no deposit", () => {
+    expect(cancelRule({ refundable: true, depositPence: 1000, windowHours: 72, start })).toEqual({ anyTime: false, deadline: new Date("2026-12-07T12:00:00Z") });
+    expect(cancelRule({ refundable: false, depositPence: 0, windowHours: 24, start }).anyTime).toBe(false);
   });
 });
