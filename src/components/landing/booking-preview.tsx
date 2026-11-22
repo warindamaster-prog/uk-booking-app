@@ -31,8 +31,9 @@ export function BookingPreview() {
           <span className="flex-1 text-center">yourbusiness.book.app</span><Icon name="link" className="!h-3.5 !w-3.5" />
         </div>
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#eaf0e5] font-serif text-2xl italic text-[#36513c]">s.</div>
-          <div><p className="font-semibold tracking-tight">Studio &amp; Co.</p><p className="mt-0.5 text-xs text-stone-600">A little time, just for you.</p></div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/wp-logo.png" alt="WP Precision Systems logo" width={48} height={48} className="h-12 w-12 rounded-xl border border-stone-100 object-cover" />
+          <div><p className="font-semibold tracking-tight">WP Precision Systems</p><p className="mt-0.5 text-xs text-stone-600">A little time, just for you.</p></div>
           <span className="ml-auto rounded-full bg-[#f2f5ed] px-2.5 py-1 text-xs text-[#456343]">Demo</span>
         </div>
         <h3 className="text-xl font-semibold tracking-tight">Book your next appointment</h3>
