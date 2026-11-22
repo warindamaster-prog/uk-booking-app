@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireOwner } from "@/lib/auth";
 import { zodState, type FormState } from "@/lib/form";
 import { shopPageEnabled } from "@/lib/shop-page-switch";
+import { parseWeeklyHours } from "@/lib/hours";
+import { shopHoursEnabled } from "@/lib/shop-page-switch";
 import { LOGO_TYPES, sniffLogoType } from "@/lib/validation/business";
 import { MAX_PHOTOS, PHOTO_MAX_BYTES, SECTION_KEYS, shopPageSchema } from "@/lib/validation/shop-page";
 
@@ -13,9 +15,24 @@ export async function saveShopPage(_: FormState, formData: FormData): Promise<Fo
   const raw = Object.fromEntries(["about", "address", "additionalInfo"].map((k) => [k, String(formData.get(k) ?? "")]));
   const parsed = shopPageSchema.safeParse(raw);
   if (!parsed.success) return zodState(parsed.error, raw);
+  // Opening times: "auto" uses the team's working hours; "own" saves what the shop typed.
+  let shopHours: { weekday: number; start: number; end: number }[] | null | undefined;
+  const hoursFields = Object.fromEntries([...formData.entries()].filter(([k]) => k.startsWith("h-")).map(([k, v]) => [k, String(v)]));
+  if (shopHoursEnabled()) {
+    if (formData.get("hoursMode") === "own") {
+      const r = parseWeeklyHours((k) => String(formData.get(k) ?? ""));
+      if (!r.ok) {
+        const fieldErrors: Record<string, string[]> = {};
+        for (const [day, msg] of Object.entries(r.errors)) fieldErrors[`day-${day}`] = [msg];
+        return { error: "Please fix the highlighted days.", fieldErrors, values: { ...raw, hoursMode: "own", ...hoursFields } };
+      }
+      shopHours = r.hours.map((h) => ({ weekday: h.weekday, start: h.start, end: h.end }));
+    } else shopHours = null;
+  }
   const show = [...new Set(formData.getAll("show").map(String))].filter((k) => SECTION_KEYS.includes(k));
   const { error } = await supabase.from("businesses").update({
     about: parsed.data.about, address: parsed.data.address, additional_info: parsed.data.additionalInfo, shop_page_show: show,
+    ...(shopHours !== undefined ? { shop_hours: shopHours } : {}),
   }).eq("id", business.id);
   if (error) return { error: "Something went wrong. Please try again.", values: raw };
   revalidatePath("/dashboard/settings");

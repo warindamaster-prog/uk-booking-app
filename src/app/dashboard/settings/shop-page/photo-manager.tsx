@@ -30,6 +30,13 @@ export function PhotoManager({ photos, max }: { photos: Photo[]; max: number }) 
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
 
+  // Buttons, not forms: this component sits inside the page's main form.
+  function run(action: (fd: FormData) => Promise<void>, id: string) {
+    const fd = new FormData();
+    fd.set("id", id);
+    start(async () => { await action(fd); router.refresh(); });
+  }
+
   async function onPick(files: FileList | null) {
     if (!files?.length) return;
     setBusy(true); setError("");
@@ -54,11 +61,9 @@ export function PhotoManager({ photos, max }: { photos: Photo[]; max: number }) 
               <img src={p.url} alt="" className="aspect-[4/3] w-full rounded-md object-cover" />
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 {i === 0 ? <span className="font-medium">{t("Cover photo")}</span> : (
-                  <form action={(fd) => start(() => makeCover(fd))}><input type="hidden" name="id" value={p.id} />
-                    <button disabled={pending} className="min-h-11 underline">{t("Make cover")}</button></form>
+                  <button type="button" disabled={pending} onClick={() => run(makeCover, p.id)} className="min-h-11 underline">{t("Make cover")}</button>
                 )}
-                <form action={(fd) => start(() => deletePhoto(fd))}><input type="hidden" name="id" value={p.id} />
-                  <button disabled={pending} className="min-h-11 text-red-700 underline dark:text-red-400">{t("Delete")}</button></form>
+                <button type="button" disabled={pending} onClick={() => run(deletePhoto, p.id)} className="min-h-11 text-red-700 underline dark:text-red-400">{t("Delete")}</button>
               </div>
             </li>
           ))}
@@ -66,11 +71,13 @@ export function PhotoManager({ photos, max }: { photos: Photo[]; max: number }) 
       )}
       {photos.length < max && (
         <div>
-          <label htmlFor="photos" className="block text-sm font-medium">{t("Add photos")}</label>
-          <input id="photos" ref={input} type="file" multiple accept="image/png,image/jpeg,image/webp" disabled={busy}
-            onChange={(e) => onPick(e.target.files)} className="mt-1 block w-full text-sm" />
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{t("PNG, JPEG or WebP. The first photo is shown at the top of your page. Up to {n} photos.", { n: String(max) })}</p>
-          {busy && <p role="status" className="mt-2 text-sm">{t("Uploading…")}</p>}
+          <label htmlFor="photos" className={`flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-neutral-400 px-4 py-5 text-center transition hover:border-[color:var(--brand,#34553e)] hover:bg-[color:var(--brand-softer,#f4f6ef)] focus-within:ring-2 focus-within:ring-[color:var(--brand-ring,#397451)] ${busy ? "pointer-events-none opacity-60" : ""}`}>
+            <span className="inline-flex min-h-11 items-center rounded-lg bg-[color:var(--brand,#34553e)] px-5 text-sm font-semibold text-[color:var(--brand-on,#fff)]">{busy ? t("Uploading…") : t("+ Add photos")}</span>
+            <span className="text-sm text-neutral-600 dark:text-neutral-400">{t("Click to choose photos from your device. You can pick several at once.")}</span>
+            <input id="photos" ref={input} type="file" multiple accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(e) => onPick(e.target.files)} className="sr-only" />
+          </label>
+          <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">{t("PNG, JPEG or WebP. The first photo is shown at the top of your page. Up to {n} photos.", { n: String(max) })}</p>
+          {busy && <p role="status" className="sr-only">{t("Uploading…")}</p>}
         </div>
       )}
       {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{t(error)}</p>}

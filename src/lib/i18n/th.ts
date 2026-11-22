@@ -1,5 +1,9 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "+ Add photos": "+ เพิ่มรูปภาพ",
+ "Click to choose photos from your device. You can pick several at once.": "คลิกเพื่อเลือกรูปจากเครื่องของคุณ เลือกได้หลายรูปพร้อมกัน",
+ "Use my team's working hours (Staff)": "ใช้เวลาทำงานของทีม (หน้า Staff)",
+ "Set my own opening times": "กำหนดเวลาเปิดทำการเอง",
  "Info & Policy": "ข้อมูลและนโยบาย",
  "Booking page": "หน้าจอง",
  "What to show": "สิ่งที่จะแสดง",

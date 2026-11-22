@@ -142,6 +142,14 @@ describe("shop page (0021)", () => {
   });
 });
 
+describe("shop hours (0022)", () => {
+  it("lets the owner save typed-in opening times, only as a JSON array", async () => {
+    await as(A, "a@x.com", () => db.query(`update businesses set shop_hours='[{"weekday":1,"start":540,"end":1020}]'::jsonb where id=$1`, [bizA]));
+    await as(A, "a@x.com", () => db.query(`update businesses set shop_hours=null where id=$1`, [bizA]));
+    await expect(as(A, "a@x.com", () => db.query(`update businesses set shop_hours='{"a":1}'::jsonb where id=$1`, [bizA]))).rejects.toThrow(/check constraint/);
+  });
+});
+
 describe("set_working_hours / set_staff_services", () => {
   const S = "00000000-0000-0000-0000-00000000000c";
   let staffS: string;

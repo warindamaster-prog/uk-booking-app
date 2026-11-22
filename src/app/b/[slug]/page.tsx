@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { acceptsBookings, getBusinessBySlug, listBookableServices, listOpeningTimes, listShopPhotos, logoUrl } from "@/lib/booking/data";
 import { formatPence } from "@/lib/money";
-import { groupedOpeningTimes } from "@/lib/opening-hours";
+import { groupedOpeningTimes, openingTimesFromOwn } from "@/lib/opening-hours";
 import { shopBase } from "@/lib/shop-base";
 import { shopPageEnabled } from "@/lib/shop-page-switch";
 import { mapEmbedUrl, mapLinkUrl } from "@/lib/validation/shop-page";
@@ -40,7 +40,7 @@ export default async function ShopPage({ params }: Props) {
   const open = acceptsBookings(business);
   const [photos, days, services] = await Promise.all([
     on("cover") || on("gallery") ? listShopPhotos(business.id) : Promise.resolve([]),
-    on("hours") ? listOpeningTimes(business.id) : Promise.resolve([]),
+    !on("hours") ? Promise.resolve([]) : Array.isArray(business.shop_hours) ? Promise.resolve(openingTimesFromOwn(business.shop_hours)) : listOpeningTimes(business.id),
     open && on("services") ? listBookableServices(business.id) : Promise.resolve([]),
   ]);
   const hours = groupedOpeningTimes(days);

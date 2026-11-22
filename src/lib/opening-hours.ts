@@ -36,3 +36,15 @@ export function groupedOpeningTimes(days: OpeningDay[]): { label: string; text: 
   }
   return out.map((g) => ({ label: g.first === g.last ? g.first : `${g.first} – ${g.last}`, text: g.text }));
 }
+
+export type OwnHour = { weekday: number; start: number; end: number };
+
+/** Opening times the shop typed in (stored as shop_hours). Anything malformed is ignored. */
+export function openingTimesFromOwn(hours: unknown): OpeningDay[] {
+  const rows = (Array.isArray(hours) ? hours : []).flatMap((h) => {
+    const o = h as Partial<OwnHour>;
+    return Number.isInteger(o.weekday) && Number.isInteger(o.start) && Number.isInteger(o.end) && o.end! > o.start! && o.weekday! >= 1 && o.weekday! <= 7
+      ? [{ weekday: o.weekday!, start_minute: o.start!, end_minute: o.end! }] : [];
+  });
+  return openingTimes(rows);
+}

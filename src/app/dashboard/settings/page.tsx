@@ -5,8 +5,10 @@ import { getT } from "@/lib/i18n/server";
 import { isThemeName, shopColorsEnabled } from "@/lib/theme";
 import { ColorForm } from "./color-form";
 import Link from "next/link";
-import { shopPageEnabled } from "@/lib/shop-page-switch";
+import { shopHoursEnabled, shopPageEnabled } from "@/lib/shop-page-switch";
 import { listShopPhotos } from "@/lib/booking/data";
+import { defaultHoursFields } from "@/lib/hours";
+import { minutesToHhmm } from "@/lib/time";
 import { MAX_PHOTOS } from "@/lib/validation/shop-page";
 import { ShopPageForm } from "./shop-page/shop-page-form";
 import { PhotoManager } from "./shop-page/photo-manager";
@@ -22,34 +24,46 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const tab = tabsOn && (await searchParams).tab === "booking" ? "booking" : "info";
   const tabs = [{ id: "info", label: "Info & Policy", href: "/dashboard/settings" }, { id: "booking", label: "Booking page", href: "/dashboard/settings?tab=booking" }];
   const tabBar = tabsOn && (
-    <nav aria-label={t("Settings")} className="flex gap-2 border-b border-neutral-300 dark:border-neutral-700">
+    <nav aria-label={t("Settings")} className="flex flex-wrap gap-2">
       {tabs.map((x) => (
         <Link key={x.id} href={x.href} aria-current={tab === x.id ? "page" : undefined}
-          className={`-mb-px inline-flex min-h-12 items-center border-b-2 px-4 text-sm font-medium ${tab === x.id ? "border-[color:var(--brand,#34553e)] text-[color:var(--brand,#34553e)]" : "border-transparent text-neutral-600 hover:text-inherit dark:text-neutral-400"}`}>
-          <span className="mr-2 rounded bg-neutral-200 px-1.5 text-xs font-semibold text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100">{x.id === "info" ? "A" : "B"}</span>{t(x.label)}
+          className={`inline-flex min-h-12 items-center rounded-lg border-2 px-5 text-sm font-semibold ${tab === x.id ? "border-[color:var(--brand,#34553e)] bg-white text-[color:var(--brand,#34553e)]" : "border-transparent text-neutral-600 hover:border-neutral-300 dark:text-neutral-400"}`}>
+          {t(x.label)}
         </Link>
       ))}
     </nav>
   );
 
   if (tab === "booking") {
-    const { data: b } = await supabase.from("businesses").select("about, address, additional_info, shop_page_show").eq("id", business.id).single();
+    const hoursOn = shopHoursEnabled();
+    const cols: string = `about, address, additional_info, shop_page_show${hoursOn ? ", shop_hours" : ""}`;
+    const { data: b } = (await supabase.from("businesses").select(cols).eq("id", business.id).single()) as unknown as {
+      data: { about: string | null; address: string | null; additional_info: string | null; shop_page_show: string[] | null; shop_hours?: { weekday: number; start: number; end: number }[] | null } | null;
+    };
     const photos = await listShopPhotos(business.id);
     const url = shopUrl({ siteUrl: publicEnv().NEXT_PUBLIC_SITE_URL, slug: business.slug });
+    const own = hoursOn && Array.isArray(b?.shop_hours);
+    // Typed-in hours fill the form; otherwise suggest 08:00 to 17:00, which only becomes real when the owner saves.
+    let hoursInitial: Record<string, string> = defaultHoursFields(minutesToHhmm);
+    if (own) {
+      hoursInitial = {};
+      const seen: Record<number, number> = {};
+      for (const h of b!.shop_hours!) {
+        const n = (seen[h.weekday] = (seen[h.weekday] ?? -1) + 1);
+        hoursInitial[`h-${h.weekday}-${n}-start`] = minutesToHhmm(h.start);
+        hoursInitial[`h-${h.weekday}-${n}-end`] = minutesToHhmm(h.end);
+      }
+    }
     return (
       <main className="space-y-6">
         <h1 className="text-2xl font-semibold">{t("Settings")}</h1>
         {tabBar}
         <p className="text-sm">{t("This is the first page customers see at {url}. The Book now button leads to your service list.", { url })}</p>
         <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-sm underline">{t("View your page")}</a>
-        <section aria-labelledby="photos-h" className="space-y-3">
-          <h2 id="photos-h" className="text-xl font-semibold">{t("Photos")}</h2>
+        <ShopPageForm defaults={{ about: b?.about ?? "", address: b?.address ?? "", additionalInfo: b?.additional_info ?? "", show: b?.shop_page_show ?? [] }}
+          hoursEnabled={hoursOn} hoursOwn={own} hoursInitial={hoursInitial}>
           <PhotoManager photos={photos} max={MAX_PHOTOS} />
-        </section>
-        <section aria-labelledby="text-h" className="space-y-3">
-          <h2 id="text-h" className="text-xl font-semibold">{t("What to show")}</h2>
-          <ShopPageForm defaults={{ about: b?.about ?? "", address: b?.address ?? "", additionalInfo: b?.additional_info ?? "", show: (b?.shop_page_show as string[] | null) ?? [] }} />
-        </section>
+        </ShopPageForm>
       </main>
     );
   }
