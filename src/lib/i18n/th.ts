@@ -1,5 +1,6 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "Theme": "ธีม",
  "Times are UK time, 24-hour clock. Leave a day blank if closed.": "เวลาแบบสหราชอาณาจักร นาฬิกา 24 ชั่วโมง เว้นว่างไว้ถ้าวันนั้นปิด",
  "Black & white": "ขาวดำ",
  "Logo": "โลโก้",

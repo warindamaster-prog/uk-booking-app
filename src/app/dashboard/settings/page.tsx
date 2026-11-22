@@ -22,9 +22,16 @@ export const metadata: Metadata = { title: "Settings" };
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { supabase, business } = await requireOwner();
   const t = await getT();
-  const tabsOn = shopPageEnabled();
-  const tab = tabsOn && (await searchParams).tab === "booking" ? "booking" : "info";
-  const tabs = [{ id: "info", label: "Info & Policy", href: "/dashboard/settings" }, { id: "booking", label: "Booking page", href: "/dashboard/settings?tab=booking" }];
+  const bookingOn = shopPageEnabled();
+  const themeOn = shopColorsEnabled();
+  const tabsOn = bookingOn || themeOn;
+  const want = (await searchParams).tab;
+  const tab = want === "booking" && bookingOn ? "booking" : want === "theme" && themeOn ? "theme" : "info";
+  const tabs = [
+    { id: "info", label: "Info & Policy", href: "/dashboard/settings" },
+    ...(bookingOn ? [{ id: "booking", label: "Booking page", href: "/dashboard/settings?tab=booking" }] : []),
+    ...(themeOn ? [{ id: "theme", label: "Theme", href: "/dashboard/settings?tab=theme" }] : []),
+  ];
   const tabBar = tabsOn && (
     <nav aria-label={t("Settings")} className="flex flex-wrap gap-2">
       {tabs.map((x) => (
@@ -35,6 +42,20 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       ))}
     </nav>
   );
+
+  if (tab === "theme") {
+    const accent = (business as { accent_color?: string | null }).accent_color;
+    return (
+      <main className="space-y-6">
+        <h1 className="text-2xl font-semibold">{t("Settings")}</h1>
+        {tabBar}
+        <section aria-labelledby="colour-h" className="space-y-3">
+          <h2 id="colour-h" className="text-xl font-semibold">{t("Colour")}</h2>
+          <ColorForm current={isThemeName(accent) ? accent : "green"} />
+        </section>
+      </main>
+    );
+  }
 
   if (tab === "booking") {
     const hoursOn = shopHoursEnabled();
@@ -73,17 +94,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   const { data: b } = await supabase.from("businesses")
     .select("owner_name, email, phone, cancellation_window_hours, privacy_notice_url, show_contact_to_customers, confirmation_message, deposit_policy, deposit_refundable").eq("id", business.id).single();
-  const accent = (business as { accent_color?: string | null }).accent_color;
   return (
     <main className="space-y-6">
       <h1 className="text-2xl font-semibold">{t("Settings")}</h1>
       {tabBar}
-      {shopColorsEnabled() && (
-        <section aria-labelledby="colour-h" className="space-y-3">
-          <h2 id="colour-h" className="text-xl font-semibold">{t("Colour")}</h2>
-          <ColorForm current={isThemeName(accent) ? accent : "green"} />
-        </section>
-      )}
       <SettingsForm shopName={business.name} defaults={{
         ownerName: b?.owner_name ?? "", email: b?.email ?? "", phone: b?.phone ?? "",
         cancellationHours: b?.cancellation_window_hours ?? 24, privacyUrl: b?.privacy_notice_url ?? "", showContact: b?.show_contact_to_customers ?? true,
