@@ -31,11 +31,14 @@ describe("deposit policy wording", () => {
 describe("cancelRule", () => {
   const start = new Date("2026-12-10T12:00:00Z");
   it("lets customers cancel any time when the shop keeps a deposit", () => {
-    const r = cancelRule({ refundable: false, depositPence: 1000, windowHours: 72, start });
+    const r = cancelRule({ refundable: false, depositPence: 1000, windowHours: 72, start, enabled: true });
     expect(r).toEqual({ anyTime: true, deadline: start });
   });
+  it("stays as before until it is switched on", () => {
+    expect(cancelRule({ refundable: false, depositPence: 1000, windowHours: 72, start, enabled: false }).anyTime).toBe(false);
+  });
   it("keeps the window when the deposit is refundable or there is no deposit", () => {
-    expect(cancelRule({ refundable: true, depositPence: 1000, windowHours: 72, start })).toEqual({ anyTime: false, deadline: new Date("2026-12-07T12:00:00Z") });
-    expect(cancelRule({ refundable: false, depositPence: 0, windowHours: 24, start }).anyTime).toBe(false);
+    expect(cancelRule({ refundable: true, depositPence: 1000, windowHours: 72, start, enabled: true })).toEqual({ anyTime: false, deadline: new Date("2026-12-07T12:00:00Z") });
+    expect(cancelRule({ refundable: false, depositPence: 0, windowHours: 24, start, enabled: true }).anyTime).toBe(false);
   });
 });

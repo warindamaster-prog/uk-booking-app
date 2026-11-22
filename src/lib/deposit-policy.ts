@@ -31,7 +31,9 @@ export function cancelDepositNote(p: { refundable: boolean; depositPaid: boolean
  * When a customer may cancel online. A shop that keeps the deposit (not refundable) and a booking with a deposit: any time before
  * the appointment starts, because no refund depends on the window. Otherwise: until the window starts.
  */
-export function cancelRule(p: { refundable: boolean; depositPence: number; windowHours: number; start: Date }): { anyTime: boolean; deadline: Date } {
-  const anyTime = !p.refundable && p.depositPence > 0;
+export function cancelRule(p: { refundable: boolean; depositPence: number; windowHours: number; start: Date; enabled?: boolean }): { anyTime: boolean; deadline: Date } {
+  // Off until migration 0024 is applied (the database enforces the same rule): set KEEP_DEPOSIT_ANYTIME=true afterwards.
+  const enabled = p.enabled ?? process.env.KEEP_DEPOSIT_ANYTIME === "true";
+  const anyTime = enabled && !p.refundable && p.depositPence > 0;
   return { anyTime, deadline: anyTime ? p.start : new Date(p.start.getTime() - p.windowHours * 3_600_000) };
 }
