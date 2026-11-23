@@ -57,7 +57,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         </p>
       )}
 
-      {sp.paid && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{t("Thank you. We're confirming your payment and your 3-year plan will start in a moment. Refresh this page in a minute.")}</p>}
+      {sp.paid && !(three && b.status === "active") && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{t("Thank you. We're confirming your payment and your 3-year plan will start in a moment. Refresh this page in a minute.")}</p>}
       {sp.subscribed && <p role="status" className="rounded-md border border-green-700 p-3 text-sm text-green-800 dark:text-green-400">{t("Thank you. Your subscription is being set up and this page will update in a moment.")}</p>}
       {sp.error && <p role="alert" className="rounded-md border border-red-700 p-3 text-sm text-red-700 dark:text-red-400">
         {sp.error === "unavailable" ? t("Card payments aren't set up on this site yet.") : t("Something went wrong. Please try again.")}</p>}
