@@ -192,6 +192,10 @@ describe("3-year prepaid checkout", () => {
     const p = buildPrepaidCheckoutParams({ ...input, businessId: "biz_1" });
     expect(p.line_items?.[0]?.price_data?.unit_amount).toBe(44460); // process.env has no test settings here
   });
+  it("sends the payment receipt to the owner's email when we have one", () => {
+    expect(buildPrepaidCheckoutParams({ ...input, receiptEmail: "owner@shop.example" }).payment_intent_data?.receipt_email).toBe("owner@shop.example");
+    expect(buildPrepaidCheckoutParams(input).payment_intent_data?.receipt_email).toBeUndefined();
+  });
   it("needs 3 to 50 staff", () => {
     for (const seats of [2, 51, 3.5]) expect(() => buildPrepaidCheckoutParams({ ...input, seats })).toThrow(RangeError);
   });

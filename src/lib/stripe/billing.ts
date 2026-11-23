@@ -111,6 +111,8 @@ export function buildSubscriptionCheckoutParams(i: SubscriptionCheckoutInput): S
 export type PrepaidCheckoutInput = {
   businessId: string;
   businessName: string;
+  /** Where Stripe sends the payment receipt: the owner's contact email. Optional. */
+  receiptEmail?: string | null;
   customerId: string;
   vatRateId: string;
   seats: number;
@@ -153,7 +155,7 @@ export function buildPrepaidCheckoutParams(i: PrepaidCheckoutInput): Stripe.Chec
       price_data: { currency: "gbp", unit_amount: net, tax_behavior: "exclusive", product_data: { name: "3-year prepaid plan", description } },
       tax_rates: [i.vatRateId],
     }],
-    payment_intent_data: { metadata, description },
+    payment_intent_data: { metadata, description, ...(i.receiptEmail ? { receipt_email: i.receiptEmail } : {}) },
     invoice_creation: { enabled: true, invoice_data: { description, metadata } },
     billing_address_collection: "required",
     // A full VAT invoice (over £250) needs the customer's business name and address; a VAT number is optional.

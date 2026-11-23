@@ -75,7 +75,7 @@ export async function startPrepaidCheckout(db: Db, business: { id: string; name:
   const customerId = await ensureCustomer(db, business);
   const site = publicEnv().NEXT_PUBLIC_SITE_URL;
   const session = await getStripe().checkout.sessions.create(buildPrepaidCheckoutParams({
-    businessId: business.id, businessName: business.name, customerId, seats: plan.seats, vatRateId: process.env.STRIPE_VAT_TAX_RATE_ID!,
+    businessId: business.id, businessName: business.name, receiptEmail: business.email, customerId, seats: plan.seats, vatRateId: process.env.STRIPE_VAT_TAX_RATE_ID!,
     successUrl: `${site}/dashboard/billing?paid=1`, cancelUrl: `${site}/dashboard/billing`,
   }));
   if (!session.url) throw new Error("Stripe returned no checkout URL");
