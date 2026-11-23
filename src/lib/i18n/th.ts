@@ -1,5 +1,10 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "Terms": "ข้อกำหนด",
+ "By creating an account you agree to our": "การสร้างบัญชีถือว่าคุณยอมรับ",
+ "Terms of Service": "ข้อกำหนดการใช้บริการ",
+ "and": "และ",
+ "Privacy notice": "ประกาศความเป็นส่วนตัว",
  "Theme": "ธีม",
  "Times are UK time, 24-hour clock. Leave a day blank if closed.": "เวลาแบบสหราชอาณาจักร นาฬิกา 24 ชั่วโมง เว้นว่างไว้ถ้าวันนั้นปิด",
  "Black & white": "ขาวดำ",

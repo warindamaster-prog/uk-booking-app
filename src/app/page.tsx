@@ -142,6 +142,7 @@ export default function Home() {
           <Link href="/signup" className="flex min-h-11 items-center hover:underline">Get started ↗</Link>
           <Link href="/for" className="flex min-h-11 items-center hover:underline">Who it&apos;s for</Link>
           <Link href="/faq" className="flex min-h-11 items-center hover:underline">Questions</Link>
+          <Link href="/terms" className="flex min-h-11 items-center hover:underline">Terms</Link>
           <Link href="/privacy" className="flex min-h-11 items-center hover:underline">Privacy</Link>
         </div>
       </footer>

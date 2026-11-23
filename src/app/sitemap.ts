@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${site}/for`, changeFrequency: "monthly", priority: 0.8 },
     ...BUSINESS_PAGES.map((p) => ({ url: `${site}/for/${p.slug}`, changeFrequency: "monthly" as const, priority: 0.8 })),
     { url: `${site}/faq`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${site}/terms`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${site}/privacy`, changeFrequency: "yearly", priority: 0.3 },
   ];
 }

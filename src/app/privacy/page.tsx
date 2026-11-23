@@ -23,6 +23,8 @@ export default function PrivacyPage() {
       <p>Booking records are kept while needed to run the business and meet legal and accounting duties. You can ask the business to delete your details.</p>
       <h2 className="text-lg font-semibold">Your rights</h2>
       <p>You can ask the business to give you a copy of your data, correct it, or delete it, and you can withdraw marketing consent at any time. You can also complain to the Information Commissioner&apos;s Office (ico.org.uk).</p>
+      <h2 className="text-lg font-semibold">If you are a business using Get It Book</h2>
+      <p>WP Precision Systems Ltd (company number 17183797, 5 Brayford Square, London E1 0SG) is the controller of your own account details: your name, email address, phone number, business details and billing information. We use them to run your account, send you service emails, take payment and meet legal and accounting duties. Card payments for your plan are handled by Stripe. We keep account details while your account is open and for up to 30 days after it closes, and invoices for as long as the law requires. You have the same rights as above and can ask us at contact@wpprecisionsystems.co.uk. See also our <a className="underline" href="/terms">Terms of Service</a>.</p>
     </main>
   );
 }

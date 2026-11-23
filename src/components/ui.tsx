@@ -69,7 +69,10 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
       </main>
       <footer className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 border-t border-[color:var(--brand-line,#e1e6d9)] px-6 py-5 text-xs text-[color:var(--brand-muted,#6b756d)] lg:px-12">
         <p>© {new Date().getFullYear()} WP Precision Systems</p>
-        <Link href="/privacy" className="flex min-h-11 items-center hover:underline">{t("Privacy")}</Link>
+        <span className="flex gap-5">
+          <Link href="/terms" className="flex min-h-11 items-center hover:underline">{t("Terms")}</Link>
+          <Link href="/privacy" className="flex min-h-11 items-center hover:underline">{t("Privacy")}</Link>
+        </span>
       </footer>
     </div>
   );

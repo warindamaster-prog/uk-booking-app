@@ -1,6 +1,6 @@
-# Terms and Conditions (DRAFT for a solicitor to review)
+# Terms and Conditions (published on 23 Nov 2026 at /terms; the live text is in src/lib/terms.ts)
 
-**Status: first draft written on 23 Nov 2026 by the assistant, from how the app really works. It is not legal advice and is not published anywhere.** Items in [SQUARE BRACKETS] are facts only the owner can fill in or things the solicitor must decide. After review it becomes the page `/terms`, linked from the footer and from the sign-up form.
+**Status: first draft written on 23 Nov 2026 by the assistant, from how the app really works, reviewed by the owner and published the same day WITHOUT review by a solicitor. It is not legal advice. The published page has the bracketed points resolved to the values shown here (30 days, etc.). A solicitor should still review it; keep this file and `src/lib/terms.ts` in step.** Items in [SQUARE BRACKETS] are facts only the owner can fill in or things the solicitor must decide. After review it becomes the page `/terms`, linked from the footer and from the sign-up form.
 
 ---
 

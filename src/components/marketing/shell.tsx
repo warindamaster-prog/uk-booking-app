@@ -33,6 +33,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
             <ul className="mt-2 space-y-1">
               <li><Link className="hover:underline" href="/">Home and prices</Link></li>
               <li><Link className="hover:underline" href="/faq">Questions and answers</Link></li>
+              <li><Link className="hover:underline" href="/terms">Terms of Service</Link></li>
               <li><Link className="hover:underline" href="/privacy">Privacy notice</Link></li>
               <li><Link className="hover:underline" href="/login">Log in</Link></li>
             </ul>
