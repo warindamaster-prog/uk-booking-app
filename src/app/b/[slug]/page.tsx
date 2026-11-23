@@ -37,6 +37,7 @@ export default async function ShopPage({ params }: Props) {
   if (!shopPageEnabled() || show.size === 0) redirect(`${base}/services`);
   const on = (k: string) => show.has(k);
 
+  const logo = logoUrl(business.logo_path);
   const open = acceptsBookings(business);
   const [photos, days, services] = await Promise.all([
     on("cover") || on("gallery") ? listShopPhotos(business.id) : Promise.resolve([]),
@@ -58,7 +59,7 @@ export default async function ShopPage({ params }: Props) {
   ].filter(Boolean) as [string, string][];
 
   return (
-    <PublicShell accent={business.accent_color} base={base} name={business.name} logo={logoUrl(business.logo_path)} privacyUrl={business.privacy_notice_url} wide>
+    <PublicShell accent={business.accent_color} base={base} name={business.name} logo={logo} privacyUrl={business.privacy_notice_url} wide>
       {on("cover") && photos.length > 0 && <HeroPhotos photos={photos} name={business.name} />}
 
       <div className={`grid gap-10 pb-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12 ${on("cover") && photos.length ? "pt-8" : "pt-2"}`}>
@@ -149,7 +150,12 @@ export default async function ShopPage({ params }: Props) {
 
         <aside className="min-w-0 lg:pt-1">
           <div className="rounded-2xl border border-[color:var(--brand-line,#dce2d4)] bg-white p-6 shadow-[0_10px_40px_-22px_#46553c50] lg:sticky lg:top-6">
-            <div aria-hidden="true" className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--brand-soft,#edf1e7)] font-serif text-3xl italic text-[color:var(--brand-text,#48613d)]">{business.name.trim().charAt(0).toLowerCase()}.</div>
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo} alt="" width={56} height={56} className="mb-6 h-14 w-14 rounded-2xl border border-[color:var(--brand-line,#e5e9df)] object-cover" />
+            ) : (
+              <div aria-hidden="true" className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--brand-soft,#edf1e7)] font-serif text-3xl italic text-[color:var(--brand-text,#48613d)]">{business.name.trim().charAt(0).toLowerCase()}.</div>
+            )}
             <p className={`text-xs uppercase tracking-[2px] ${MUTED}`}>Book with us</p>
             <h2 className="mt-3 font-serif text-3xl">Make time for you.</h2>
             <p className={`mt-3 text-sm leading-6 ${MUTED}`}>Find your service, choose your moment, and leave the rest to us.</p>
