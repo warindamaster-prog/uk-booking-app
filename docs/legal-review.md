@@ -28,3 +28,11 @@ Written 23 Nov 2026. Send this page as it is. Get It Book (getitbook.com) is a b
 2. Refunds within 14 days: how are the VAT and the Stripe fee handled on a refund (Stripe keeps its fee)?
 3. Selling to customers outside the UK (not planned yet): VAT and tax implications.
 4. Is anything needed in Stripe settings for invoices (VAT number, company details)?
+
+## Accountant's answers (received 23 Nov 2026)
+- 3-year plan VAT: the whole VAT is due in the VAT return for the quarter the money is received (cash accounting), not spread over 3 years. Revenue in the company accounts is recognised over 36 months; the rest is "deferred income" on the balance sheet. Example (3 staff): 19 x 36 = 684, less 35% = 444.60, plus VAT 88.92 = 533.52; recognised 12.35 a month, but the 88.92 VAT must be paid at once, so set it aside.
+- Invoices over 250 pounds need a full VAT invoice with the customer's name and address.
+- 14-day refund: issue a credit note, which reduces the VAT and the recognised revenue. Stripe's fee is not returned (our cost); the VAT on Stripe's fee is reclaimed as normal on Stripe's invoice.
+- Customers outside the UK (not selling yet): B2B is normally outside UK VAT but keep proof they are a business; consumers in the EU may need that country's VAT registration from the first sale. Ask before selling abroad.
+- Stripe settings to make: company name WP Precision Systems Ltd, VAT number GB 532 4042 30, registered address, sequential invoice numbers, prices set as exclusive of VAT, collect the customer's business name and address at checkout.
+- Done in code on 23 Nov 2026: Checkout now requires the business name and address and offers a VAT number field (both the subscription and the 3-year payment); the 3-year payment already creates a Stripe invoice and prices are exclusive of VAT.

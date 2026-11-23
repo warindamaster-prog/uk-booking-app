@@ -175,6 +175,13 @@ describe("3-year prepaid checkout", () => {
     expect(p.invoice_creation?.enabled).toBe(true);
     expect(p.client_reference_id).toBe("biz_1");
   });
+  it("asks for the business name, address and optional VAT number so the invoice is a full VAT invoice", () => {
+    const p = buildPrepaidCheckoutParams(input);
+    expect(p.billing_address_collection).toBe("required");
+    expect(p.name_collection).toEqual({ business: { enabled: true, optional: false } });
+    expect(p.tax_id_collection).toEqual({ enabled: true });
+    expect(p.customer_update).toEqual({ name: "auto", address: "auto" });
+  });
   it("needs 3 to 50 staff", () => {
     for (const seats of [2, 51, 3.5]) expect(() => buildPrepaidCheckoutParams({ ...input, seats })).toThrow(RangeError);
   });

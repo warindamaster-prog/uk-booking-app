@@ -98,6 +98,10 @@ export function buildSubscriptionCheckoutParams(i: SubscriptionCheckoutInput): S
       ...(!i.skipTrial && canUseTrialEnd(i.trialEndsAt, i.now) ? { trial_end: Math.floor(i.trialEndsAt.getTime() / 1000) } : {}),
     },
     billing_address_collection: "required", // invoices for UK businesses need an address
+    // A full VAT invoice (over £250) needs the customer's business name and address; a VAT number is optional. `customer_update` saves them on the Stripe customer.
+    name_collection: { business: { enabled: true, optional: false } },
+    tax_id_collection: { enabled: true },
+    customer_update: { name: "auto", address: "auto" },
     phone_number_collection: { enabled: true },
     success_url: i.successUrl,
     cancel_url: i.cancelUrl,
@@ -140,6 +144,10 @@ export function buildPrepaidCheckoutParams(i: PrepaidCheckoutInput): Stripe.Chec
     payment_intent_data: { metadata, description },
     invoice_creation: { enabled: true, invoice_data: { description, metadata } },
     billing_address_collection: "required",
+    // A full VAT invoice (over £250) needs the customer's business name and address; a VAT number is optional.
+    name_collection: { business: { enabled: true, optional: false } },
+    tax_id_collection: { enabled: true },
+    customer_update: { name: "auto", address: "auto" },
     phone_number_collection: { enabled: true },
     success_url: i.successUrl,
     cancel_url: i.cancelUrl,
