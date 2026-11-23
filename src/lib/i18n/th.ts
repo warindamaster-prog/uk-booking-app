@@ -1,5 +1,6 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "View or download your invoice": "ดูหรือดาวน์โหลดใบแจ้งหนี้ของคุณ",
  "Terms": "ข้อกำหนด",
  "By creating an account you agree to our": "การสร้างบัญชีถือว่าคุณยอมรับ",
  "Terms of Service": "ข้อกำหนดการใช้บริการ",

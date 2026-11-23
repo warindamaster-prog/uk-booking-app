@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { requireOwner } from "@/lib/auth";
 import { billingEnabled, bookingsOpen, daysLeftLabel, noTrialMode, trialDaysLeft } from "@/lib/billing";
 import { smsPacksEnabled } from "@/lib/sms-switch";
-import { billingStripeReady, prepaidStripeReady } from "@/lib/stripe/billing-service";
+import { billingStripeReady, prepaidInvoiceUrl, prepaidStripeReady } from "@/lib/stripe/billing-service";
 import { threeYearEnabled } from "@/lib/three-year-switch";
 import { formatPence } from "@/lib/money";
 import { grossPence, vatPence } from "@/lib/pricing";
@@ -27,6 +27,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   if (!b) return <main><p>{t("We couldn't find your billing details. Please contact support.")}</p></main>;
 
   const three = b.billing_interval === "three_year" && threeYearEnabled();
+  const invoiceUrl = three && b.status === "active" ? await prepaidInvoiceUrl(b.stripe_customer_id, business.id) : null;
   const per = (three ? "month" : b.billing_interval) as "month" | "year"; // only used for the subscription plans
   const line = (pence: number) => t("{net} + {vat} VAT = {gross}", { net: formatPence(pence), vat: formatPence(vatPence(pence)), gross: formatPence(grossPence(pence)) });
   const row = "flex justify-between gap-4 py-2";
@@ -68,7 +69,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           {b.status === "active" ? (
             <>
               <p>{t("Paid on {date}. Your plan runs until {end}. It does not renew by itself: we'll email you 60 and 30 days before it ends.", { date: b.prepaid_paid_at ? fd(b.prepaid_paid_at) : "", end: termEnds ?? "" })}</p>
-              <p className="text-sm">{t("Your invoice was emailed to you by Stripe. Full refund within 14 days of payment: contact support.")}</p>
+              <p className="text-sm">{t("Full refund within 14 days of payment: contact support.")}</p>
+              {invoiceUrl && <p><a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">{t("View or download your invoice")}</a></p>}
             </>
           ) : (
             <>

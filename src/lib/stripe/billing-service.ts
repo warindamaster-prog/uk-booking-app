@@ -2,7 +2,7 @@ import "server-only";
 import { publicEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { BillingInterval } from "@/lib/pricing";
-import { buildPrepaidCheckoutParams, buildSubscriptionCheckoutParams, smsPriceIds } from "./billing";
+import { buildPrepaidCheckoutParams, buildSubscriptionCheckoutParams, pickPrepaidInvoiceUrl, smsPriceIds } from "./billing";
 import type { BillingStore } from "./billing-events";
 import { getStripe, stripeConfigured } from "./client";
 
@@ -184,4 +184,16 @@ async function findPaymentMethod(customerId: string, subscriptionId: string | nu
   }
   const cards = await stripe.paymentMethods.list({ customer: customerId, type: "card", limit: 1 });
   return cards.data[0]?.id ?? null;
+}
+
+/** The address of Stripe's page for the 3-year invoice (view and download the PDF), or null if it cannot be found. Never throws. */
+export async function prepaidInvoiceUrl(customerId: string | null, businessId: string): Promise<string | null> {
+  if (!customerId || !stripeConfigured()) return null;
+  try {
+    const list = await getStripe().invoices.list({ customer: customerId, limit: 20 });
+    return pickPrepaidInvoiceUrl(list.data, businessId);
+  } catch (e) {
+    console.error("could not look up the prepaid invoice", e instanceof Error ? e.message : e);
+    return null;
+  }
 }

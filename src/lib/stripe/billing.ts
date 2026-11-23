@@ -174,3 +174,9 @@ export function planSeatChange(i: { current: number; scheduled: number | null; r
   if (i.requested === i.current) return i.scheduled === null ? "noop" : "cancel_reduction";
   return i.requested > i.current ? "paid_increase" : "schedule_reduction";
 }
+
+/** The paid invoice of the 3-year payment (newest first), from a customer's invoices. Returns its page address, or null. */
+export function pickPrepaidInvoiceUrl(invoices: { status?: string | null; hosted_invoice_url?: string | null; metadata?: Record<string, string> | null }[], businessId: string): string | null {
+  const found = invoices.find((x) => x.status === "paid" && x.metadata?.kind === PREPAID_KIND && x.metadata?.business_id === businessId && x.hosted_invoice_url);
+  return found?.hosted_invoice_url ?? null;
+}

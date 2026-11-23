@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { describe, expect, it } from "vitest";
-import { prepaidNetPence, buildPrepaidCheckoutParams, buildSubscriptionCheckoutParams, canUseTrialEnd, mapSubscriptionStatus, planSeatChange, readSubscription, smsPriceIds, type SubscriptionFacts } from "../billing";
+import { pickPrepaidInvoiceUrl, prepaidNetPence, buildPrepaidCheckoutParams, buildSubscriptionCheckoutParams, canUseTrialEnd, mapSubscriptionStatus, planSeatChange, readSubscription, smsPriceIds, type SubscriptionFacts } from "../billing";
 import { handlePlatformEvent, type BillingDeps } from "../billing-events";
 
 const now = new Date("2026-06-01T12:00:00Z");
@@ -238,5 +238,19 @@ describe("3-year prepaid checkout", () => {
   it("other one-time payments (no prepaid tag) are ignored", async () => {
     expect(await run(paid({ metadata: {} }))).toMatch(/not a subscription/);
     expect(log).toEqual([]);
+  });
+});
+
+describe("finding the 3-year invoice", () => {
+  const inv = (over: object) => ({ status: "paid", hosted_invoice_url: "https://invoice.stripe.com/i/x", metadata: { kind: "prepaid_3y", business_id: "biz_1" }, ...over });
+  it("picks the paid invoice of this shop's 3-year payment", () => {
+    expect(pickPrepaidInvoiceUrl([inv({})], "biz_1")).toBe("https://invoice.stripe.com/i/x");
+  });
+  it("ignores other shops, unpaid invoices, subscription invoices and invoices without a page", () => {
+    expect(pickPrepaidInvoiceUrl([inv({})], "biz_2")).toBeNull();
+    expect(pickPrepaidInvoiceUrl([inv({ status: "open" })], "biz_1")).toBeNull();
+    expect(pickPrepaidInvoiceUrl([inv({ metadata: {} })], "biz_1")).toBeNull();
+    expect(pickPrepaidInvoiceUrl([inv({ hosted_invoice_url: null })], "biz_1")).toBeNull();
+    expect(pickPrepaidInvoiceUrl([], "biz_1")).toBeNull();
   });
 });
