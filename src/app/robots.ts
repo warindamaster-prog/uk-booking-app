@@ -11,7 +11,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   const host = ((await headers()).get("host") ?? "").toLowerCase().replace(/:\d+$/, "");
   if (host !== root && host !== `www.${root}`) return { rules: { userAgent: "*", disallow: "/" } };
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/dashboard", "/admin", "/api/", "/auth/", "/onboarding", "/login", "/signup", "/forgot-password", "/reset-password", "/b/"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/dashboard", "/api/", "/auth/", "/onboarding", "/login", "/signup", "/forgot-password", "/reset-password", "/b/"] },
     sitemap: `${site}/sitemap.xml`,
     host: site,
   };

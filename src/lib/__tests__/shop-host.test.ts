@@ -16,10 +16,6 @@ describe("shop addresses", () => {
 });
 
 describe("routing by host", () => {
-  it("sends /admin on a shop sub-domain to the main site", () => {
-    expect(r("klean-me.getitbook.com", "/admin/refunds")).toEqual({ kind: "redirect", url: "https://getitbook.com/admin/refunds" });
-  });
-
   it("does nothing while switched off", () => {
     expect(r("klean-me.getitbook.com", "/", "", false)).toEqual({ kind: "none" });
     expect(r("getitbook.com", "/b/klean-me", "", false)).toEqual({ kind: "none" });

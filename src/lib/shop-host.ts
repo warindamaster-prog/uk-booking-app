@@ -30,7 +30,7 @@ export type ShopRoute =
   | { kind: "redirect"; url: string };
 
 // Pages that belong to the main site: on a shop's sub-domain they are sent to the main address.
-const MAIN_SITE = /^\/(login|signup|dashboard|onboarding|forgot-password|reset-password|auth|admin)(\/|$)/;
+const MAIN_SITE = /^\/(login|signup|dashboard|onboarding|forgot-password|reset-password|auth)(\/|$)/;
 const SHOP_PATH = /^\/b\/([a-z0-9-]+)(\/.*)?$/;
 
 /**
