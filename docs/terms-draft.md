@@ -6,9 +6,9 @@
 
 # Get It Book: Terms of Service
 
-Last updated: [DATE]
+Last updated: 23 November 2026
 
-These terms are an agreement between **WP Precision Systems Ltd**, a company registered in England and Wales with number 17183797, whose registered office is at 5 Brayford Square, London E1 0SG, England ("we", "us"), and the business that signs up for Get It Book ("you", "the Business"). Get It Book is available at getitbook.com.
+These terms are an agreement between **WP Precision Systems Ltd**, a company registered in England and Wales with number 17183797 and VAT number GB532404230, whose registered office is at 5 Brayford Square, London E1 0SG, England ("we", "us"), and the business that signs up for Get It Book ("you", "the Business"). Get It Book is available at getitbook.com.
 
 By creating an account or using Get It Book you agree to these terms. If you do not agree, please do not use it. Get It Book is for businesses and people acting for their trade or profession, not for consumers.
 
@@ -99,4 +99,4 @@ Questions, refund requests and notices: contact@wpprecisionsystems.co.uk or writ
 
 - Facts to confirm against the app: trial 60 days, no card; page closes after trial (data kept); 14-day voluntary refund; one-time 3-year payment; auto-renewing monthly/yearly; Stripe Connect Standard for deposits; the shop picks "refund automatically" or "keep the deposit" and customers may cancel online until the shop's window (or any time before the start when the shop keeps deposits); the shop can refund manually.
 - Open points marked [SOLICITOR]/[ACCOUNTANT] above: renewal and failed-payment wording, scope of the 14-day refund, price-change notice, DPA and sub-processor list, retention periods, liability cap, change-of-terms clause.
-- Company facts filled in on 23 Nov 2026: company number 17183797, registered address 5 Brayford Square, London E1 0SG, England, contact email contact@wpprecisionsystems.co.uk. Still missing: VAT number (if registered) and the date of the terms.
+- Company facts filled in on 23 Nov 2026: company number 17183797, registered address 5 Brayford Square, London E1 0SG, England, contact email contact@wpprecisionsystems.co.uk. VAT number GB532404230 and the date (23 Nov 2026) added the same day. Nothing owner-side is missing now.
