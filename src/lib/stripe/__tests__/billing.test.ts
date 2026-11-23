@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { describe, expect, it } from "vitest";
-import { buildPrepaidCheckoutParams, buildSubscriptionCheckoutParams, canUseTrialEnd, mapSubscriptionStatus, planSeatChange, readSubscription, smsPriceIds, type SubscriptionFacts } from "../billing";
+import { prepaidNetPence, buildPrepaidCheckoutParams, buildSubscriptionCheckoutParams, canUseTrialEnd, mapSubscriptionStatus, planSeatChange, readSubscription, smsPriceIds, type SubscriptionFacts } from "../billing";
 import { handlePlatformEvent, type BillingDeps } from "../billing-events";
 
 const now = new Date("2026-06-01T12:00:00Z");
@@ -181,6 +181,16 @@ describe("3-year prepaid checkout", () => {
     expect(p.name_collection).toEqual({ business: { enabled: true, optional: false } });
     expect(p.tax_id_collection).toEqual({ enabled: true });
     expect(p.customer_update).toEqual({ name: "auto", address: "auto" });
+  });
+  it("uses the test price for the one named test shop only, within £1 to £10", () => {
+    const env = { PREPAID_TEST_BUSINESS_ID: "biz_1", PREPAID_TEST_NET_PENCE: "100" };
+    expect(prepaidNetPence("biz_1", 3, env)).toBe(100);
+    expect(prepaidNetPence("biz_2", 3, env)).toBe(44460); // any other shop pays the real price
+    expect(prepaidNetPence("biz_1", 3, { ...env, PREPAID_TEST_NET_PENCE: "5" })).toBe(44460);     // below £1: ignored
+    expect(prepaidNetPence("biz_1", 3, { ...env, PREPAID_TEST_NET_PENCE: "5000" })).toBe(44460);  // above £10: ignored
+    expect(prepaidNetPence("biz_1", 3, {})).toBe(44460);
+    const p = buildPrepaidCheckoutParams({ ...input, businessId: "biz_1" });
+    expect(p.line_items?.[0]?.price_data?.unit_amount).toBe(44460); // process.env has no test settings here
   });
   it("needs 3 to 50 staff", () => {
     for (const seats of [2, 51, 3.5]) expect(() => buildPrepaidCheckoutParams({ ...input, seats })).toThrow(RangeError);

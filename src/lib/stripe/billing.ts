@@ -118,6 +118,17 @@ export type PrepaidCheckoutInput = {
   cancelUrl: string;
 };
 
+/**
+ * The net price (before VAT) of the 3-year plan for one business. Normally our own formula. For ONE named test shop only, two settings
+ * (PREPAID_TEST_BUSINESS_ID and PREPAID_TEST_NET_PENCE, between £1 and £10) replace it, so a real card payment and refund can be tested cheaply.
+ * Other shops are never affected, and the webhook uses this same function, so the amount is still checked.
+ */
+export function prepaidNetPence(businessId: string, seats: number, env: Record<string, string | undefined> = process.env): number {
+  const test = Number(env.PREPAID_TEST_NET_PENCE);
+  if (env.PREPAID_TEST_BUSINESS_ID && env.PREPAID_TEST_BUSINESS_ID === businessId && Number.isInteger(test) && test >= 100 && test <= 1000) return test;
+  return pricePence(seats, "three_year");
+}
+
 /** Marks a Checkout Session as the 3-year prepayment. The webhook only acts on sessions that carry it. */
 export const PREPAID_KIND = "prepaid_3y";
 
@@ -128,8 +139,9 @@ export const PREPAID_KIND = "prepaid_3y";
  */
 export function buildPrepaidCheckoutParams(i: PrepaidCheckoutInput): Stripe.Checkout.SessionCreateParams {
   if (!Number.isInteger(i.seats) || i.seats < PRICING.threeYearMinSeats || i.seats > PRICING.maxSeats) throw new RangeError("invalid seat count");
-  const net = pricePence(i.seats, "three_year");
-  const description = `3-year prepaid plan for ${i.businessName}: ${i.seats} staff, 36 months`;
+  const net = prepaidNetPence(i.businessId, i.seats);
+  const isTest = net !== pricePence(i.seats, "three_year");
+  const description = `3-year prepaid plan for ${i.businessName}: ${i.seats} staff, 36 months${isTest ? " (TEST PRICE)" : ""}`;
   const metadata = { kind: PREPAID_KIND, business_id: i.businessId, seats: String(i.seats) };
   return {
     mode: "payment",

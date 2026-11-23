@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
-import { PRICING, pricePence } from "../pricing";
-import { PREPAID_KIND, readSubscription, smsPriceIds, type SubscriptionFacts } from "./billing";
+import { PRICING } from "../pricing";
+import { PREPAID_KIND, prepaidNetPence, readSubscription, smsPriceIds, type SubscriptionFacts } from "./billing";
 
 export type PrepaidFacts = { businessId: string; paymentIntentId: string; customerId: string | null; seats: number; paidAt: Date };
 
@@ -57,7 +57,7 @@ async function handlePrepaid(session: Stripe.Checkout.Session, eventCreated: num
   if (!businessId || !paymentIntentId) return "ignored: prepayment without a business or payment";
   if (!Number.isInteger(seats) || seats < PRICING.threeYearMinSeats || seats > PRICING.maxSeats) return "ignored: prepayment with invalid seats";
   // Never trust the browser or a stray session: the net amount must be exactly our price for these seats.
-  if (session.amount_subtotal !== pricePence(seats, "three_year")) return "ignored: prepayment amount does not match the price";
+  if (session.amount_subtotal !== prepaidNetPence(businessId, seats)) return "ignored: prepayment amount does not match the price";
   const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
   await deps.store.activatePrepaidTerm({ businessId, paymentIntentId, customerId, seats, paidAt: new Date(eventCreated * 1000) });
   return "3-year plan started";
