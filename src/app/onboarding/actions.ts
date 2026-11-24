@@ -1,6 +1,8 @@
 "use server";
 
+import { after } from "next/server";
 import { redirect } from "next/navigation";
+import { alertNewShop } from "@/lib/new-shop-alert";
 import { requireUser } from "@/lib/auth";
 import { noTrialMode } from "@/lib/billing";
 import { smsPacksEnabled } from "@/lib/sms-switch";
@@ -60,6 +62,9 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
     if (error.code === "P0001") redirect("/dashboard");
     return { error: "Something went wrong creating your business. Please try again.", values: raw };
   }
+
+  // Tell us a new shop has signed up (after the response; a failure here never affects the shop).
+  after(() => alertNewShop({ name: parsed.data.name, slug: parsed.data.slug, ownerName: parsed.data.ownerName, email: parsed.data.email, phone: parsed.data.phone, seats: parsed.data.seats, interval: parsed.data.interval }));
 
   let logoFailed = false;
   if (logo) {
