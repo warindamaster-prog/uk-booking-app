@@ -143,6 +143,9 @@ export function OnboardingForm({ siteHost, noTrial = false, smsEnabled = false, 
         </div>
         )}
 
+        <Field label="Promotion code (optional)" name="promoCode" maxLength={40} autoComplete="off"
+          hint="Have a code? Enter it for a longer free trial." defaultValue={v.promoCode ?? ""} errors={e.promoCode} />
+
         <div role="status" aria-live="polite" className="rounded-xl bg-[#edf2e1] p-4 text-sm text-[#2d4a38]">
           <p className="font-medium">{noTrial ? t("No free trial. You subscribe after setting up, and your booking page opens once you have.") : t("Free for {days} days. No card needed.", { days: PRICING.trialDays })}</p>
           {seatsOk && (() => {

@@ -1,5 +1,12 @@
 // Thai translations for the owner side. Key = English text.
 export const TH: Record<string, string> = {
+ "This code is for the yearly plan. Choose that plan to use it.": "โค้ดนี้ใช้กับแพ็กเกจรายปีเท่านั้น เลือกแพ็กเกจรายปีเพื่อใช้โค้ด",
+ "This code is for the monthly plan. Choose that plan to use it.": "โค้ดนี้ใช้กับแพ็กเกจรายเดือนเท่านั้น เลือกแพ็กเกจรายเดือนเพื่อใช้โค้ด",
+ "This code is for the 3-year plan. Choose that plan to use it.": "โค้ดนี้ใช้กับแพ็กเกจ 3 ปีเท่านั้น เลือกแพ็กเกจ 3 ปีเพื่อใช้โค้ด",
+ "Promotion code (optional)": "โค้ดโปรโมชัน (ไม่บังคับ)",
+ "Have a code? Enter it for a longer free trial.": "มีโค้ดไหม? ใส่เพื่อรับทดลองใช้ฟรีนานขึ้น",
+ "That code isn't valid or has expired.": "โค้ดนี้ไม่ถูกต้องหรือหมดอายุแล้ว",
+ "That code is too long": "โค้ดยาวเกินไป",
  "View or download your invoice": "ดูหรือดาวน์โหลดใบแจ้งหนี้ของคุณ",
  "Terms": "ข้อกำหนด",
  "By creating an account you agree to our": "การสร้างบัญชีถือว่าคุณยอมรับ",

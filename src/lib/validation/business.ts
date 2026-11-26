@@ -20,6 +20,8 @@ export const onboardingSchema = z.object({
     .transform(Number)
     .refine((n) => n >= PRICING.minSeats && n <= PRICING.maxSeats, `Enter a number from ${PRICING.minSeats} to ${PRICING.maxSeats}`),
   interval: z.enum(["month", "year", "three_year"], { message: "Choose a plan" }),
+  /** Optional promotion code for a longer free trial (checked against TRIAL_CODES on the server). */
+  promoCode: z.string().trim().max(40, "That code is too long").default(""),
   /** Optional SMS confirmation packs chosen at setup (0 = none). */
   smsPacks: z.string().trim().default("0").pipe(z.string().regex(/^\d+$/, "Enter a whole number")).transform(Number)
     .refine((n) => n >= 0 && n <= PRICING.maxSmsPacks, `Enter a number from 0 to ${PRICING.maxSmsPacks}`),

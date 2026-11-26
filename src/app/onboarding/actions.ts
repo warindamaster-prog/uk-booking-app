@@ -3,6 +3,7 @@
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { alertNewShop } from "@/lib/new-shop-alert";
+import { trialDaysForCode } from "@/lib/promo-codes";
 import { requireUser } from "@/lib/auth";
 import { noTrialMode } from "@/lib/billing";
 import { smsPacksEnabled } from "@/lib/sms-switch";
@@ -24,6 +25,7 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
     phone: String(formData.get("phone") ?? ""),
     seats: String(formData.get("seats") ?? ""),
     interval: String(formData.get("interval") ?? ""),
+    promoCode: String(formData.get("promoCode") ?? ""),
     smsPacks: smsPacksEnabled() && formData.get("smsOn") === "on" ? String(formData.get("smsPacks") ?? "1") : "0",
   };
   const parsed = onboardingSchema.safeParse(raw);
@@ -31,6 +33,11 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
   if (parsed.data.interval === "three_year" && !threeYearEnabled()) {
     return { fieldErrors: { interval: ["Choose a plan"] }, values: raw }; // the plan is not on sale yet
   }
+
+  // A promotion code gives a longer free trial. An unknown or expired code is refused now, before anything is created.
+  const promo = parsed.data.promoCode ? trialDaysForCode(parsed.data.promoCode) : null;
+  if (parsed.data.promoCode && !promo) return { fieldErrors: { promoCode: ["That code isn't valid or has expired."] }, values: raw };
+  if (promo?.plan && promo.plan !== parsed.data.interval) return { fieldErrors: { promoCode: [`This code is for the ${promo.plan === "year" ? "yearly" : promo.plan === "month" ? "monthly" : "3-year"} plan. Choose that plan to use it.`] }, values: raw };
 
   // Optional logo: validate size and real file signature before creating anything.
   let logo: { bytes: Uint8Array; type: keyof typeof LOGO_TYPES } | null = null;
@@ -64,7 +71,7 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
   }
 
   // Tell us a new shop has signed up (after the response; a failure here never affects the shop).
-  after(() => alertNewShop({ name: parsed.data.name, slug: parsed.data.slug, ownerName: parsed.data.ownerName, email: parsed.data.email, phone: parsed.data.phone, seats: parsed.data.seats, interval: parsed.data.interval }));
+  after(() => alertNewShop({ name: parsed.data.name, slug: parsed.data.slug, ownerName: parsed.data.ownerName, email: parsed.data.email, phone: parsed.data.phone, seats: parsed.data.seats, interval: parsed.data.interval, promoCode: promo ? `${promo.code} (${promo.days} days)` : undefined }));
 
   let logoFailed = false;
   if (logo) {
@@ -78,6 +85,11 @@ export async function createBusiness(_: FormState, formData: FormData): Promise<
       const upd = await supabase.from("businesses").update({ logo_path: path }).eq("id", businessId);
       if (upd.error) logoFailed = true;
     }
+  }
+  if (promo && !noTrialMode()) {
+    const ends = new Date(Date.now() + promo.days * 86_400_000).toISOString();
+    const { error: promoError } = await createAdminClient().from("business_billing").update({ trial_ends_at: ends }).eq("business_id", businessId);
+    if (promoError) console.error("could not apply the promotion code to the trial", promoError.message);
   }
   if (noTrialMode()) {
     // Testing without a free trial: the trial ends now, so the booking page stays closed until they subscribe.
